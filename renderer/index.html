@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https: http:; script-src 'self'" />
+  <title>DaAIx</title>
+  <link rel="stylesheet" href="css/app.css" />
+</head>
+<body class="theme-dark" dir="rtl">
+
+  <header id="topbar">
+    <div class="brand" id="brandHome" title="DaAIx">
+      <img src="assets/logo.svg" alt="DaAIx" class="logo" />
+      <div class="brand-text">
+        <span class="brand-name">DaAIx</span>
+        <span class="brand-tag" data-i18n="tagline"></span>
+      </div>
+    </div>
+    <input id="globalSearch" type="search" data-i18n-ph="search" autocomplete="off" />
+    <div class="topbar-actions">
+      <button id="btnChat" class="tb-btn" data-i18n-title="chat">💬</button>
+      <button id="btnGraph" class="tb-btn" data-i18n-title="graph">🕸️</button>
+      <button id="btnTools" class="tb-btn" data-i18n-title="tools">🧰</button>
+      <button id="btnNotes" class="tb-btn" data-i18n-title="notes">📝</button>
+      <button id="btnSettings" class="tb-btn" data-i18n-title="settings">⚙️</button>
+      <button id="btnLang" class="tb-btn lang-btn">EN</button>
+    </div>
+  </header>
+
+  <div id="layout">
+    <aside id="sidebar">
+      <div class="sidebar-scroll">
+        <div class="side-section-title" data-i18n="kbs"></div>
+        <div id="kbTree"></div>
+      </div>
+      <div class="sidebar-footer">
+        <a href="#" id="siteLink" class="site-link">smartk-ai.com</a>
+        <span id="appVersion" class="ver"></span>
+      </div>
+    </aside>
+
+    <main id="main">
+      <!-- Home -->
+      <section id="view-home" class="view">
+        <div class="hero">
+          <img src="assets/logo.svg" class="hero-logo" alt="" />
+          <h1 data-i18n="welcome"></h1>
+          <p data-i18n="welcomeText"></p>
+          <div id="homeStats" class="stats"></div>
+        </div>
+        <div id="searchResults" class="search-results"></div>
+      </section>
+
+      <!-- Document reader -->
+      <section id="view-doc" class="view hidden">
+        <div id="docMain" class="doc-main">
+          <div id="docHeader"></div>
+          <div id="docBody" class="doc-body"></div>
+        </div>
+        <aside id="docSide" class="doc-side"></aside>
+      </section>
+
+      <!-- Chat -->
+      <section id="view-chat" class="view hidden">
+        <div class="chat-head">
+          <h2 data-i18n="chatTitle"></h2>
+          <span class="badge grounded" data-i18n="chatGrounded"></span>
+          <select id="chatScope">
+            <option value="all" data-i18n="chatAll"></option>
+            <option value="current" data-i18n="chatCurrent"></option>
+          </select>
+        </div>
+        <div id="chatLog" class="chat-log"></div>
+        <div class="chat-input-row">
+          <textarea id="chatInput" rows="2" data-i18n-ph="chatPlaceholder"></textarea>
+          <button id="chatSend" class="primary">➤</button>
+        </div>
+      </section>
+
+      <!-- Graph -->
+      <section id="view-graph" class="view hidden">
+        <div class="graph-wrap">
+          <canvas id="graphCanvas"></canvas>
+          <div id="graphHint" class="graph-hint"></div>
+        </div>
+      </section>
+
+      <!-- Tools -->
+      <section id="view-tools" class="view hidden">
+        <div id="toolsMenu" class="tools-menu"></div>
+        <div id="toolPanel" class="tool-panel"></div>
+      </section>
+
+      <!-- Notes -->
+      <section id="view-notes" class="view hidden">
+        <div class="notes-head">
+          <h2 data-i18n="notes"></h2>
+          <button id="btnNewNote" class="primary" data-i18n="newNote"></button>
+        </div>
+        <div id="notesList" class="notes-list"></div>
+        <div id="noteEditor" class="note-editor hidden">
+          <textarea id="noteText" data-i18n-ph="notesPlaceholder"></textarea>
+          <div class="note-actions">
+            <button id="btnSaveNote" class="primary" data-i18n="saveNote"></button>
+            <button id="btnDeleteNote" class="danger" data-i18n="delete"></button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Settings -->
+      <section id="view-settings" class="view hidden">
+        <h2 data-i18n="settings"></h2>
+        <div class="settings-grid">
+          <label><span data-i18n="language"></span>
+            <select id="setLang"><option value="ar">العربية</option><option value="en">English</option></select>
+          </label>
+          <label><span data-i18n="theme"></span>
+            <select id="setTheme"><option value="dark" data-i18n="dark"></option><option value="light" data-i18n="light"></option></select>
+          </label>
+          <label class="wide"><span data-i18n="updateUrl"></span>
+            <input id="setUpdateUrl" type="url" />
+          </label>
+          <label><span data-i18n="checkUpdates"></span>
+            <button id="btnCheckUpdates" class="primary" data-i18n="checkUpdates"></button>
+            <span id="updateStatus" class="update-status"></span>
+          </label>
+          <div class="wide sep" data-i18n="llmApi"></div>
+          <label><span data-i18n="baseUrl"></span><input id="setLlmUrl" type="url" placeholder="https://api.openai.com/v1" /></label>
+          <label><span data-i18n="apiKey"></span><input id="setLlmKey" type="password" autocomplete="off" /></label>
+          <label><span data-i18n="model"></span><input id="setLlmModel" type="text" placeholder="gpt-4o-mini" /></label>
+          <p class="hint wide" data-i18n="llmHint"></p>
+        </div>
+        <button id="btnSaveSettings" class="primary" data-i18n="save"></button>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="js/i18n.js"></script>
+  <script src="js/kb.js"></script>
+  <script src="js/retrieval.js"></script>
+  <script src="js/calculators.js"></script>
+  <script src="js/graph.js"></script>
+  <script src="js/tools.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,331 @@
+'use strict';
+
+const Tools = {
+  active: null,
+
+  list() {
+    return [
+      { id: 'consultant', icon: '⚖️', label: I18n.t('toolConsultant') },
+      { id: 'converter', icon: '🔄', label: I18n.t('toolConverter') },
+      { id: 'costs', icon: '🧾', label: I18n.t('toolCosts') },
+      { id: 'labor', icon: '👷', label: I18n.t('toolLabor') },
+      { id: 'laborConsultant', icon: '🧑‍⚖️', label: I18n.t('toolLaborConsultant') },
+      { id: 'competition', icon: '🏆', label: I18n.t('toolCompetition') },
+      { id: 'offers', icon: '📊', label: I18n.t('toolOffers') },
+      { id: 'building', icon: '🏗️', label: I18n.t('toolBuilding') }
+    ];
+  },
+
+  renderMenu() {
+    const menu = document.getElementById('toolsMenu');
+    menu.innerHTML = '';
+    this.list().forEach(t => {
+      const chip = document.createElement('div');
+      chip.className = 'tool-chip' + (this.active === t.id ? ' active' : '');
+      chip.textContent = `${t.icon} ${t.label}`;
+      chip.onclick = () => { this.active = t.id; this.renderMenu(); this.render(t.id); };
+      menu.appendChild(chip);
+    });
+  },
+
+  open(id) {
+    this.active = id;
+    App.showView('tools');
+    this.renderMenu();
+    this.render(id);
+  },
+
+  render(id) {
+    const panel = document.getElementById('toolPanel');
+    panel.innerHTML = '';
+    const fn = this['render_' + id];
+    if (fn) fn.call(this, panel);
+  },
+
+  el(html) {
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    return div.firstElementChild;
+  },
+
+  /* ============ 1. Digital Legal Advisor ============ */
+  render_consultant(panel) {
+    const box = this.el(`
+      <div>
+        <h2>⚖️ ${I18n.t('toolConsultant')}</h2>
+        <div class="form-grid" style="grid-template-columns:1fr">
+          <label>${I18n.t('consultantQuestion')}
+            <textarea id="tcQ" rows="3" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px;outline:none"></textarea>
+          </label>
+        </div>
+        <button class="primary" id="tcAsk">${I18n.t('calculate')}</button>
+        <div id="tcOut"></div>
+      </div>`);
+    panel.appendChild(box);
+    box.querySelector('#tcAsk').onclick = async () => {
+      const q = box.querySelector('#tcQ').value.trim();
+      if (!q) return;
+      const out = box.querySelector('#tcOut');
+      out.innerHTML = `<div class="result-card">${I18n.t('loading')}</div>`;
+      const res = await Chat.answer(q, { scope: 'all' });
+      out.innerHTML = '';
+      const card = this.el(`<div class="result-card"></div>`);
+      card.appendChild(renderMarkdown(res.answer));
+      if (res.passages && res.passages.length) {
+        const cites = this.el(`<div class="result-note">${I18n.t('chatCitations')}: </div>`);
+        res.passages.forEach((p, i) => {
+          const a = this.el(`<a href="#" class="cite">${p.docTitle}${p.articleNum ? ' (' + p.articleNum + ')' : ''}</a>`);
+          a.onclick = (e) => { e.preventDefault(); App.openDocument(p.docId); };
+          cites.appendChild(a);
+          if (i < res.passages.length - 1) cites.appendChild(document.createTextNode(' · '));
+        });
+        card.appendChild(cites);
+      }
+      out.appendChild(card);
+    };
+  },
+
+  /* ============ 2. Markdown Converter ============ */
+  async render_converter(panel) {
+    const box = this.el(`
+      <div>
+        <h2>🔄 ${I18n.t('toolConverter')}</h2>
+        <p class="hint" style="margin-bottom:14px">${I18n.t('pickFile')}</p>
+        <button class="primary" id="cvPick">📂 ${I18n.t('pickFile')}</button>
+        <div id="cvOut"></div>
+      </div>`);
+    panel.appendChild(box);
+    box.querySelector('#cvPick').onclick = async () => {
+      const file = await window.daaix.pickFile('Documents', ['pdf', 'docx', 'txt', 'md', 'html', 'htm']);
+      if (!file) return;
+      const out = box.querySelector('#cvOut');
+      out.innerHTML = `<div class="result-card">${I18n.t('loading')}</div>`;
+      const res = await window.daaix.convertToMarkdown({ path: file.path, data: file.data });
+      out.innerHTML = '';
+      if (!res.ok) {
+        out.appendChild(this.el(`<div class="result-card" style="color:var(--danger)">${res.error}</div>`));
+        return;
+      }
+      const md = res.markdown;
+      const actions = this.el(`<div style="display:flex;gap:10px;margin-top:14px"></div>`);
+      const importBtn = this.el(`<button class="primary">${I18n.t('importToNotes')}</button>`);
+      importBtn.onclick = () => {
+        const id = 'note-' + Date.now();
+        const title = (md.match(/^#\s+(.+)$/m) || [, file.name])[1].trim().slice(0, 60);
+        window.daaix.notesSave({ id, markdown: `# ${title}\n\n${md}` }).then(() => {
+          App.toast(I18n.t('converted'));
+          Notes.refresh();
+        });
+      };
+      actions.appendChild(importBtn);
+      out.appendChild(this.el(`<div class="result-note">${file.name} → Markdown (${md.length.toLocaleString()} chars)</div>`));
+      out.appendChild(actions);
+      const preview = this.el(`<div class="md-preview"></div>`);
+      preview.appendChild(renderMarkdown(md));
+      out.appendChild(preview);
+    };
+  },
+
+  /* ============ 3. Court Costs ============ */
+  render_costs(panel) {
+    const box = this.el(`
+      <div>
+        <h2>🧾 ${I18n.t('toolCosts')}</h2>
+        <div class="form-grid">
+          <label>${I18n.t('claimAmount')} (${I18n.t('currency')})
+            <input id="ccVal" type="number" min="0" value="100000" />
+          </label>
+          <label>${I18n.t('caseType')}
+            <select id="ccType">
+              <option value="claim">${I18n.t('claim')}</option>
+              <option value="execution">${I18n.t('execution')}</option>
+              <option value="fixed">${I18n.t('appeal')} / ${I18n.t('base')}</option>
+            </select>
+          </label>
+          <label>${I18n.t('appeal')}
+            <select id="ccAppeal"><option value="no">${I18n.t('no')}</option><option value="yes">${I18n.t('yes')}</option></select>
+          </label>
+          <label>${I18n.t('execution')}
+            <select id="ccExec"><option value="no">${I18n.t('no')}</option><option value="yes">${I18n.t('yes')}</option></select>
+          </label>
+        </div>
+        <button class="primary" id="ccGo">${I18n.t('calculate')}</button>
+        <div id="ccOut"></div>
+      </div>`);
+    panel.appendChild(box);
+    box.querySelector('#ccGo').onclick = () => {
+      const r = Calc.courtCosts({
+        claimValue: box.querySelector('#ccVal').value,
+        caseType: box.querySelector('#ccType').value,
+        appeal: box.querySelector('#ccAppeal').value === 'yes',
+        execution: box.querySelector('#ccExec').value === 'yes'
+      });
+      const out = box.querySelector('#ccOut');
+      out.innerHTML = '';
+      const card = this.el(`<div class="result-card"><div class="big">${I18n.t('total')}: ${r.total.toLocaleString()} ${I18n.t('currency')}</div></div>`);
+      r.lines.forEach(l => {
+        card.appendChild(this.el(`<div class="result-line"><span>${l.label[I18n.lang] || l.label.ar}</span><span>${Math.round(l.amount).toLocaleString()} ${I18n.t('currency')}</span></div>`));
+      });
+      card.appendChild(this.el(`<div class="result-note">${I18n.lang === 'ar' ? 'تقدير إرشادي وفق لائحة الرسوم القضائية — الرسوم الفعلية تحددها وزارة العدل.' : 'Indicative estimate per the Judicial Fees Law — actual fees are set by the Ministry of Justice.'}</div>`));
+      out.appendChild(card);
+    };
+  },
+
+  /* ============ 4. Labor Calculator ============ */
+  render_labor(panel) {
+    const box = this.el(`
+      <div>
+        <h2>👷 ${I18n.t('toolLabor')}</h2>
+        <div class="form-grid">
+          <label>${I18n.t('salary')} (${I18n.t('currency')})<input id="lbSalary" type="number" min="0" value="10000" /></label>
+          <label>${I18n.t('years')}<input id="lbYears" type="number" min="0" value="6" /></label>
+          <label>${I18n.t('months')}<input id="lbMonths" type="number" min="0" max="11" value="0" /></label>
+          <label>${I18n.t('result')}
+            <select id="lbMode">
+              <option value="termination">${I18n.t('termination')}</option>
+              <option value="resignation">${I18n.t('resignation')}</option>
+            </select>
+          </label>
+          <label>${I18n.t('type_agreement')} / ${I18n.t('number')}
+            <select id="lbFixed"><option value="no">${I18n.t('no')}</option><option value="yes">${I18n.t('yes')}</option></select>
+          </label>
+        </div>
+        <button class="primary" id="lbGo">${I18n.t('calculate')}</button>
+        <div id="lbOut"></div>
+      </div>`);
+    panel.appendChild(box);
+    box.querySelector('#lbGo').onclick = () => {
+      const mode = box.querySelector('#lbMode').value;
+      const fixed = box.querySelector('#lbFixed').value === 'yes';
+      const r = Calc.endOfService({
+        salary: box.querySelector('#lbSalary').value,
+        years: box.querySelector('#lbYears').value,
+        months: box.querySelector('#lbMonths').value,
+        mode
+      });
+      const notice = Calc.notice({ mode, fixedTerm: fixed });
+      const out = box.querySelector('#lbOut');
+      out.innerHTML = '';
+      const card = this.el(`<div class="result-card">
+        <div class="big">${I18n.t('eosAward')}: ${r.award.toLocaleString()} ${I18n.t('currency')}</div>
+        <div class="result-line"><span>${I18n.t('noticePeriod')}</span><span>${notice} ${I18n.lang === 'ar' ? 'يوم' : 'days'}</span></div>
+      </div>`);
+      card.appendChild(this.el(`<div class="result-note">${r.basis}</div>`));
+      const link = this.el(`<div class="result-note"><a href="#" class="cite" style="color:var(--accent2)">📄 ${I18n.t('openDoc')}: ${I18n.t('type_law')} — نظام العمل (م/51)</a></div>`);
+      link.querySelector('a').onclick = (e) => { e.preventDefault(); App.openDocument('sa-labor-law'); };
+      card.appendChild(link);
+      out.appendChild(card);
+    };
+  },
+
+  /* ============ 5 & 6. Scoped consultants ============ */
+  render_laborConsultant(panel) { this.render_consultantScoped(panel, 'laborConsultant', ['sa-labor-law', 'sa-reg-hr', 'sa-ruling-labor-1', 'sa-principle-hc-1']); },
+  render_competition(panel) { this.render_consultantScoped(panel, 'competition', null, /منافسات|مشتريات|عطاء|منافسة|competition|procurement|tender/i); },
+
+  render_consultantScoped(panel, id, docIds, titleRegex) {
+    const labels = { laborConsultant: 'toolLaborConsultant', competition: 'toolCompetition' };
+    const placeholders = { laborConsultant: 'consultantQuestion', competition: 'competitionQuestion' };
+    const box = this.el(`
+      <div>
+        <h2>${id === 'laborConsultant' ? '🧑‍⚖️' : '🏆'} ${I18n.t(labels[id])}</h2>
+        <div class="form-grid" style="grid-template-columns:1fr">
+          <label>${I18n.t(placeholders[id])}
+            <textarea id="scQ" rows="3" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px;outline:none"></textarea>
+          </label>
+        </div>
+        <button class="primary" id="scAsk">${I18n.t('calculate')}</button>
+        <div id="scOut"></div>
+      </div>`);
+    panel.appendChild(box);
+    box.querySelector('#scAsk').onclick = async () => {
+      const q = box.querySelector('#scQ').value.trim();
+      if (!q) return;
+      const out = box.querySelector('#scOut');
+      out.innerHTML = `<div class="result-card">${I18n.t('loading')}</div>`;
+      const opts = docIds ? { scopeDocIds: new Set(docIds) } : {};
+      const res = await Chat.answer(q, { scope: 'all', ...opts, titleRegex });
+      out.innerHTML = '';
+      const card = this.el(`<div class="result-card"></div>`);
+      card.appendChild(renderMarkdown(res.answer));
+      if (res.passages && res.passages.length) {
+        const cites = this.el(`<div class="result-note">${I18n.t('chatCitations')}: </div>`);
+        res.passages.forEach((p, i) => {
+          const a = this.el(`<a href="#" class="cite">${p.docTitle}${p.articleNum ? ' (' + p.articleNum + ')' : ''}</a>`);
+          a.onclick = (e) => { e.preventDefault(); App.openDocument(p.docId); };
+          cites.appendChild(a);
+          if (i < res.passages.length - 1) cites.appendChild(document.createTextNode(' · '));
+        });
+        card.appendChild(cites);
+      }
+      out.appendChild(card);
+    };
+  },
+
+  /* ============ 7. Offers ============ */
+  render_offers(panel) {
+    const box = this.el(`
+      <div>
+        <h2>📊 ${I18n.t('toolOffers')}</h2>
+        <div class="form-grid">
+          <label>${I18n.t('offersBid')}<input id="ofBid" type="number" min="0" value="1200000" /></label>
+          <label>${I18n.t('offersCost')}<input id="ofCost" type="number" min="0" value="950000" /></label>
+          <label>${I18n.t('score')} — ${I18n.t('base')} 100: 40% ${I18n.t('offersBid')}<input id="ofTech" type="number" min="0" max="100" value="85" /></label>
+          <label>${I18n.t('score')} — 20% ${I18n.t('years')}<input id="ofExp" type="number" min="0" max="100" value="70" /></label>
+          <label>${I18n.t('winProbability')} — ${I18n.t('documentsPl')}<input id="ofComp" type="number" min="1" value="4" /></label>
+        </div>
+        <button class="primary" id="ofGo">${I18n.t('evaluate')}</button>
+        <div id="ofOut"></div>
+      </div>`);
+    panel.appendChild(box);
+    box.querySelector('#ofGo').onclick = () => {
+      const r = Calc.bid({
+        bidValue: box.querySelector('#ofBid').value,
+        estCost: box.querySelector('#ofCost').value,
+        technical: box.querySelector('#ofTech').value,
+        experience: box.querySelector('#ofExp').value,
+        competitors: box.querySelector('#ofComp').value
+      });
+      const verdicts = {
+        low_margin: { ar: 'هامش منخفض — خطر على الربحية', en: 'Low margin — profitability risk' },
+        healthy: { ar: 'هامش صحي', en: 'Healthy margin' },
+        high_margin: { ar: 'هامش مرتفع — قد يقلل فرصة الفوز', en: 'High margin — may reduce win chance' }
+      };
+      const v = verdicts[r.verdict];
+      const card = this.el(`<div class="result-card">
+        <div class="result-line"><span>${I18n.t('margin')}</span><span>${r.margin}%</span></div>
+        <div class="result-line"><span>${I18n.t('score')}</span><span>${r.score} / 100</span></div>
+        <div class="result-line"><span>${I18n.t('winProbability')}</span><span>${r.winProbability}%</span></div>
+        <div class="result-note">${v[I18n.lang] || v.ar}</div>
+      </div>`);
+      box.querySelector('#ofOut').innerHTML = '';
+      box.querySelector('#ofOut').appendChild(card);
+    };
+  },
+
+  /* ============ 8. Building ============ */
+  render_building(panel) {
+    const stages = Calc.buildingStages(I18n.lang);
+    const box = this.el(`<div><h2>🏗️ ${I18n.t('toolBuilding')}</h2><div id="blStages"></div>
+      <div class="progress"><div id="blBar" style="width:0%"></div></div>
+      <div id="blPct" class="result-note"></div></div>`);
+    panel.appendChild(box);
+    const wrap = box.querySelector('#blStages');
+    const update = () => {
+      const boxes = [...wrap.querySelectorAll('input[type=checkbox]')];
+      const done = boxes.filter(b => b.checked).length;
+      const pct = boxes.length ? Math.round(done / boxes.length * 100) : 0;
+      box.querySelector('#blBar').style.width = pct + '%';
+      box.querySelector('#blPct').textContent = `${I18n.t('compliance')}: ${pct}%`;
+    };
+    stages.forEach(stage => {
+      const blk = this.el(`<div class="stage-block"><h4>${stage.name}</h4></div>`);
+      stage.items.forEach(item => {
+        const row = this.el(`<label class="check-item"><input type="checkbox" /> <span>${item}</span></label>`);
+        row.querySelector('input').onchange = update;
+        blk.appendChild(row);
+      });
+      wrap.appendChild(blk);
+    });
+    update();
+  }
+};

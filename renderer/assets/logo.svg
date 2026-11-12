@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#182238"/>
+      <stop offset="1" stop-color="#0f1420"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f0d48a"/>
+      <stop offset="1" stop-color="#d4a94e"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="120" height="120" rx="26" fill="url(#bg)" stroke="#2a3550" stroke-width="2"/>
+  <path d="M40 26h34l16 16v60a6 6 0 0 1-6 6H40a6 6 0 0 1-6-6V32a6 6 0 0 1 6-6z" fill="none" stroke="url(#gold)" stroke-width="4"/>
+  <path d="M74 26v16h16" fill="none" stroke="url(#gold)" stroke-width="4"/>
+  <circle cx="64" cy="72" r="7" fill="url(#gold)"/>
+  <circle cx="44" cy="58" r="5" fill="#5fb4d9"/>
+  <circle cx="84" cy="58" r="5" fill="#5fb4d9"/>
+  <circle cx="52" cy="92" r="5" fill="#c792ea"/>
+  <circle cx="78" cy="90" r="5" fill="#7ec98f"/>
+  <g stroke="#93a1b8" stroke-width="2" opacity=".8">
+    <line x1="64" y1="72" x2="44" y2="58"/>
+    <line x1="64" y1="72" x2="84" y2="58"/>
+    <line x1="64" y1="72" x2="52" y2="92"/>
+    <line x1="64" y1="72" x2="78" y2="90"/>
+    <line x1="44" y1="58" x2="84" y2="58"/>
+  </g>
+</svg>

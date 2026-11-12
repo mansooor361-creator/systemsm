@@ -1,0 +1,132 @@
+'use strict';
+
+const I18N = {
+  ar: {
+    appName: 'DaAIx', tagline: 'قواعد المعرفة القانونية',
+    home: 'الرئيسية', search: 'بحث في كل الوثائق...', searchTitle: 'البحث',
+    kbs: 'قواعد المعرفة', notes: 'ملاحظاتي', tools: 'الأدوات', chat: 'المستشار الذكي',
+    graph: 'خريطة الارتباطات', settings: 'الإعدادات', updates: 'التحديثات',
+    all: 'الكل', documents: 'وثيقة', documentsPl: 'وثائق',
+    law: 'نظام', regulation: 'لائحة', decision: 'قرار', agreement: 'اتفاقية',
+    ruling: 'حكم', principle: 'مبدأ قضائي', circular: 'تعميم',
+    type_law: 'نظام', type_regulation: 'لائحة تنظيمية', type_decision: 'قرار',
+    type_agreement: 'اتفاقية', type_ruling: 'حكم قضائي', type_principle: 'مبدأ قضائي', type_circular: 'تعميم',
+    type_law_pl: 'الأنظمة', type_regulation_pl: 'اللوائح', type_decision_pl: 'القرارات',
+    type_agreement_pl: 'الاتفاقيات', type_ruling_pl: 'الأحكام', type_principle_pl: 'المبادئ القضائية', type_circular_pl: 'التعميمات',
+    issuer: 'الجهة المصدرة', number: 'الرقم', date: 'التاريخ', status: 'الحالة', version: 'الإصدار',
+    status_in_force: 'ساري', status_final: 'نهائي', status_settled: 'مستقر', status_amended: 'معدل', status_repealed: 'ملغى',
+    versionHistory: 'سجل الإصدار', relations: 'الارتباطات', sources: 'المصادر', articles: 'المواد',
+    relatedLaws: 'الأنظمة المرتبطة', citedIn: 'مستند إليه في', cites: 'الاستناد إلى',
+    rel_amends: 'يعدل', rel_amendedBy: 'معدل بـ', rel_cites: 'يستند إلى', rel_citedBy: 'مستند إليه فيه',
+    rel_related: 'مرتبط بـ', rel_implements: 'لائحته التنفيذية', rel_issuedBy: 'صادر بـ',
+    chatTitle: 'الدردشة مع الوثيقة', chatPlaceholder: 'اسأل عن الوثيقة أو الارتباطات أو الأحكام...',
+    chatGrounded: 'مُسنَد إلى قاعدة المعرفة — بدون هلوسة', chatScope: 'نطاق الإجابة',
+    chatAll: 'كل قواعد المعرفة', chatCurrent: 'الوثيقة الحالية وارتباطاتها',
+    chatCitations: 'الاستشهادات', chatNoAnswer: 'لا توجد إجابة موثقة في قاعدة المعرفة لهذا السؤال. لن أخمّن.',
+    toolConsultant: 'المستشار الرقمي القانوني', toolConverter: 'التحويل إلى Markdown',
+    toolCosts: 'حاسبة التكاليف القضائية', toolLabor: 'الحاسبة العمالية',
+    toolLaborConsultant: 'المستشار العمالي', toolCompetition: 'مستشار أنظمة المنافسات',
+    toolOffers: 'تقديم العروض ودراستها', toolBuilding: 'الاشتراطات للبناء',
+    convert: 'تحويل', converted: 'تم التحويل بنجاح', pickFile: 'اختر ملفاً (PDF / Word / TXT)',
+    download: 'تنزيل', calculate: 'احسب', result: 'النتيجة',
+    eosAward: 'مكافأة نهاية الخدمة', noticePeriod: 'مدة الإخطار', salary: 'الراتب الأساسي',
+    years: 'سنوات الخدمة', months: 'الأشهر', resignation: 'الاستقالة', termination: 'الإنهاء من صاحب العمل',
+    claimAmount: 'قيمة المطالبة', courtFees: 'أتعاب المحكمة', avgDays: 'المدة التقديرية (يوم)',
+    language: 'اللغة', theme: 'المظهر', dark: 'داكن', light: 'فاتح',
+    save: 'حفظ', delete: 'حذف', add: 'إضافة', newNote: 'ملاحظة جديدة', editNote: 'تحرير',
+    updateUrl: 'رابط ملف التحديثات (Manifest)', llmApi: 'إعدادات الذكاء الاصطناعي (اختياري)',
+    apiKey: 'مفتاح API', baseUrl: 'عنوان الخدمة', model: 'الموديل',
+    llmHint: 'بدون مفتاح، تعمل الدردشة بوضع الاستخلاص المحلي 100% من قاعدة المعرفة (بدون هلوسة).',
+    checkUpdates: 'فحص التحديثات الآن', lastUpdate: 'آخر تحديث', noUpdates: 'قواعد المعرفة محدثة',
+    updatesAvailable: 'تحديثات متوفرة', applyUpdates: 'تنزيل التحديثات',
+    openSite: 'فتح الموقع', welcome: 'مرحباً بك في DaAIx',
+    welcomeText: 'اختر وثيقة من قواعد المعرفة، أو ابدأ الدردشة مع الوثائق، أو استخدم الأدوات.',
+    docsCount: 'عدد الوثائق', relationsCount: 'عدد الارتباطات', articlesCount: 'عدد المواد',
+    inGraph: 'عرض في الخريطة', openDoc: 'فتح', backlinks: 'الروابط العائدة',
+    relatedRulings: 'الأحكام المرتبطة', basedOn: 'المستند عليه في نص الحكم',
+    notesPlaceholder: 'اكتب ملاحظتك بصيغة Markdown...', saveNote: 'حفظ الملاحظة',
+    importToNotes: 'استيراد إلى ملاحظاتي', convertedPreview: 'معاينة التحويل',
+    offersBid: 'قيمة العرض', offersCost: 'التكلفة التقديرية', margin: 'هامش الربح',
+    winProbability: 'احتمالية الفوز', score: 'الدرجة', evaluate: 'قيّم',
+    buildingStage: 'مرحلة البناء', requirements: 'الاشتراطات', compliance: 'الالتزام',
+    competitionQuestion: 'اكتب سؤالك حول أنظمة المنافسات والمشتريات...',
+    consultantQuestion: 'اكتب سؤالك القانوني...',
+    loading: 'جارٍ التحميل...', total: 'الإجمالي', share: 'النسبة', base: 'الأساس',
+    caseType: 'نوع القضية', claim: 'المطالبة', execution: 'التنفيذ', appeal: 'الاستئناف',
+    currency: 'ريال', yes: 'نعم', no: 'لا', close: 'إغلاق', copy: 'نسخ', copied: 'تم النسخ'
+  },
+  en: {
+    appName: 'DaAIx', tagline: 'Legal Knowledge Bases',
+    home: 'Home', search: 'Search all documents...', searchTitle: 'Search',
+    kbs: 'Knowledge Bases', notes: 'My Notes', tools: 'Tools', chat: 'AI Advisor',
+    graph: 'Relation Graph', settings: 'Settings', updates: 'Updates',
+    all: 'All', documents: 'document', documentsPl: 'documents',
+    law: 'Law', regulation: 'Regulation', decision: 'Decision', agreement: 'Agreement',
+    ruling: 'Ruling', principle: 'Judicial Principle', circular: 'Circular',
+    type_law: 'Law', type_regulation: 'Regulation', type_decision: 'Decision',
+    type_agreement: 'Agreement', type_ruling: 'Judicial Ruling', type_principle: 'Judicial Principle', type_circular: 'Circular',
+    type_law_pl: 'Laws', type_regulation_pl: 'Regulations', type_decision_pl: 'Decisions',
+    type_agreement_pl: 'Agreements', type_ruling_pl: 'Rulings', type_principle_pl: 'Judicial Principles', type_circular_pl: 'Circulars',
+    issuer: 'Issuing Authority', number: 'Number', date: 'Date', status: 'Status', version: 'Version',
+    status_in_force: 'In Force', status_final: 'Final', status_settled: 'Settled', status_amended: 'Amended', status_repealed: 'Repealed',
+    versionHistory: 'Version History', relations: 'Relations', sources: 'Sources', articles: 'Articles',
+    relatedLaws: 'Related Laws', citedIn: 'Cited In', cites: 'Cites',
+    rel_amends: 'Amends', rel_amendedBy: 'Amended By', rel_cites: 'Cites', rel_citedBy: 'Cited By',
+    rel_related: 'Related To', rel_implements: 'Implementing Regulation', rel_issuedBy: 'Issued By',
+    chatTitle: 'Chat with Document', chatPlaceholder: 'Ask about the document, its relations or rulings...',
+    chatGrounded: 'Grounded in knowledge base — no hallucination', chatScope: 'Answer scope',
+    chatAll: 'All knowledge bases', chatCurrent: 'Current document & relations',
+    chatCitations: 'Citations', chatNoAnswer: 'No documented answer found in the knowledge base for this question. I will not guess.',
+    toolConsultant: 'Digital Legal Advisor', toolConverter: 'Convert to Markdown',
+    toolCosts: 'Court Costs Calculator', toolLabor: 'Labor Calculator',
+    toolLaborConsultant: 'Labor Advisor', toolCompetition: 'Competition Law Advisor',
+    toolOffers: 'Bid Preparation & Evaluation', toolBuilding: 'Building Requirements',
+    convert: 'Convert', converted: 'Converted successfully', pickFile: 'Pick a file (PDF / Word / TXT)',
+    download: 'Download', calculate: 'Calculate', result: 'Result',
+    eosAward: 'End-of-Service Award', noticePeriod: 'Notice Period', salary: 'Basic Salary',
+    years: 'Years of Service', months: 'Months', resignation: 'Resignation', termination: 'Termination by Employer',
+    claimAmount: 'Claim Amount', courtFees: 'Court Fees', avgDays: 'Estimated Duration (days)',
+    language: 'Language', theme: 'Theme', dark: 'Dark', light: 'Light',
+    save: 'Save', delete: 'Delete', add: 'Add', newNote: 'New Note', editNote: 'Edit',
+    updateUrl: 'Update Manifest URL', llmApi: 'AI Settings (optional)',
+    apiKey: 'API Key', baseUrl: 'Service URL', model: 'Model',
+    llmHint: 'Without a key, chat runs in local extractive mode — 100% from the knowledge base (no hallucination).',
+    checkUpdates: 'Check Updates Now', lastUpdate: 'Last Update', noUpdates: 'Knowledge bases are up to date',
+    updatesAvailable: 'Updates available', applyUpdates: 'Download Updates',
+    openSite: 'Open Website', welcome: 'Welcome to DaAIx',
+    welcomeText: 'Pick a document from the knowledge bases, start chatting, or use the tools.',
+    docsCount: 'Documents', relationsCount: 'Relations', articlesCount: 'Articles',
+    inGraph: 'Show in Graph', openDoc: 'Open', backlinks: 'Backlinks',
+    relatedRulings: 'Related Rulings', basedOn: 'Based on (in judgment text)',
+    notesPlaceholder: 'Write your note in Markdown...', saveNote: 'Save Note',
+    importToNotes: 'Import to My Notes', convertedPreview: 'Conversion Preview',
+    offersBid: 'Bid Value', offersCost: 'Estimated Cost', margin: 'Profit Margin',
+    winProbability: 'Win Probability', score: 'Score', evaluate: 'Evaluate',
+    buildingStage: 'Construction Stage', requirements: 'Requirements', compliance: 'Compliance',
+    competitionQuestion: 'Type your question on competition & procurement law...',
+    consultantQuestion: 'Type your legal question...',
+    loading: 'Loading...', total: 'Total', share: 'Share', base: 'Basis',
+    caseType: 'Case Type', claim: 'Claim', execution: 'Execution', appeal: 'Appeal',
+    currency: 'SAR', yes: 'Yes', no: 'No', close: 'Close', copy: 'Copy', copied: 'Copied'
+  }
+};
+
+const I18n = {
+  lang: 'ar',
+  t(key) {
+    const dict = I18N[this.lang] || I18N.ar;
+    return dict[key] != null ? dict[key] : (I18N.ar[key] || key);
+  },
+  docTypeName(type) { return this.t('type_' + type); },
+  docTypeNamePl(type) { return this.t('type_' + type + '_pl'); },
+  apply() {
+    document.documentElement.lang = this.lang;
+    document.documentElement.dir = this.lang === 'ar' ? 'rtl' : 'ltr';
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      el.textContent = this.t(el.getAttribute('data-i18n'));
+    });
+    document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+      el.placeholder = this.t(el.getAttribute('data-i18n-ph'));
+    });
+  }
+};
