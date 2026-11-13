@@ -3,7 +3,7 @@
 const { app, BrowserWindow, ipcMain, dialog, Notification, shell, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const Store = require('./store');
+const { Store } = require('./store');
 const { convertToMarkdown } = require('./convert');
 const { checkForKbUpdates } = require('./updater');
 
