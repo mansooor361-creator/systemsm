@@ -15,6 +15,8 @@ contextBridge.exposeInMainWorld('daaix', {
   kbCheckUpdates: () => ipcRenderer.invoke('kb:checkUpdates'),
   kbFetchRemote: (url) => ipcRenderer.invoke('kb:fetchRemote', url),
   netPost: (url, apiKey, body) => ipcRenderer.invoke('net:post', url, apiKey, body),
+  importFolder: () => ipcRenderer.invoke('fs:importFolder'),
+  convertFolder: (opts) => ipcRenderer.invoke('fs:convertFolder', opts),
   appVersion: () => ipcRenderer.invoke('app:version'),
   openExternal: (url) => ipcRenderer.invoke('app:openExternal', url),
   onUpdateAvailable: (cb) => ipcRenderer.on('kb:update-available', (_e, data) => cb(data))

@@ -1,14 +1,32 @@
 'use strict';
 
-/* ---------- tiny markdown renderer ---------- */
+/* ---------- markdown renderer (with Obsidian-style callouts) ---------- */
 function esc(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
+
+const CALLOUTS = {
+  note: { cls: 'co-note', icon: '📝' },
+  info: { cls: 'co-info', icon: 'ℹ️' },
+  tip: { cls: 'co-tip', icon: '💡' },
+  warning: { cls: 'co-warning', icon: '⚠️' },
+  caution: { cls: 'co-caution', icon: '🚫' },
+  danger: { cls: 'co-caution', icon: '🚨' },
+  example: { cls: 'co-example', icon: '📄' },
+  quote: { cls: 'co-quote', icon: '❝' }
+};
+
 function renderMarkdown(md) {
   const div = document.createElement('div');
   div.className = 'doc-body';
   const lines = String(md).split('\n');
   let html = '', inList = false, buf = [];
+
+  const inline = (s) => esc(s)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/\[(\d+)\]/g, '<span class="cite">[$1]</span>')
+    .replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, '<a href="$2" data-ext="1">$1</a>');
 
   const flushPara = () => {
     if (buf.length) {
@@ -16,26 +34,47 @@ function renderMarkdown(md) {
       buf = [];
     }
   };
-  const inline = (s) => esc(s)
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/\[(\d+)\]/g, '<span class="cite">[$1]</span>')
-    .replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, '<a href="$2" data-ext="1">$1</a>');
 
-  for (const raw of lines) {
-    const line = raw.replace(/\s+$/, '');
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    const callout = line.match(/^>\s?\[!(\w+)\]\s*(.*)$/);
+    if (callout) {
+      flushPara();
+      if (inList) { html += '</ul>'; inList = false; }
+      const type = callout[1].toLowerCase();
+      const meta = CALLOUTS[type] || CALLOUTS.note;
+      const body = [callout[2]];
+      let j = i + 1;
+      while (j < lines.length && /^>\s?/.test(lines[j])) {
+        body.push(lines[j].replace(/^>\s?/, ''));
+        j++;
+      }
+      i = j - 1;
+      const title = body[0] ? inline(body[0]) : '';
+      const rest = body.slice(1).filter(Boolean).map(b => inline(b)).join('<br/>');
+      html += `<div class="callout ${meta.cls}"><div class="co-title">${meta.icon} ${title || I18n.lang === 'ar' ? meta.icon + ' ' + (title || type.toUpperCase()) : meta.icon + ' ' + (title || type.toUpperCase())}</div>${rest ? `<div class="co-body">${rest}</div>` : ''}</div>`;
+      continue;
+    }
+
     if (/^#{1,6}\s/.test(line)) {
       flushPara();
       if (inList) { html += '</ul>'; inList = false; }
       const level = line.match(/^#+/)[0].length;
-      html += `<h${Math.min(level, 4)}>${inline(line.replace(/^#+\s*/, ''))}</h${Math.min(level, 4)}>`;
+      const text = inline(line.replace(/^#+\s*/, ''));
+      const anchor = 'h-' + html.length;
+      html += `<h${Math.min(level, 4)} id="${anchor}">${text}</h${Math.min(level, 4)}>`;
     } else if (/^>\s?/.test(line)) {
       flushPara();
-      html += `<blockquote style="border-inline-start:3px solid var(--accent2);padding-inline-start:12px;color:var(--muted)">${inline(line.replace(/^>\s?/, ''))}</blockquote>`;
+      html += `<blockquote>${inline(line.replace(/^>\s?/, ''))}</blockquote>`;
     } else if (/^[-*]\s/.test(line)) {
       flushPara();
       if (!inList) { html += '<ul>'; inList = true; }
       html += `<li>${inline(line.replace(/^[-*]\s/, ''))}</li>`;
+    } else if (/^---+\s*$/.test(line)) {
+      flushPara();
+      if (inList) { html += '</ul>'; inList = false; }
+      html += '<hr/>';
     } else if (!line.trim()) {
       flushPara();
       if (inList) { html += '</ul>'; inList = false; }
@@ -81,14 +120,11 @@ const Notes = {
   },
 
   async save() {
-    const text = document.getElementById('noteText').value;
     if (!this.editingId) return;
-    await window.daaix.notesSave({ id: this.editingId, markdown: text });
-    this.toastSave();
+    await window.daaix.notesSave({ id: this.editingId, markdown: document.getElementById('noteText').value });
+    App.toast(I18n.t('save') + ' ✓');
     await this.refresh();
   },
-
-  toastSave() { App.toast(I18n.t('save') + ' ✓'); },
 
   async create() {
     this.editingId = 'note-' + Date.now();
@@ -107,7 +143,7 @@ const Notes = {
   }
 };
 
-/* ---------- chat ---------- */
+/* ---------- chat (plain, no bubbles) ---------- */
 const Chat = {
   async answer(query, opts = {}) {
     let scopeIds = opts.scopeDocIds || null;
@@ -137,39 +173,36 @@ const Chat = {
     if (!q) return;
     input.value = '';
     const log = document.getElementById('chatLog');
-    log.appendChild(this.bubble('user', esc(q)));
-    log.scrollTop = log.scrollHeight;
 
-    const scope = document.getElementById('chatScope').value;
-    const res = await this.answer(q, { scope });
+    const qEl = document.createElement('div');
+    qEl.className = 'chat-q';
+    qEl.textContent = q;
+    log.appendChild(qEl);
 
-    const msg = this.bubble('bot', '');
-    msg.appendChild(renderMarkdown(res.answer));
+    const res = await this.answer(q, { scope: document.getElementById('chatScope').value });
+
+    const aEl = document.createElement('div');
+    aEl.className = 'chat-a';
+    aEl.appendChild(renderMarkdown(res.answer));
+
     if (res.passages && res.passages.length) {
       const cites = document.createElement('div');
-      cites.innerHTML = `<span class="mode-tag">${I18n.t('chatCitations')}:</span>`;
+      cites.className = 'chat-cites';
+      cites.innerHTML = `<span>${I18n.t('chatCitations')}:</span>`;
       res.passages.forEach(p => {
         const a = document.createElement('a');
-        a.className = 'cite';
         a.textContent = p.docTitle + (p.articleNum ? ' (' + p.articleNum + ')' : '');
         a.onclick = () => App.openDocument(p.docId);
         cites.appendChild(a);
       });
-      msg.appendChild(cites);
+      aEl.appendChild(cites);
     }
     const tag = document.createElement('span');
     tag.className = 'mode-tag';
     tag.textContent = res.mode === 'llm' ? 'AI + KB' : 'KB (extractive, 100% grounded)';
-    msg.appendChild(tag);
-    log.appendChild(msg);
+    aEl.appendChild(tag);
+    log.appendChild(aEl);
     log.scrollTop = log.scrollHeight;
-  },
-
-  bubble(role, html) {
-    const div = document.createElement('div');
-    div.className = 'msg ' + role;
-    div.innerHTML = html;
-    return div;
   }
 };
 
@@ -177,15 +210,18 @@ const Chat = {
 const App = {
   settings: {},
   currentDocId: null,
-  openGroups: new Set(),
+  currentCat: 'all',
+  editing: false,
 
   async boot() {
     this.settings = (await window.daaix.settingsGet()) || {};
+    if (!this.settings.showButtons) {
+      this.settings.showButtons = { agents: false, chat: false, graph: false, tools: false, notes: false };
+    }
     window.daaixSettings = this.settings;
 
     I18n.lang = this.settings.language || 'ar';
-    document.body.classList.toggle('theme-light', (this.settings.theme || 'dark') === 'light');
-    document.body.classList.toggle('theme-dark', (this.settings.theme || 'dark') === 'dark');
+    this.applyTheme(this.settings.theme || 'dark');
 
     const sample = await fetch('data/kb-sample.json').then(r => r.json());
     KB.load(sample);
@@ -196,38 +232,61 @@ const App = {
     document.getElementById('appVersion').textContent = 'v' + (await window.daaix.appVersion());
 
     this.bindTopbar();
+    this.bindDrawer();
     this.bindViews();
-    this.renderTree();
-    this.renderHomeStats();
+    this.renderAll();
     I18n.apply();
-    this.applyLangUi();
 
     window.daaix.onUpdateAvailable((data) => {
       this.toast(`${I18n.t('updatesAvailable')}: ${data.updates.length}`);
-      const status = document.getElementById('updateStatus');
-      if (status) status.textContent = `${I18n.t('updatesAvailable')}: ${data.updates.length}`;
     });
   },
 
+  applyTheme(theme) {
+    document.body.classList.toggle('theme-dark', theme === 'dark');
+    document.body.classList.toggle('theme-light', theme === 'light');
+  },
+
+  renderAll() {
+    this.applyTopbarButtons();
+    this.renderCatTabs();
+    this.renderDocList();
+    this.renderQuickCards();
+    this.renderFeed();
+    this.renderAccount();
+    this.renderButtonToggles();
+    this.applyLangUi();
+  },
+
   applyLangUi() {
-    document.getElementById('btnLang').textContent = I18n.lang === 'ar' ? 'EN' : 'ع';
+    document.getElementById('btnLangFix') && (document.getElementById('btnLangFix').textContent = I18n.lang === 'ar' ? 'EN' : 'ع');
     const scope = document.getElementById('chatScope');
     scope.options[0].textContent = I18n.t('chatAll');
     scope.options[1].textContent = I18n.t('chatCurrent');
     document.getElementById('graphHint').textContent = I18n.lang === 'ar'
       ? 'انقر على أي عقدة لفتح الوثيقة — الألوان تمثل نوع الوثيقة'
       : 'Click any node to open the document — colors represent document type';
+    const warn = document.getElementById('editWarningText');
+    if (warn) warn.textContent = I18n.t('editWarning');
+  },
+
+  applyTopbarButtons() {
+    const show = this.settings.showButtons || {};
+    [['btnAgents', 'agents'], ['btnChat', 'chat'], ['btnGraph', 'graph'], ['btnTools', 'tools'], ['btnNotes', 'notes']]
+      .forEach(([id, key]) => {
+        document.getElementById(id).classList.toggle('hidden', !show[key]);
+      });
   },
 
   bindTopbar() {
     document.getElementById('brandHome').onclick = () => this.showView('home');
+    document.getElementById('btnDrawer').onclick = () => this.openDrawer();
     document.getElementById('btnAgents').onclick = () => Agents.open(Agents.current);
     document.getElementById('btnChat').onclick = () => this.showView('chat');
     document.getElementById('btnGraph').onclick = () => { this.showView('graph'); Graph.show(this.currentDocId); };
     document.getElementById('btnTools').onclick = () => Tools.open(Tools.active || 'consultant');
     document.getElementById('btnNotes').onclick = () => { this.showView('notes'); Notes.refresh(); };
-    document.getElementById('btnSettings').onclick = () => { this.showView('settings'); this.fillSettings(); };
-    document.getElementById('btnLang').onclick = () => this.toggleLang();
+    document.getElementById('btnOpenSite').onclick = () => window.daaix.openExternal('https://smartk-ai.com/');
     document.getElementById('siteLink').onclick = (e) => {
       e.preventDefault();
       window.daaix.openExternal('https://smartk-ai.com/');
@@ -235,6 +294,110 @@ const App = {
     document.getElementById('globalSearch').addEventListener('input', (e) => {
       this.search(e.target.value);
     });
+    document.getElementById('sideSearch').addEventListener('input', (e) => {
+      this.renderDocList(e.target.value);
+    });
+  },
+
+  bindDrawer() {
+    document.getElementById('btnDrawerClose').onclick = () => this.closeDrawer();
+    document.getElementById('drawerOverlay').onclick = () => this.closeDrawer();
+    document.getElementById('drawerLang').onchange = async (e) => {
+      await this.setLang(e.target.value);
+    };
+    document.getElementById('drawerTheme').onchange = async (e) => {
+      this.applyTheme(e.target.value);
+      this.settings.theme = e.target.value;
+      await window.daaix.settingsSet({ theme: e.target.value });
+    };
+    document.getElementById('btnFullSettings').onclick = () => {
+      this.closeDrawer();
+      this.showView('settings');
+      this.fillSettings();
+    };
+  },
+
+  openDrawer() {
+    document.getElementById('drawer').classList.remove('hidden');
+    document.getElementById('drawerOverlay').classList.remove('hidden');
+    document.getElementById('drawerLang').value = I18n.lang;
+    document.getElementById('drawerTheme').value = this.settings.theme || 'dark';
+  },
+
+  closeDrawer() {
+    document.getElementById('drawer').classList.add('hidden');
+    document.getElementById('drawerOverlay').classList.add('hidden');
+  },
+
+  renderButtonToggles() {
+    const wrap = document.getElementById('buttonToggles');
+    wrap.innerHTML = '';
+    const defs = [
+      ['agents', '🤖 ' + I18n.t('agents')],
+      ['chat', '💬 ' + I18n.t('chat')],
+      ['graph', '🕸️ ' + I18n.t('graph')],
+      ['tools', '🧰 ' + I18n.t('tools')],
+      ['notes', '📝 ' + I18n.t('notes')]
+    ];
+    defs.forEach(([key, label]) => {
+      const row = document.createElement('label');
+      row.className = 'check-item';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = !!(this.settings.showButtons || {})[key];
+      cb.onchange = async () => {
+        this.settings.showButtons[key] = cb.checked;
+        await window.daaix.settingsSet({ showButtons: this.settings.showButtons });
+        this.applyTopbarButtons();
+      };
+      const span = document.createElement('span');
+      span.textContent = label;
+      row.appendChild(cb);
+      row.appendChild(span);
+      wrap.appendChild(row);
+    });
+  },
+
+  renderAccount() {
+    const area = document.getElementById('accountArea');
+    const acc = this.settings.account;
+    area.innerHTML = '';
+    if (acc && acc.email) {
+      const p = document.createElement('p');
+      p.className = 'account-email';
+      p.textContent = '👤 ' + acc.email;
+      const out = document.createElement('button');
+      out.className = 'danger';
+      out.textContent = I18n.t('logout');
+      out.onclick = async () => {
+        this.settings.account = null;
+        await window.daaix.settingsSet({ account: null });
+        this.renderAccount();
+      };
+      area.appendChild(p);
+      area.appendChild(out);
+    } else {
+      const login = document.createElement('button');
+      login.className = 'primary';
+      login.textContent = '🔑 ' + I18n.t('login');
+      login.onclick = () => window.daaix.openExternal('https://smartk-ai.com/تسجيل-الدخول'.replace('تسجيل-الدخول', 'login'));
+      const reg = document.createElement('button');
+      reg.className = 'danger';
+      reg.textContent = I18n.t('register');
+      reg.onclick = () => window.daaix.openExternal('https://smartk-ai.com/register');
+      area.appendChild(login);
+      area.appendChild(reg);
+    }
+  },
+
+  async setLang(lang) {
+    I18n.lang = lang;
+    await window.daaix.settingsSet({ language: lang });
+    I18n.apply();
+    this.renderAll();
+    if (this.currentDocId) this.openDocument(this.currentDocId);
+    if (Tools.active) Tools.render(Tools.active);
+    if (Agents.current) { Agents.renderMenu(); Agents.render(); }
   },
 
   bindViews() {
@@ -245,6 +408,23 @@ const App = {
     document.getElementById('btnNewNote').onclick = () => Notes.create();
     document.getElementById('btnSaveNote').onclick = () => Notes.save();
     document.getElementById('btnDeleteNote').onclick = () => Notes.remove();
+
+    document.getElementById('btnEditDoc').onclick = () => this.toggleEdit();
+    document.getElementById('btnSaveEdits').onclick = () => this.saveEdits();
+    document.getElementById('btnDiscardEdits').onclick = () => this.discardEdits();
+
+    document.getElementById('btnImportFolder').onclick = async () => {
+      const status = document.getElementById('importStatus');
+      status.textContent = '...';
+      const res = await window.daaix.importFolder();
+      if (!res || !res.ok) { status.textContent = (res && res.error) || '—'; return; }
+      KB.addDownloaded([res.kb]);
+      Retrieval.build();
+      await window.daaix.kbSaveDownloaded(res.kb);
+      this.renderAll();
+      status.textContent = `${I18n.t('imported')}: ${res.count}`;
+      this.toast(`${I18n.t('imported')}: ${res.count}`);
+    };
 
     document.getElementById('btnSaveSettings').onclick = async () => {
       const patch = {
@@ -268,7 +448,6 @@ const App = {
       this.settings.connectors = connectors;
       this.renderConnectors();
     };
-
     document.getElementById('btnCheckUpdates').onclick = async () => {
       const status = document.getElementById('updateStatus');
       status.textContent = '...';
@@ -279,11 +458,9 @@ const App = {
         : I18n.t('noUpdates');
       if (res.updates.length) this.toast(`${I18n.t('updatesAvailable')}: ${res.updates.length}`);
     };
-
-    document.getElementById('setLang').onchange = (e) => { if (e.target.value !== I18n.lang) this.toggleLang(); };
+    document.getElementById('setLang').onchange = (e) => { if (e.target.value !== I18n.lang) this.setLang(e.target.value); };
     document.getElementById('setTheme').onchange = (e) => {
-      document.body.classList.toggle('theme-dark', e.target.value === 'dark');
-      document.body.classList.toggle('theme-light', e.target.value === 'light');
+      this.applyTheme(e.target.value);
       window.daaix.settingsSet({ theme: e.target.value });
     };
   },
@@ -303,6 +480,10 @@ const App = {
     const list = document.getElementById('connectorList');
     list.innerHTML = '';
     const connectors = this.settings.connectors || [];
+    if (!connectors.length) {
+      list.innerHTML = `<p class="hint">—</p>`;
+      return;
+    }
     connectors.forEach((c, idx) => {
       const row = document.createElement('div');
       row.className = 'connector-row';
@@ -318,9 +499,6 @@ const App = {
       };
       list.appendChild(row);
     });
-    if (!connectors.length) {
-      list.innerHTML = `<p class="hint">—</p>`;
-    }
   },
 
   readConnectors() {
@@ -331,17 +509,6 @@ const App = {
       apiKey: row.querySelector('[data-c=apiKey]').value.trim(),
       enabled: row.querySelector('[data-c=enabled]').checked
     })).filter(c => c.url);
-  },
-
-  async toggleLang() {
-    I18n.lang = I18n.lang === 'ar' ? 'en' : 'ar';
-    await window.daaix.settingsSet({ language: I18n.lang });
-    I18n.apply();
-    this.applyLangUi();
-    this.renderTree();
-    this.renderHomeStats();
-    if (this.currentDocId) this.openDocument(this.currentDocId);
-    if (Tools.active) Tools.render(Tools.active);
   },
 
   showView(name) {
@@ -359,150 +526,192 @@ const App = {
     this._tt = setTimeout(() => t.classList.add('hidden'), 2600);
   },
 
-  renderHomeStats() {
-    const docs = KB.index.length;
-    const rels = KB.index.reduce((s, e) => s + (e.doc.relations || []).length, 0);
-    const arts = KB.index.reduce((s, e) => s + (e.doc.articles || []).length, 0);
-    document.getElementById('homeStats').innerHTML = `
-      <div class="stat-card"><div class="num">${docs}</div><div class="lbl">${I18n.t('docsCount')}</div></div>
-      <div class="stat-card"><div class="num">${rels}</div><div class="lbl">${I18n.t('relationsCount')}</div></div>
-      <div class="stat-card"><div class="num">${arts}</div><div class="lbl">${I18n.t('articlesCount')}</div></div>`;
-  },
-
-  renderTree() {
-    const tree = document.getElementById('kbTree');
-    tree.innerHTML = '';
-    KB.kbs.forEach(kb => {
-      const block = document.createElement('div');
-      block.className = 'kb-block';
-      const head = document.createElement('div');
-      head.className = 'kb-head';
-      head.innerHTML = `<span class="kb-icon">${kb.icon || '📚'}</span><span>${esc(kb.name[I18n.lang] || kb.name.ar || kb.name.en)}</span><span class="kb-ver">v${kb.version || ''}</span>`;
-      block.appendChild(head);
-
-      const groups = {};
-      (kb.documents || []).forEach(d => { (groups[d.type] = groups[d.type] || []).push(d); });
-
-      const body = document.createElement('div');
-      body.className = 'kb-body';
-      if (!this.openGroups.has(kb.id)) body.style.display = 'none';
-      head.onclick = () => {
-        const show = body.style.display === 'none';
-        body.style.display = show ? '' : 'none';
-        if (show) this.openGroups.add(kb.id); else this.openGroups.delete(kb.id);
-      };
-
-      Object.keys(groups).forEach(type => {
-        const g = document.createElement('div');
-        g.className = 'type-group';
-        const gHead = document.createElement('div');
-        gHead.className = 'type-head';
-        const key = kb.id + ':' + type;
-        if (this.openGroups.has(key)) gHead.classList.add('open');
-        gHead.innerHTML = `<span>${I18n.docTypeNamePl(type)}</span><span class="count">${groups[type].length}</span>`;
-        const list = document.createElement('div');
-        if (!this.openGroups.has(key)) list.style.display = 'none';
-        gHead.onclick = (e) => {
-          e.stopPropagation();
-          const show = list.style.display === 'none';
-          list.style.display = show ? '' : 'none';
-          gHead.classList.toggle('open', show);
-          if (show) this.openGroups.add(key); else this.openGroups.delete(key);
-        };
-        groups[type].forEach(doc => {
-          const item = document.createElement('div');
-          item.className = 'doc-item' + (doc.id === this.currentDocId ? ' active' : '');
-          item.innerHTML = `<span class="dot" style="color:var(--accent)">●</span>${esc(doc.title[I18n.lang] || doc.title.ar || doc.title.en)}`;
-          item.onclick = () => this.openDocument(doc.id);
-          list.appendChild(item);
-        });
-        g.appendChild(gHead);
-        g.appendChild(list);
-        body.appendChild(g);
-      });
-
-      block.appendChild(body);
-      tree.appendChild(block);
+  /* ---------- home ---------- */
+  renderQuickCards() {
+    const wrap = document.getElementById('quickCards');
+    wrap.innerHTML = '';
+    [
+      { icon: '🤖', label: I18n.t('agents'), desc: I18n.t('agentsDesc'), action: () => Agents.open(Agents.current) },
+      { icon: '💬', label: I18n.t('chat'), desc: I18n.t('chatGrounded'), action: () => this.showView('chat') },
+      { icon: '🧰', label: I18n.t('tools'), desc: I18n.t('toolConsultant'), action: () => Tools.open(Tools.active || 'consultant') },
+      { icon: '🕸️', label: I18n.t('graph'), desc: I18n.t('relationsCount'), action: () => { this.showView('graph'); Graph.show(this.currentDocId); } },
+      { icon: '📝', label: I18n.t('notes'), desc: I18n.t('newNote'), action: () => { this.showView('notes'); Notes.refresh(); } }
+    ].forEach(c => {
+      const card = document.createElement('div');
+      card.className = 'quick-card';
+      card.innerHTML = `<div class="qc-icon">${c.icon}</div><div class="qc-label">${esc(c.label)}</div><div class="qc-desc">${esc(c.desc)}</div>`;
+      card.onclick = c.action;
+      wrap.appendChild(card);
     });
   },
 
+  renderFeed() {
+    const feed = document.getElementById('updatesFeed');
+    feed.innerHTML = '';
+    const items = [];
+    KB.index.forEach(e => {
+      (e.doc.versionHistory || []).forEach(v => {
+        items.push({
+          date: v.date || '',
+          change: v.change ? (v.change.ar || v.change.en || '') : '',
+          by: v.by || '',
+          version: v.version,
+          doc: e.doc
+        });
+      });
+    });
+    items.sort((a, b) => String(b.date).localeCompare(String(a.date), 'ar'));
+    items.slice(0, 10).forEach(it => {
+      const isNew = (it.doc.versionHistory || []).length === 1 || it.version === 1;
+      const card = document.createElement('div');
+      card.className = 'feed-item';
+      card.innerHTML = `
+        <span class="feed-badge ${isNew ? 'new' : 'upd'}">${isNew ? I18n.t('newBadge') : I18n.t('updateBadge')}</span>
+        <div class="feed-main">
+          <div class="feed-title-doc">${esc(it.doc.title[I18n.lang] || it.doc.title.ar || it.doc.title.en)}</div>
+          <div class="feed-meta">${I18n.docTypeName(it.doc.type)} · ${I18n.t('version')} ${it.version} · ${esc(it.date)}${it.by ? ' · ' + esc(it.by) : ''}</div>
+          ${it.change ? `<div class="feed-change">${esc(it.change)}</div>` : ''}
+        </div>`;
+      card.onclick = () => this.openDocument(it.doc.id);
+      feed.appendChild(card);
+    });
+  },
+
+  /* ---------- sidebar: categories + search list ---------- */
+  renderCatTabs() {
+    const tabs = document.getElementById('catTabs');
+    tabs.innerHTML = '';
+    [['all', 'catAll'], ['legal', 'catLegal'], ['circulars', 'catCirculars'], ['rulings', 'catRulings'], ['agreements', 'catAgreements'], ['notes', 'catNotes']]
+      .forEach(([id, key]) => {
+        const tab = document.createElement('button');
+        tab.className = 'cat-tab' + (this.currentCat === id ? ' active' : '');
+        tab.textContent = I18n.t(key);
+        tab.onclick = () => {
+          this.currentCat = id;
+          this.renderCatTabs();
+          this.renderDocList(document.getElementById('sideSearch').value);
+        };
+        tabs.appendChild(tab);
+      });
+  },
+
+  renderDocList(query) {
+    const list = document.getElementById('docList');
+    list.innerHTML = '';
+    const docs = KB.listByCat(this.currentCat, query || '');
+    if (!docs.length) {
+      list.innerHTML = `<p class="hint" style="padding:12px">—</p>`;
+      return;
+    }
+    docs.forEach(doc => {
+      const item = document.createElement('div');
+      item.className = 'doc-item' + (doc.id === this.currentDocId ? ' active' : '');
+      const title = doc.title[I18n.lang] || doc.title.ar || doc.title.en;
+      item.innerHTML = `<span class="doc-item-title">${esc(title)}</span><span class="doc-item-type">${I18n.docTypeName(doc.type)}</span>`;
+      item.onclick = () => this.openDocument(doc.id);
+      list.appendChild(item);
+    });
+  },
+
+  search(q) {
+    const box = document.getElementById('searchResults');
+    this.showView('home');
+    if (!q || q.trim().length < 2) { box.innerHTML = ''; return; }
+    const results = KB.search(q.trim(), 30);
+    box.innerHTML = '';
+    if (!results.length) {
+      box.innerHTML = `<p style="color:var(--muted);text-align:center;padding:20px">—</p>`;
+      return;
+    }
+    results.forEach(r => {
+      const doc = r.doc;
+      const title = doc.title[I18n.lang] || doc.title.ar || doc.title.en;
+      const item = document.createElement('div');
+      item.className = 'sr-item';
+      const snippet = (doc.summary ? (doc.summary.ar || doc.summary.en || '') : (doc.body || '')).slice(0, 160);
+      item.innerHTML = `<div class="t">${esc(title)}</div>
+        <div class="m">${I18n.docTypeName(doc.type)} · ${Math.round(r.score * 100)}</div>
+        <div class="snip">${esc(snippet)}…</div>`;
+      item.onclick = () => { document.getElementById('globalSearch').value = ''; this.openDocument(doc.id); };
+      box.appendChild(item);
+    });
+  },
+
+  /* ---------- document reader ---------- */
   openDocument(id) {
     const doc = KB.get(id);
     if (!doc) return;
     this.currentDocId = id;
+    this.editing = false;
     this.showView('doc');
-    this.renderTree();
+    this.renderDocList(document.getElementById('sideSearch').value);
 
     const title = doc.title[I18n.lang] || doc.title.ar || doc.title.en;
     const header = document.getElementById('docHeader');
-    header.innerHTML = `<h1>${esc(title)}</h1>
-      <div class="doc-meta">
+    header.innerHTML = `
+      <h1>${esc(title)}</h1>
+      <div class="doc-chips">
         <span class="chip type">${I18n.docTypeName(doc.type)}</span>
         <span class="chip status">${I18n.t('status_' + (doc.status || 'in_force'))}</span>
-        <span class="chip">${I18n.t('issuer')}: ${esc(doc.issuer ? (doc.issuer[I18n.lang] || doc.issuer.ar || doc.issuer.en || '—') : '—')}</span>
-        <span class="chip">${I18n.t('number')}: ${esc(doc.number || '—')}</span>
-        <span class="chip">${I18n.t('date')}: ${esc(doc.date || '—')}</span>
-        <span class="chip">${I18n.t('version')}: ${doc.version}</span>
       </div>`;
 
+    const paper = document.getElementById('docPaper');
+    paper.classList.remove('editing');
+
     const bodyEl = document.getElementById('docBody');
+    bodyEl.contentEditable = 'false';
     bodyEl.innerHTML = '';
 
-    if (doc.summary) {
-      const s = document.createElement('p');
-      s.style.color = 'var(--muted)';
-      s.textContent = doc.summary[I18n.lang] || doc.summary.ar || doc.summary.en || '';
-      bodyEl.appendChild(s);
+    const overlay = localStorage.getItem('daaix-edit-' + id);
+    if (overlay) {
+      bodyEl.innerHTML = overlay;
+      const badge = document.createElement('div');
+      badge.className = 'edited-badge';
+      badge.textContent = '✏️ ' + I18n.t('editedCopy');
+      bodyEl.prepend(badge);
+    } else {
+      if (doc.summary) {
+        const s = document.createElement('p');
+        s.className = 'doc-summary';
+        s.textContent = doc.summary[I18n.lang] || doc.summary.ar || doc.summary.en || '';
+        bodyEl.appendChild(s);
+      }
+
+      if ((doc.articles || []).length) {
+        doc.articles.forEach(a => {
+          const aTitle = a.title ? (a.title[I18n.lang] || a.title.ar || a.title.en || '') : '';
+          const card = document.createElement('div');
+          card.className = 'article-card';
+          card.innerHTML = `<div class="anum">${esc(a.num || '')}${aTitle ? ' — ' + esc(aTitle) : ''}</div><div>${esc(a.text || '')}</div>`;
+          bodyEl.appendChild(card);
+        });
+      }
+
+      if (doc.body) bodyEl.appendChild(renderMarkdown(doc.body));
     }
 
-    if (doc.type === 'ruling' || doc.type === 'principle') {
-      (doc.articles || []).forEach(a => {
-        const aTitle = a.title ? (a.title[I18n.lang] || a.title.ar || a.title.en || '') : '';
-        const card = document.createElement('div');
-        card.className = 'article-card';
-        card.innerHTML = `<div class="anum">${esc(a.num || '')}${aTitle ? ' — ' + esc(aTitle) : ''}</div><div>${esc(a.text || '')}</div>`;
-        bodyEl.appendChild(card);
-      });
-    } else if ((doc.articles || []).length) {
-      const h = document.createElement('h2');
-      h.textContent = I18n.t('articles');
-      bodyEl.appendChild(h);
-      doc.articles.forEach(a => {
-        const aTitle = a.title ? (a.title[I18n.lang] || a.title.ar || a.title.en || '') : '';
-        const card = document.createElement('div');
-        card.className = 'article-card';
-        card.innerHTML = `<div class="anum">${esc(a.num || '')}${aTitle ? ' — ' + esc(aTitle) : ''}</div><div>${esc(a.text || '')}</div>`;
-        bodyEl.appendChild(card);
-      });
-    }
-
-    if (doc.body) bodyEl.appendChild(renderMarkdown(doc.body));
-
-    this.renderDocSide(doc);
+    this.buildToc();
+    this.renderDocProps(doc);
+    document.getElementById('editBanner').classList.add('hidden');
   },
 
-  renderDocSide(doc) {
-    const side = document.getElementById('docSide');
+  buildToc() {
+    const toc = document.getElementById('tocItems');
+    toc.innerHTML = '';
+    document.querySelectorAll('#docBody h1, #docBody h2, #docBody h3, #docBody .anum').forEach((h, i) => {
+      if (!h.id) h.id = 'toc-' + i;
+      const link = document.createElement('div');
+      link.className = 'toc-item' + (h.tagName === 'H1' ? ' lvl1' : h.tagName === 'H2' ? ' lvl2' : h.id.startsWith('toc-') ? ' art' : ' lvl3');
+      link.textContent = h.textContent.slice(0, 60);
+      link.onclick = () => h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      toc.appendChild(link);
+    });
+    if (!toc.children.length) toc.innerHTML = `<p class="hint">—</p>`;
+  },
+
+  renderDocProps(doc) {
+    const side = document.getElementById('docProps');
     side.innerHTML = '';
-
-    const actions = document.createElement('div');
-    actions.className = 'side-actions';
-    const chatBtn = document.createElement('button');
-    chatBtn.className = 'primary';
-    chatBtn.textContent = '💬 ' + I18n.t('chatTitle');
-    chatBtn.onclick = () => {
-      document.getElementById('chatScope').value = 'current';
-      this.showView('chat');
-    };
-    const graphBtn = document.createElement('button');
-    graphBtn.className = 'primary';
-    graphBtn.textContent = '🕸️ ' + I18n.t('inGraph');
-    graphBtn.onclick = () => { this.showView('graph'); Graph.show(doc.id); };
-    actions.appendChild(chatBtn);
-    actions.appendChild(graphBtn);
-    side.appendChild(actions);
-
-    const { outgoing, incoming } = KB.relationsOf(doc.id);
 
     const block = (titleText) => {
       const b = document.createElement('div');
@@ -512,20 +721,50 @@ const App = {
       b.appendChild(h);
       return b;
     };
+    const propRow = (label, value) => {
+      const r = document.createElement('div');
+      r.className = 'prop-row';
+      r.innerHTML = `<span class="pl">${esc(label)}</span><span class="pv">${esc(value || '—')}</span>`;
+      return r;
+    };
 
-    if ((doc.versionHistory || []).length) {
-      const vb = block(I18n.t('versionHistory'));
-      [...doc.versionHistory].sort((a, b) => b.version - a.version).forEach(v => {
+    const pb = block(I18n.t('docProps'));
+    pb.appendChild(propRow(I18n.t('issueTool'), doc.issueTool ? (doc.issueTool.tool || doc.issueTool.ar || doc.issueTool) : (doc.issuer ? (doc.issuer[I18n.lang] || doc.issuer.ar || doc.issuer.en) : '—')));
+    pb.appendChild(propRow(I18n.t('issueToolDate'), doc.issueTool ? doc.issueTool.date : doc.date));
+    pb.appendChild(propRow(I18n.t('issueToolNo'), doc.issueTool ? doc.issueTool.number : doc.number));
+    const st = document.createElement('div');
+    st.className = 'prop-row';
+    st.innerHTML = `<span class="pl">${I18n.t('legislativeStatus')}</span><span class="pv status-text s-${doc.status || 'in_force'}">${I18n.t('status_' + (doc.status || 'in_force'))}</span>`;
+    pb.appendChild(st);
+    pb.appendChild(propRow(I18n.t('version'), doc.version));
+    side.appendChild(pb);
+
+    const versions = [...(doc.versionHistory || [])].sort((a, b) => b.version - a.version);
+    if (versions.length) {
+      const vb = block(I18n.t('versionRegister'));
+      versions.forEach((v, i) => {
+        const next = versions[i - 1];
         const item = document.createElement('div');
         item.className = 'ver-item';
-        item.innerHTML = `<div class="v">${I18n.t('version')} ${v.version} — ${esc(v.date || '')}</div>
+        item.innerHTML = `
+          <div class="v">${I18n.t('version')} ${v.version}</div>
+          <div class="d">${I18n.t('fromTo')}: ${esc(v.date || '—')} ${next ? '→ ' + esc(next.date) : '→ ∞'}</div>
           <div class="c">${esc(v.change ? (v.change[I18n.lang] || v.change.ar || v.change.en || '') : '')}</div>
           ${v.by ? `<div class="d">${esc(v.by)}</div>` : ''}`;
         vb.appendChild(item);
       });
+      const am = block(I18n.t('amendments'));
+      versions.filter(v => v.version > 1).forEach(v => {
+        const item = document.createElement('div');
+        item.className = 'ver-item';
+        item.innerHTML = `<div class="v">${esc(v.date || '')}</div><div class="c">${esc(v.change ? (v.change[I18n.lang] || v.change.ar || v.change.en || '') : '')}</div>${v.by ? `<div class="d">${esc(v.by)}</div>` : ''}`;
+        am.appendChild(item);
+      });
       side.appendChild(vb);
+      if (versions.some(v => v.version > 1)) side.appendChild(am);
     }
 
+    const { outgoing, incoming } = KB.relationsOf(doc.id);
     if (outgoing.length || incoming.length) {
       const rb = block(I18n.t('relations'));
       const addRel = (label, targetId, note) => {
@@ -562,7 +801,7 @@ const App = {
     }
 
     if ((doc.sources || []).length) {
-      const sb = block(I18n.t('sources'));
+      const sb = block(I18n.t('officialSources'));
       doc.sources.forEach(s => {
         const item = document.createElement('div');
         item.className = 'src-item';
@@ -574,28 +813,29 @@ const App = {
     }
   },
 
-  search(q) {
-    const box = document.getElementById('searchResults');
-    this.showView('home');
-    if (!q || q.trim().length < 2) { box.innerHTML = ''; return; }
-    const results = KB.search(q.trim(), 30);
-    box.innerHTML = '';
-    if (!results.length) {
-      box.innerHTML = `<p style="color:var(--muted);text-align:center;padding:20px">—</p>`;
-      return;
-    }
-    results.forEach(r => {
-      const doc = r.doc;
-      const title = doc.title[I18n.lang] || doc.title.ar || doc.title.en;
-      const item = document.createElement('div');
-      item.className = 'sr-item';
-      const snippet = (doc.summary ? (doc.summary.ar || doc.summary.en || '') : (doc.body || '')).slice(0, 140);
-      item.innerHTML = `<div class="t">${esc(title)}</div>
-        <div class="m">${I18n.docTypeName(doc.type)} · ${esc(r.kbName ? (r.kbName[I18n.lang] || r.kbName.ar || r.kbName.en) : '')} · ${Math.round(r.score * 100)}</div>
-        <div class="snip">${esc(snippet)}…</div>`;
-      item.onclick = () => { document.getElementById('globalSearch').value = ''; this.openDocument(doc.id); };
-      box.appendChild(item);
-    });
+  /* ---------- local edit mode ---------- */
+  toggleEdit() {
+    const bodyEl = document.getElementById('docBody');
+    const banner = document.getElementById('editBanner');
+    this.editing = !this.editing;
+    bodyEl.contentEditable = this.editing ? 'true' : 'false';
+    document.getElementById('docPaper').classList.toggle('editing', this.editing);
+    banner.classList.toggle('hidden', !this.editing);
+    if (this.editing) bodyEl.focus();
+  },
+
+  async saveEdits() {
+    const bodyEl = document.getElementById('docBody');
+    bodyEl.querySelector('.edited-badge') && bodyEl.querySelector('.edited-badge').remove();
+    localStorage.setItem('daaix-edit-' + this.currentDocId, bodyEl.innerHTML);
+    this.toggleEdit();
+    this.openDocument(this.currentDocId);
+    this.toast(I18n.t('saveEdits') + ' ✓');
+  },
+
+  discardEdits() {
+    localStorage.removeItem('daaix-edit-' + this.currentDocId);
+    this.openDocument(this.currentDocId);
   }
 };
 

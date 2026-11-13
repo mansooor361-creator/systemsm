@@ -88,6 +88,29 @@ const KB = {
 
   get(id) { return this.byId.get(id); },
 
+  catFor(doc) {
+    const map = {
+      law: 'legal', regulation: 'legal', decision: 'legal',
+      circular: 'circulars', ruling: 'rulings', principle: 'rulings',
+      agreement: 'agreements', note: 'notes'
+    };
+    return map[doc.type] || 'legal';
+  },
+
+  listByCat(cat, query) {
+    const q = query && query.trim().length >= 2 ? query.trim().toLowerCase() : null;
+    let items = this.index;
+    if (cat && cat !== 'all') items = items.filter(e => this.catFor(e.doc) === cat);
+    if (q) {
+      const qTokens = this.tokenize(q);
+      items = items.filter(e => {
+        const m = this.matchScore(qTokens, e.tokens);
+        return m.ok;
+      });
+    }
+    return items.map(e => e.doc);
+  },
+
   relationsOf(docId) {
     const doc = this.get(docId);
     if (!doc) return { outgoing: [], incoming: [] };

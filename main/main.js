@@ -171,6 +171,96 @@ ipcMain.handle('kb:fetchRemote', async (_e, url) => {
   } catch (e) { return { ok: false, error: String(e.message || e) }; }
 });
 
+ipcMain.handle('fs:importFolder', async () => {
+  try {
+    const win = BrowserWindow.getFocusedWindow() || mainWindow;
+    const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+      properties: ['openDirectory']
+    });
+    if (canceled || !filePaths.length) return { ok: false };
+    const dir = filePaths[0];
+    const files = [];
+    (function walk(d) {
+      fs.readdirSync(d, { withFileTypes: true }).forEach(ent => {
+        const full = path.join(d, ent.name);
+        if (ent.isDirectory()) walk(full);
+        else if (/\.(md|markdown)$/i.test(ent.name)) files.push(full);
+      });
+    })(dir);
+    const documents = files.map(f => {
+      const raw = fs.readFileSync(f, 'utf8');
+      const titleMatch = raw.match(/^#\s+(.+)$/m);
+      const name = path.basename(f).replace(/\.(md|markdown)$/i, '');
+      return {
+        id: 'note-' + Buffer.from(f).toString('base64url').slice(0, 40),
+        type: 'note',
+        title: { ar: titleMatch ? titleMatch[1].trim() : name, en: name },
+        issuer: { ar: path.basename(path.dirname(f)), en: path.basename(path.dirname(f)) },
+        number: '—', date: '—', status: 'in_force', version: 1,
+        summary: null, articles: [], relations: [], sources: [], versionHistory: [],
+        body: raw
+      };
+    });
+    const kb = {
+      id: 'kb-local-' + Date.now(),
+      name: { ar: 'قاعدة محلية — ' + path.basename(dir), en: 'Local KB — ' + path.basename(dir) },
+      icon: '📁', version: '1.0', updated: new Date().toISOString().slice(0, 10),
+      documents
+    };
+    return { ok: true, kb, count: documents.length };
+  } catch (e) {
+    return { ok: false, error: String(e.message || e) };
+  }
+});
+
+ipcMain.handle('fs:convertFolder', async (_e, opts) => {
+  const summary = { ok: true, converted: 0, failed: [], uploaded: 0 };
+  try {
+    const win = BrowserWindow.getFocusedWindow() || mainWindow;
+    const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+      properties: ['openDirectory']
+    });
+    if (canceled || !filePaths.length) return { ok: false };
+    const dir = filePaths[0];
+    const files = [];
+    (function walk(d) {
+      fs.readdirSync(d, { withFileTypes: true }).forEach(ent => {
+        const full = path.join(d, ent.name);
+        if (ent.isDirectory()) walk(full);
+        else if (/\.(pdf|docx|txt|html|htm|md|markdown)$/i.test(ent.name)) files.push(full);
+      });
+    })(dir);
+    for (const f of files) {
+      try {
+        const md = await convertToMarkdown(f, fs.readFileSync(f));
+        const outPath = f.replace(/\.(pdf|docx|txt|html|htm|md|markdown)$/i, '') + '.md';
+        fs.writeFileSync(outPath, md, 'utf8');
+        summary.converted++;
+        if (opts && opts.uploadUrl) {
+          try {
+            const { net } = require('electron');
+            const headers = { 'Content-Type': 'application/json' };
+            if (opts.uploadKey) headers['Authorization'] = 'Bearer ' + opts.uploadKey;
+            const res = await net.fetch(opts.uploadUrl, {
+              method: 'POST', headers,
+              body: JSON.stringify({ filename: path.basename(outPath), markdown: md }),
+              signal: AbortSignal.timeout(30000)
+            });
+            if (res.ok) summary.uploaded++;
+          } catch { /* upload failure keeps local file */ }
+        }
+      } catch (err) {
+        summary.failed.push({ file: path.basename(f), error: String(err.message || err) });
+      }
+    }
+    return summary;
+  } catch (e) {
+    summary.ok = false;
+    summary.error = String(e.message || e);
+    return summary;
+  }
+});
+
 async function netFetch(url) {
   const { net } = require('electron');
   const res = await net.fetch(url);

@@ -11,29 +11,25 @@
   <header id="topbar">
     <div class="brand" id="brandHome" title="DaAIx">
       <img src="assets/logo-mark.png" alt="DaAIx" class="logo" />
-      <div class="brand-text">
-        <span class="brand-name">DaAIx</span>
-        <span class="brand-tag" data-i18n="tagline"></span>
-      </div>
+      <span class="brand-name">DaAIx</span>
     </div>
     <input id="globalSearch" type="search" data-i18n-ph="search" autocomplete="off" />
-    <div class="topbar-actions">
+    <div class="topbar-actions" id="topbarActions">
       <button id="btnAgents" class="tb-btn" data-i18n-title="agents">🤖</button>
       <button id="btnChat" class="tb-btn" data-i18n-title="chat">💬</button>
       <button id="btnGraph" class="tb-btn" data-i18n-title="graph">🕸️</button>
       <button id="btnTools" class="tb-btn" data-i18n-title="tools">🧰</button>
       <button id="btnNotes" class="tb-btn" data-i18n-title="notes">📝</button>
-      <button id="btnSettings" class="tb-btn" data-i18n-title="settings">⚙️</button>
-      <button id="btnLang" class="tb-btn lang-btn">EN</button>
     </div>
+    <button id="btnDrawer" class="tb-btn" title="⚙️">⚙️</button>
   </header>
 
   <div id="layout">
     <aside id="sidebar">
-      <div class="sidebar-scroll">
-        <div class="side-section-title" data-i18n="kbs"></div>
-        <div id="kbTree"></div>
-      </div>
+      <div class="side-section-title" data-i18n="kbs"></div>
+      <div id="catTabs" class="cat-tabs"></div>
+      <input id="sideSearch" type="search" data-i18n-ph="search" autocomplete="off" />
+      <div id="docList" class="doc-list"></div>
       <div class="sidebar-footer">
         <a href="#" id="siteLink" class="site-link">smartk-ai.com</a>
         <span id="appVersion" class="ver"></span>
@@ -46,29 +42,36 @@
         <div class="hero">
           <img src="assets/logo-full.png" class="hero-logo" alt="DaAIx" />
           <h1 data-i18n="welcome"></h1>
-          <p data-i18n="welcomeText"></p>
-          <div id="homeStats" class="stats"></div>
+          <p class="hero-sub" data-i18n="welcomeText"></p>
+          <button id="btnOpenSite" class="primary hero-cta">🌐 smartk-ai.com</button>
         </div>
+        <div class="quick-cards" id="quickCards"></div>
+        <h2 class="feed-title" data-i18n="latestUpdates"></h2>
+        <div id="updatesFeed" class="updates-feed"></div>
         <div id="searchResults" class="search-results"></div>
       </section>
 
-      <!-- Document reader -->
+      <!-- Document reader: TOC | paper | properties -->
       <section id="view-doc" class="view hidden">
-        <div id="docMain" class="doc-main">
-          <div id="docHeader"></div>
-          <div id="docBody" class="doc-body"></div>
+        <aside id="docToc" class="doc-toc">
+          <h3 data-i18n="toc"></h3>
+          <div id="tocItems"></div>
+        </aside>
+        <div id="docCenter" class="doc-center">
+          <div id="editBanner" class="edit-banner hidden">
+            <span id="editWarningText"></span>
+            <div class="edit-banner-actions">
+              <button id="btnSaveEdits" class="primary">💾 <span data-i18n="saveEdits"></span></button>
+              <button id="btnDiscardEdits" class="danger" data-i18n="discardEdits"></button>
+            </div>
+          </div>
+          <button id="btnEditDoc" class="edit-fab" title="✏️">✏️</button>
+          <div id="docPaper" class="doc-paper">
+            <div id="docHeader"></div>
+            <div id="docBody"></div>
+          </div>
         </div>
-        <aside id="docSide" class="doc-side"></aside>
-      </section>
-
-      <!-- Agents -->
-      <section id="view-agents" class="view hidden">
-        <div class="agents-head">
-          <h2 data-i18n="agentsTitle"></h2>
-          <span class="badge grounded" data-i18n="chatGrounded"></span>
-        </div>
-        <div id="agentsMenu" class="agents-menu"></div>
-        <div id="agentWorkspace" class="agent-workspace"></div>
+        <aside id="docProps" class="doc-props"></aside>
       </section>
 
       <!-- Chat -->
@@ -86,6 +89,16 @@
           <textarea id="chatInput" rows="2" data-i18n-ph="chatPlaceholder"></textarea>
           <button id="chatSend" class="primary">➤</button>
         </div>
+      </section>
+
+      <!-- Agents -->
+      <section id="view-agents" class="view hidden">
+        <div class="agents-head">
+          <h2 data-i18n="agentsTitle"></h2>
+          <span class="badge grounded" data-i18n="chatGrounded"></span>
+        </div>
+        <div id="agentsMenu" class="agents-menu"></div>
+        <div id="agentWorkspace" class="agent-workspace"></div>
       </section>
 
       <!-- Graph -->
@@ -135,6 +148,10 @@
             <button id="btnCheckUpdates" class="primary" data-i18n="checkUpdates"></button>
             <span id="updateStatus" class="update-status"></span>
           </label>
+          <label><span data-i18n="kbFolder"></span>
+            <button id="btnImportFolder" class="primary" data-i18n="importFolder"></button>
+            <span id="importStatus" class="update-status"></span>
+          </label>
           <div class="wide sep" data-i18n="llmApi"></div>
           <label><span data-i18n="baseUrl"></span><input id="setLlmUrl" type="url" placeholder="https://api.openai.com/v1" /></label>
           <label><span data-i18n="apiKey"></span><input id="setLlmKey" type="password" autocomplete="off" /></label>
@@ -151,6 +168,38 @@
       </section>
     </main>
   </div>
+
+  <!-- Right settings drawer -->
+  <div id="drawerOverlay" class="drawer-overlay hidden"></div>
+  <aside id="drawer" class="drawer hidden">
+    <div class="drawer-head">
+      <h3 data-i18n="settings"></h3>
+      <button id="btnDrawerClose" class="tb-btn">✕</button>
+    </div>
+    <div class="drawer-body">
+      <div class="drawer-section">
+        <h4 data-i18n="account"></h4>
+        <p class="hint" data-i18n="accountHint"></p>
+        <div id="accountArea" class="account-area"></div>
+      </div>
+      <div class="drawer-section">
+        <h4 data-i18n="appearance"></h4>
+        <label><span data-i18n="language"></span>
+          <select id="drawerLang"><option value="ar">العربية</option><option value="en">English</option></select>
+        </label>
+        <label><span data-i18n="theme"></span>
+          <select id="drawerTheme"><option value="dark" data-i18n="dark"></option><option value="light" data-i18n="light"></option></select>
+        </label>
+      </div>
+      <div class="drawer-section">
+        <h4 data-i18n="showButtons"></h4>
+        <div id="buttonToggles"></div>
+      </div>
+      <div class="drawer-section">
+        <button id="btnFullSettings" class="primary wide-btn">⚙️ <span data-i18n="settings"></span></button>
+      </div>
+    </div>
+  </aside>
 
   <div id="toast" class="toast hidden"></div>
 

@@ -2,7 +2,10 @@
   "kbs": [
     {
       "id": "kb-sa-legal",
-      "name": { "ar": "قانون وتشريعات — سعودي", "en": "Law & Legislation — Saudi" },
+      "name": {
+        "ar": "قانون وتشريعات — سعودي",
+        "en": "Law & Legislation — Saudi"
+      },
       "icon": "⚖️",
       "version": "2025.1.303",
       "updated": "1446/03/12هـ",
@@ -10,172 +13,551 @@
         {
           "id": "sa-labor-law",
           "type": "law",
-          "title": { "ar": "نظام العمل", "en": "Labor Law" },
-          "issuer": { "ar": "الديوان الملكي", "en": "Royal Court" },
+          "title": {
+            "ar": "نظام العمل",
+            "en": "Labor Law"
+          },
+          "issuer": {
+            "ar": "الديوان الملكي",
+            "en": "Royal Court"
+          },
           "number": "م/51",
           "date": "1426/08/02هـ",
-          "status": "in_force",
+          "status": "in_force_amended",
           "version": 4,
-          "summary": { "ar": "النظام الرئيسي المنظم لعلاقات العمل بين العامل وصاحب العمل في المملكة.", "en": "The principal statute regulating employment relations in the Kingdom." },
+          "summary": {
+            "ar": "النظام الرئيسي المنظم لعلاقات العمل بين العامل وصاحب العمل في المملكة.",
+            "en": "The principal statute regulating employment relations in the Kingdom."
+          },
           "versionHistory": [
-            { "version": 4, "date": "1445/02/19هـ", "change": { "ar": "تعديل مواد متعلقة بأنماط العمل المرنة والتدريب", "en": "Amendments on flexible work patterns and training" }, "by": "المرسوم الملكي م/65" },
-            { "version": 3, "date": "1442/05/10هـ", "change": { "ar": "تعديل أحكام العقد محدد المدة", "en": "Fixed-term contract provisions amended" }, "by": "قرار مجلس الوزراء" },
-            { "version": 2, "date": "1439/03/29هـ", "change": { "ar": "تعديل نظام الراتب الأساسي", "en": "Basic wage provisions amended" }, "by": "—"},
-            { "version": 1, "date": "1426/08/02هـ", "change": { "ar": "الإصدار الأصلي", "en": "Original issue" }, "by": "—" }
+            {
+              "version": 4,
+              "date": "1445/02/19هـ",
+              "change": {
+                "ar": "تعديل مواد متعلقة بأنماط العمل المرنة والتدريب",
+                "en": "Amendments on flexible work patterns and training"
+              },
+              "by": "المرسوم الملكي م/65"
+            },
+            {
+              "version": 3,
+              "date": "1442/05/10هـ",
+              "change": {
+                "ar": "تعديل أحكام العقد محدد المدة",
+                "en": "Fixed-term contract provisions amended"
+              },
+              "by": "قرار مجلس الوزراء"
+            },
+            {
+              "version": 2,
+              "date": "1439/03/29هـ",
+              "change": {
+                "ar": "تعديل نظام الراتب الأساسي",
+                "en": "Basic wage provisions amended"
+              },
+              "by": "—"
+            },
+            {
+              "version": 1,
+              "date": "1426/08/02هـ",
+              "change": {
+                "ar": "الإصدار الأصلي",
+                "en": "Original issue"
+              },
+              "by": "—"
+            }
           ],
           "articles": [
-            { "num": "74", "title": { "ar": "مكافأة نهاية الخدمة", "en": "End-of-service award" }, "text": "إذا انتهت مدة العقد محدد المدة تجدد لمدة مماثلة أو مدد أخرى بموجب اتفاق بين الطرفين، فإذا انتهى العقد بغير تجديده أو لم يرغب أحد الطرفين في تجديده أو رغب الطرفان في عدم التجديد استحق العامل مكافأة نهاية خدمة بمعدل نصف مكافأة عن كل سنة من سنوات الخدمة الخمس الأولى ومكافأة عن سنة كاملة عن كل سنة من السنوات التالية، ويتحقق استحقاق العامل لمكافأة نهاية الخدمة إذا استقال من العمل في الحالات الآتية: 1- أن تكون مدة خدمته متصلة مدة لا تقل عن عشر سنوات، 2- أن تنتهي مدة العقد محدد المدة دون أن يطلب صاحب العمل تجديده. وإذا كان العقد غير محدد المدة واستقال العامل بعد خدمة متصلة لا تقل عن سنتين فحتى عشر سنوات فاستحقاقه نصف المكافأة، وما زاد على ذلك فاستحقاقه المكافأة كاملة." },
-            { "num": "77", "title": { "ar": "التعويض عن الفصل التعسفي", "en": "Compensation for arbitrary termination" }, "text": "إذا ثبت أن سبب الفصل غير مشروع أو أن العقد فصل لسبب غير مشروع لصاحب العمل أو العامل كان العامل الفصل غير مشروع له الحصول على تعويض بالإضافة إلى مكافأة نهاية الخدمة، ويحدد التعويض من قبل المحكمة مع مراعاة ظروف الفصل ويكون التعويض بمقدار راتب خمسة عشر يوماً عن كل سنة من سنوات خدمة العامل، ويكون التعويض بمقدار راتب شهرين عن كل سنة من سنوات خدمة العامل إذا كان الفصل بسبب غير مشروع." },
-            { "num": "81", "title": { "ar": "حق العامل في الانسحاب مع كامل الحقوق", "en": "Worker's right to withdraw with full rights" }, "text": "يحق للعامل أن ينسحب من العمل دون إخطار مع احتفاظه بكامل حقوقه في الحالات الآتية: 1- إذا لم يقم صاحب العمل بالتزاماته النظامية تجاه العامل، 2- إذا تعرض العامل لخطر جسيم من شأنه أن يهدد سلامته أو صحته بشرط أن يخطر صاحب العمل فور وقوع هذا الخطر، 3- إذا أقدم صاحب العمل أو من ينوب عنه على اعتداء على العامل." }
+            {
+              "num": "74",
+              "title": {
+                "ar": "مكافأة نهاية الخدمة",
+                "en": "End-of-service award"
+              },
+              "text": "إذا انتهت مدة العقد محدد المدة تجدد لمدة مماثلة أو مدد أخرى بموجب اتفاق بين الطرفين، فإذا انتهى العقد بغير تجديده أو لم يرغب أحد الطرفين في تجديده أو رغب الطرفان في عدم التجديد استحق العامل مكافأة نهاية خدمة بمعدل نصف مكافأة عن كل سنة من سنوات الخدمة الخمس الأولى ومكافأة عن سنة كاملة عن كل سنة من السنوات التالية، ويتحقق استحقاق العامل لمكافأة نهاية الخدمة إذا استقال من العمل في الحالات الآتية: 1- أن تكون مدة خدمته متصلة مدة لا تقل عن عشر سنوات، 2- أن تنتهي مدة العقد محدد المدة دون أن يطلب صاحب العمل تجديده. وإذا كان العقد غير محدد المدة واستقال العامل بعد خدمة متصلة لا تقل عن سنتين فحتى عشر سنوات فاستحقاقه نصف المكافأة، وما زاد على ذلك فاستحقاقه المكافأة كاملة."
+            },
+            {
+              "num": "77",
+              "title": {
+                "ar": "التعويض عن الفصل التعسفي",
+                "en": "Compensation for arbitrary termination"
+              },
+              "text": "إذا ثبت أن سبب الفصل غير مشروع أو أن العقد فصل لسبب غير مشروع لصاحب العمل أو العامل كان العامل الفصل غير مشروع له الحصول على تعويض بالإضافة إلى مكافأة نهاية الخدمة، ويحدد التعويض من قبل المحكمة مع مراعاة ظروف الفصل ويكون التعويض بمقدار راتب خمسة عشر يوماً عن كل سنة من سنوات خدمة العامل، ويكون التعويض بمقدار راتب شهرين عن كل سنة من سنوات خدمة العامل إذا كان الفصل بسبب غير مشروع."
+            },
+            {
+              "num": "81",
+              "title": {
+                "ar": "حق العامل في الانسحاب مع كامل الحقوق",
+                "en": "Worker's right to withdraw with full rights"
+              },
+              "text": "يحق للعامل أن ينسحب من العمل دون إخطار مع احتفاظه بكامل حقوقه في الحالات الآتية: 1- إذا لم يقم صاحب العمل بالتزاماته النظامية تجاه العامل، 2- إذا تعرض العامل لخطر جسيم من شأنه أن يهدد سلامته أو صحته بشرط أن يخطر صاحب العمل فور وقوع هذا الخطر، 3- إذا أقدم صاحب العمل أو من ينوب عنه على اعتداء على العامل."
+            }
           ],
           "relations": [
-            { "type": "amendedBy", "target": "sa-rc-258", "note": { "ar": "تعديل بأنماط العمل المرنة", "en": "Flexible work amendments" } },
-            { "type": "citedBy", "target": "sa-ruling-labor-1", "note": { "ar": "استناد في حكم عمالي", "en": "Cited in labor ruling" } },
-            { "type": "implements", "target": "sa-reg-hr", "note": { "ar": "اللائحة التنفيذية لأحكام نظام العمل", "en": "Implementing regulation" } }
+            {
+              "type": "amendedBy",
+              "target": "sa-rc-258",
+              "note": {
+                "ar": "تعديل بأنماط العمل المرنة",
+                "en": "Flexible work amendments"
+              }
+            },
+            {
+              "type": "citedBy",
+              "target": "sa-ruling-labor-1",
+              "note": {
+                "ar": "استناد في حكم عمالي",
+                "en": "Cited in labor ruling"
+              }
+            },
+            {
+              "type": "implements",
+              "target": "sa-reg-hr",
+              "note": {
+                "ar": "اللائحة التنفيذية لأحكام نظام العمل",
+                "en": "Implementing regulation"
+              }
+            }
           ],
           "sources": [
-            { "title": "المركز الوطني للوثائق والمحفوظات", "url": "https://ncar.gov.sa" },
-            { "title": "وزارة الموارد البشرية والتنمية الاجتماعية", "url": "https://hrsd.gov.sa" }
+            {
+              "title": "المركز الوطني للوثائق والمحفوظات",
+              "url": "https://ncar.gov.sa"
+            },
+            {
+              "title": "وزارة الموارد البشرية والتنمية الاجتماعية",
+              "url": "https://hrsd.gov.sa"
+            }
           ],
-          "body": "# نظام العمل\n\nصدر بالمرسوم الملكي رقم م/51 وتاريخ 2/8/1426هـ، وهو النظام الرئيسي المنظم لعلاقة العمل.\n\n## الباب الأول — التعريفات والأحكام العامة\n\n### المادة (1)\nتسري أحكام هذا النظام على جميع العاملين في المملكة..."
+          "body": "# نظام العمل\n\nصدر بالمرسوم الملكي رقم م/51 وتاريخ 2/8/1426هـ، وهو النظام الرئيسي المنظم لعلاقة العمل.\n\n## الباب الأول — التعريفات والأحكام العامة\n\n### المادة (1)\nتسري أحكام هذا النظام على جميع العاملين في المملكة...",
+          "issueTool": {
+            "tool": "مرسوم ملكي",
+            "date": "1426/08/02هـ",
+            "number": "م/51"
+          }
         },
         {
           "id": "sa-reg-hr",
           "type": "regulation",
-          "title": { "ar": "اللائحة التنفيذية لأحكام نظام العمل", "en": "Implementing Regulations of the Labor Law" },
-          "issuer": { "ar": "وزارة الموارد البشرية والتنمية الاجتماعية", "en": "Ministry of Human Resources" },
+          "title": {
+            "ar": "اللائحة التنفيذية لأحكام نظام العمل",
+            "en": "Implementing Regulations of the Labor Law"
+          },
+          "issuer": {
+            "ar": "وزارة الموارد البشرية والتنمية الاجتماعية",
+            "en": "Ministry of Human Resources"
+          },
           "number": "لائحة تنفيذية",
           "date": "1427/01/01هـ",
           "status": "in_force",
           "version": 6,
-          "summary": { "ar": "اللائحة التنفيذية الصادرة بقرار وزير الموارد البشرية رقم 7414 وتعديلاته.", "en": "Implementing regulation issued by Ministerial Decision 7414 and amendments." },
+          "summary": {
+            "ar": "اللائحة التنفيذية الصادرة بقرار وزير الموارد البشرية رقم 7414 وتعديلاته.",
+            "en": "Implementing regulation issued by Ministerial Decision 7414 and amendments."
+          },
           "versionHistory": [
-            { "version": 6, "date": "1441/06/26هـ", "change": { "ar": "تحديث نماذج الإخطارات", "en": "Notice templates updated" }, "by": "قرار وزير الموارد البشرية رقم 7414" },
-            { "version": 5, "date": "1438/02/11هـ", "change": { "ar": "تعديل أحكام التدريب والتأهيل", "en": "Training provisions amended" }, "by": "—" }
+            {
+              "version": 6,
+              "date": "1441/06/26هـ",
+              "change": {
+                "ar": "تحديث نماذج الإخطارات",
+                "en": "Notice templates updated"
+              },
+              "by": "قرار وزير الموارد البشرية رقم 7414"
+            },
+            {
+              "version": 5,
+              "date": "1438/02/11هـ",
+              "change": {
+                "ar": "تعديل أحكام التدريب والتأهيل",
+                "en": "Training provisions amended"
+              },
+              "by": "—"
+            }
           ],
           "articles": [
-            { "num": "2", "title": { "ar": "إخطار إنهاء العقد", "en": "Termination notice" }, "text": "يكون الإخطار بإنهاء عقد العمل كتابياً وموجهاً للطرف الآخر، ويتولى صاحب العمل إثبات الإخطار، ولا يصح الإخطار في حالات المادة (80) من نظام العمل." }
+            {
+              "num": "2",
+              "title": {
+                "ar": "إخطار إنهاء العقد",
+                "en": "Termination notice"
+              },
+              "text": "يكون الإخطار بإنهاء عقد العمل كتابياً وموجهاً للطرف الآخر، ويتولى صاحب العمل إثبات الإخطار، ولا يصح الإخطار في حالات المادة (80) من نظام العمل."
+            }
           ],
           "relations": [
-            { "type": "related", "target": "sa-labor-law", "note": { "ar": "لائحة تنفيذية لنظام العمل", "en": "Implements the Labor Law" } },
-            { "type": "issuedBy", "target": "sa-md-7414", "note": { "ar": "صدرت بقرار وزير العدل", "en": "Issued by ministerial decision" } }
+            {
+              "type": "related",
+              "target": "sa-labor-law",
+              "note": {
+                "ar": "لائحة تنفيذية لنظام العمل",
+                "en": "Implements the Labor Law"
+              }
+            },
+            {
+              "type": "issuedBy",
+              "target": "sa-md-7414",
+              "note": {
+                "ar": "صدرت بقرار وزير العدل",
+                "en": "Issued by ministerial decision"
+              }
+            }
           ],
-          "sources": [{ "title": "وزارة الموارد البشرية", "url": "https://hrsd.gov.sa" }],
-          "body": "# اللائحة التنفيذية لأحكام نظام العمل\n\nصدرت بقرار وزير الموارد البشرية والتنمية الاجتماعية رقم 7414 وتاريخ 26/6/1441هـ."
+          "sources": [
+            {
+              "title": "وزارة الموارد البشرية",
+              "url": "https://hrsd.gov.sa"
+            }
+          ],
+          "body": "# اللائحة التنفيذية لأحكام نظام العمل\n\nصدرت بقرار وزير الموارد البشرية والتنمية الاجتماعية رقم 7414 وتاريخ 26/6/1441هـ.",
+          "issueTool": {
+            "tool": "قرار وزاري",
+            "date": "1441/06/26هـ",
+            "number": "7414"
+          }
         },
         {
           "id": "sa-rc-258",
           "type": "decision",
-          "title": { "ar": "قرار مجلس الوزراء رقم 258 وتاريخ 14/11/1403هـ", "en": "Council of Ministers Decision No. 258 (1403/11/14 AH)" },
-          "issuer": { "ar": "مجلس الوزراء", "en": "Council of Ministers" },
+          "title": {
+            "ar": "قرار مجلس الوزراء رقم 258 وتاريخ 14/11/1403هـ",
+            "en": "Council of Ministers Decision No. 258 (1403/11/14 AH)"
+          },
+          "issuer": {
+            "ar": "مجلس الوزراء",
+            "en": "Council of Ministers"
+          },
           "number": "258",
           "date": "1403/11/14هـ",
           "status": "in_force",
           "version": 1,
-          "summary": { "ar": "قرار مجلس الوزراء بشأن الاعتمادات التنظيمية.", "en": "Council of Ministers decision on regulatory approvals." },
-          "versionHistory": [{ "version": 1, "date": "1403/11/14هـ", "change": { "ar": "الإصدار الأصلي", "en": "Original issue" }, "by": "—" }],
+          "summary": {
+            "ar": "قرار مجلس الوزراء بشأن الاعتمادات التنظيمية.",
+            "en": "Council of Ministers decision on regulatory approvals."
+          },
+          "versionHistory": [
+            {
+              "version": 1,
+              "date": "1403/11/14هـ",
+              "change": {
+                "ar": "الإصدار الأصلي",
+                "en": "Original issue"
+              },
+              "by": "—"
+            }
+          ],
           "articles": [],
-          "relations": [{ "type": "amends", "target": "sa-labor-law", "note": { "ar": "قرار معدل لنظام العمل", "en": "Amending decision" } }],
+          "relations": [
+            {
+              "type": "amends",
+              "target": "sa-labor-law",
+              "note": {
+                "ar": "قرار معدل لنظام العمل",
+                "en": "Amending decision"
+              }
+            }
+          ],
           "sources": [],
-          "body": "# قرار مجلس الوزراء رقم 258\n\nبناءً على ما عرضه رئيس مجلس الوزراء..."
+          "body": "# قرار مجلس الوزراء رقم 258\n\nبناءً على ما عرضه رئيس مجلس الوزراء...",
+          "issueTool": {
+            "tool": "قرار مجلس الوزراء",
+            "date": "1403/11/14هـ",
+            "number": "258"
+          }
         },
         {
           "id": "sa-md-7414",
           "type": "decision",
-          "title": { "ar": "قرار وزير العدل رقم 7414 وتاريخ 26/6/1441هـ", "en": "Ministerial Decision No. 7414 (1441/06/26 AH)" },
-          "issuer": { "ar": "وزارة العدل", "en": "Ministry of Justice" },
+          "title": {
+            "ar": "قرار وزير العدل رقم 7414 وتاريخ 26/6/1441هـ",
+            "en": "Ministerial Decision No. 7414 (1441/06/26 AH)"
+          },
+          "issuer": {
+            "ar": "وزارة العدل",
+            "en": "Ministry of Justice"
+          },
           "number": "7414",
           "date": "1441/06/26هـ",
           "status": "in_force",
           "version": 1,
-          "summary": { "ar": "قرار وزاري بإصدار لائحة.", "en": "Ministerial decision issuing a regulation." },
-          "versionHistory": [{ "version": 1, "date": "1441/06/26هـ", "change": { "ar": "الإصدار الأصلي", "en": "Original issue" }, "by": "—" }],
+          "summary": {
+            "ar": "قرار وزاري بإصدار لائحة.",
+            "en": "Ministerial decision issuing a regulation."
+          },
+          "versionHistory": [
+            {
+              "version": 1,
+              "date": "1441/06/26هـ",
+              "change": {
+                "ar": "الإصدار الأصلي",
+                "en": "Original issue"
+              },
+              "by": "—"
+            }
+          ],
           "articles": [],
           "relations": [],
           "sources": [],
-          "body": "# قرار وزير العدل رقم 7414\n\nبعد الاطلاع على النظام..."
+          "body": "# قرار وزير العدل رقم 7414\n\nبعد الاطلاع على النظام...",
+          "issueTool": {
+            "tool": "قرار وزاري",
+            "date": "1441/06/26هـ",
+            "number": "7414"
+          }
         },
         {
           "id": "sa-agreement-icv",
           "type": "agreement",
-          "title": { "ar": "اتفاقية برنامج المحتوى المحلي", "en": "Local Content Program Agreement" },
-          "issuer": { "ar": "هيئة المحتوى المحلي والحكومي", "en": "Local Content Authority" },
+          "title": {
+            "ar": "اتفاقية برنامج المحتوى المحلي",
+            "en": "Local Content Program Agreement"
+          },
+          "issuer": {
+            "ar": "هيئة المحتوى المحلي والحكومي",
+            "en": "Local Content Authority"
+          },
           "number": "اتفاقية إطارية",
           "date": "1443/05/20هـ",
           "status": "in_force",
           "version": 2,
-          "summary": { "ar": "اتفاقية إطارية لرفع نسب المحتوى المحلي في التعاقدات.", "en": "Framework agreement on local content ratios." },
+          "summary": {
+            "ar": "اتفاقية إطارية لرفع نسب المحتوى المحلي في التعاقدات.",
+            "en": "Framework agreement on local content ratios."
+          },
           "versionHistory": [
-            { "version": 2, "date": "1445/01/10هـ", "change": { "ar": "تحديث نسب المحتوى المحلي المستهدفة", "en": "Targeted local content ratios updated" }, "by": "—" },
-            { "version": 1, "date": "1443/05/20هـ", "change": { "ar": "الإصدار الأصلي", "en": "Original issue" }, "by": "—" }
+            {
+              "version": 2,
+              "date": "1445/01/10هـ",
+              "change": {
+                "ar": "تحديث نسب المحتوى المحلي المستهدفة",
+                "en": "Targeted local content ratios updated"
+              },
+              "by": "—"
+            },
+            {
+              "version": 1,
+              "date": "1443/05/20هـ",
+              "change": {
+                "ar": "الإصدار الأصلي",
+                "en": "Original issue"
+              },
+              "by": "—"
+            }
           ],
           "articles": [
-            { "num": "5", "title": { "ar": "الالتزامات", "en": "Obligations" }, "text": "يلتزم الطرفان بتحقيق نسب المحتوى المحلي المستهدفة وفق الضوابط الصادرة عن الهيئة." }
+            {
+              "num": "5",
+              "title": {
+                "ar": "الالتزامات",
+                "en": "Obligations"
+              },
+              "text": "يلتزم الطرفان بتحقيق نسب المحتوى المحلي المستهدفة وفق الضوابط الصادرة عن الهيئة."
+            }
           ],
-          "relations": [{ "type": "related", "target": "sa-labor-law", "note": { "ar": "ارتباط بتوطين الوظائف", "en": "Related to Saudization" } }],
+          "relations": [
+            {
+              "type": "related",
+              "target": "sa-labor-law",
+              "note": {
+                "ar": "ارتباط بتوطين الوظائف",
+                "en": "Related to Saudization"
+              }
+            }
+          ],
           "sources": [],
-          "body": "# اتفاقية برنامج المحتوى المحلي\n\nاتفاقية إطارية..."
+          "body": "# اتفاقية برنامج المحتوى المحلي\n\nاتفاقية إطارية...",
+          "issueTool": {
+            "tool": "اتفاقية إطارية",
+            "date": "1443/05/20هـ",
+            "number": "—"
+          }
         },
         {
           "id": "sa-ruling-labor-1",
           "type": "ruling",
-          "title": { "ar": "حكم عمالي — مكافأة نهاية الخدمة والاستقالة", "en": "Labor Ruling — End-of-Service Award and Resignation" },
-          "issuer": { "ar": "المحكمة العمالية", "en": "Labor Court" },
+          "title": {
+            "ar": "حكم عمالي — مكافأة نهاية الخدمة والاستقالة",
+            "en": "Labor Ruling — End-of-Service Award and Resignation"
+          },
+          "issuer": {
+            "ar": "المحكمة العمالية",
+            "en": "Labor Court"
+          },
           "number": "قضية عمالية 1234/1444",
           "date": "1444/09/03هـ",
           "status": "final",
           "version": 1,
-          "summary": { "ar": "حكم قضائي في استحقاق مكافأة نهاية الخدمة عند الاستقالة بعد خدمة متصلة.", "en": "Judgment on end-of-service award entitlement upon resignation." },
-          "versionHistory": [{ "version": 1, "date": "1444/09/03هـ", "change": { "ar": "الإصدار الأصلي", "en": "Original issue" }, "by": "—" }],
+          "summary": {
+            "ar": "حكم قضائي في استحقاق مكافأة نهاية الخدمة عند الاستقالة بعد خدمة متصلة.",
+            "en": "Judgment on end-of-service award entitlement upon resignation."
+          },
+          "versionHistory": [
+            {
+              "version": 1,
+              "date": "1444/09/03هـ",
+              "change": {
+                "ar": "الإصدار الأصلي",
+                "en": "Original issue"
+              },
+              "by": "—"
+            }
+          ],
           "articles": [
-            { "num": "الوقائع", "title": { "ar": "الوقائع", "en": "Facts" }, "text": "تقدم العامل بدعوى عمالية تطالب بمكافأة نهاية خدمة بعد استقالته من العمل بعد خدمة متصلة تجاوزت عشر سنوات." },
-            { "num": "الحكم", "title": { "ar": "الحكم", "en": "Judgment" }, "text": "استناداً إلى المادة (74) من نظام العمل، فإن العامل الذي استقال بعد خدمة متصلة تجاوزت عشر سنوات يستحق مكافأة نهاية الخدمة كاملة، ويكون الفصل غير مشروع ما لم يثبت صاحب العمل السبب المشروع، عملاً بالمادة (77)." }
+            {
+              "num": "الوقائع",
+              "title": {
+                "ar": "الوقائع",
+                "en": "Facts"
+              },
+              "text": "تقدم العامل بدعوى عمالية تطالب بمكافأة نهاية خدمة بعد استقالته من العمل بعد خدمة متصلة تجاوزت عشر سنوات."
+            },
+            {
+              "num": "الحكم",
+              "title": {
+                "ar": "الحكم",
+                "en": "Judgment"
+              },
+              "text": "استناداً إلى المادة (74) من نظام العمل، فإن العامل الذي استقال بعد خدمة متصلة تجاوزت عشر سنوات يستحق مكافأة نهاية الخدمة كاملة، ويكون الفصل غير مشروع ما لم يثبت صاحب العمل السبب المشروع، عملاً بالمادة (77)."
+            }
           ],
           "relations": [
-            { "type": "cites", "target": "sa-labor-law", "note": { "ar": "استناد على المادتين (74) و(77)", "en": "Based on Articles 74 and 77" } }
+            {
+              "type": "cites",
+              "target": "sa-labor-law",
+              "note": {
+                "ar": "استناد على المادتين (74) و(77)",
+                "en": "Based on Articles 74 and 77"
+              }
+            }
           ],
-          "sources": [{ "title": "بوابة القضاء", "url": "https://judicial.gov.sa" }],
-          "body": "# حكم عمالي\n\nالموضوع: استحقاق مكافأة نهاية الخدمة."
+          "sources": [
+            {
+              "title": "بوابة القضاء",
+              "url": "https://judicial.gov.sa"
+            }
+          ],
+          "body": "# حكم عمالي\n\nالموضوع: استحقاق مكافأة نهاية الخدمة.",
+          "issueTool": {
+            "tool": "حكم قضائي",
+            "date": "1444/09/03هـ",
+            "number": "قضية عمالية 1234/1444"
+          }
         },
         {
           "id": "sa-principle-hc-1",
           "type": "principle",
-          "title": { "ar": "مبدأ المحكمة العليا — الفصل غير المشروع", "en": "Supreme Court Principle — Unlawful Termination" },
-          "issuer": { "ar": "المحكمة العليا — الدائرة العمالية", "en": "Supreme Court — Labor Circuit" },
+          "title": {
+            "ar": "مبدأ المحكمة العليا — الفصل غير المشروع",
+            "en": "Supreme Court Principle — Unlawful Termination"
+          },
+          "issuer": {
+            "ar": "المحكمة العليا — الدائرة العمالية",
+            "en": "Supreme Court — Labor Circuit"
+          },
           "number": "مبدأ 45/ت",
           "date": "1443/12/15هـ",
           "status": "settled",
           "version": 1,
-          "summary": { "ar": "مبدأ قضائي في عبء إثبات مشروعية الفصل.", "en": "Judicial principle on the burden of proving lawful termination." },
-          "versionHistory": [{ "version": 1, "date": "1443/12/15هـ", "change": { "ar": "الإصدار الأصلي", "en": "Original issue" }, "by": "—" }],
-          "articles": [
-            { "num": "النص", "title": { "ar": "النص", "en": "Text" }, "text": "عبء إثبات مشروعية الفصل يقع على صاحب العمل، وإن لم يثبت ذلك كان الفصل غير مشروع ووجب التعويض عملاً بالمادة (77) من نظام العمل." }
+          "summary": {
+            "ar": "مبدأ قضائي في عبء إثبات مشروعية الفصل.",
+            "en": "Judicial principle on the burden of proving lawful termination."
+          },
+          "versionHistory": [
+            {
+              "version": 1,
+              "date": "1443/12/15هـ",
+              "change": {
+                "ar": "الإصدار الأصلي",
+                "en": "Original issue"
+              },
+              "by": "—"
+            }
           ],
-          "relations": [{ "type": "cites", "target": "sa-labor-law", "note": { "ar": "استناد على المادة (77)", "en": "Based on Article 77" } }],
+          "articles": [
+            {
+              "num": "النص",
+              "title": {
+                "ar": "النص",
+                "en": "Text"
+              },
+              "text": "عبء إثبات مشروعية الفصل يقع على صاحب العمل، وإن لم يثبت ذلك كان الفصل غير مشروع ووجب التعويض عملاً بالمادة (77) من نظام العمل."
+            }
+          ],
+          "relations": [
+            {
+              "type": "cites",
+              "target": "sa-labor-law",
+              "note": {
+                "ar": "استناد على المادة (77)",
+                "en": "Based on Article 77"
+              }
+            }
+          ],
           "sources": [],
-          "body": "# مبدأ قضائي\n\nمبدأ مستقر في الدائرة العمالية بالمحكمة العليا."
+          "body": "# مبدأ قضائي\n\nمبدأ مستقر في الدائرة العمالية بالمحكمة العليا.",
+          "issueTool": {
+            "tool": "مبدأ قضائي",
+            "date": "1443/12/15هـ",
+            "number": "مبدأ 45/ت"
+          }
         },
         {
           "id": "sa-circular-2024-11",
           "type": "circular",
-          "title": { "ar": "تعميم إداري — ضوابط العمل عن بعد", "en": "Administrative Circular — Remote Work Controls" },
-          "issuer": { "ar": "وزارة الموارد البشرية", "en": "Ministry of Human Resources" },
+          "title": {
+            "ar": "تعميم إداري — ضوابط العمل عن بعد",
+            "en": "Administrative Circular — Remote Work Controls"
+          },
+          "issuer": {
+            "ar": "وزارة الموارد البشرية",
+            "en": "Ministry of Human Resources"
+          },
           "number": "ت/2024/11",
           "date": "1445/11/01هـ",
-          "status": "in_force",
+          "status": "temp_suspended",
           "version": 1,
-          "summary": { "ar": "تعميم بضوابط تطبيق العمل عن بعد.", "en": "Circular on remote work controls." },
-          "versionHistory": [{ "version": 1, "date": "1445/11/01هـ", "change": { "ar": "الإصدار الأصلي", "en": "Original issue" }, "by": "—" }],
+          "summary": {
+            "ar": "تعميم بضوابط تطبيق العمل عن بعد.",
+            "en": "Circular on remote work controls."
+          },
+          "versionHistory": [
+            {
+              "version": 1,
+              "date": "1445/11/01هـ",
+              "change": {
+                "ar": "الإصدار الأصلي",
+                "en": "Original issue"
+              },
+              "by": "—"
+            }
+          ],
           "articles": [],
-          "relations": [{ "type": "related", "target": "sa-reg-hr", "note": { "ar": "تعميم مرتبط باللائحة التنفيذية", "en": "Related circular" } }],
+          "relations": [
+            {
+              "type": "related",
+              "target": "sa-reg-hr",
+              "note": {
+                "ar": "تعميم مرتبط باللائحة التنفيذية",
+                "en": "Related circular"
+              }
+            }
+          ],
           "sources": [],
-          "body": "# تعميم إداري\n\nضوابط العمل عن بعد..."
+          "body": "# تعميم إداري\n\nضوابط العمل عن بعد...",
+          "issueTool": {
+            "tool": "تعميم إداري",
+            "date": "1445/11/01هـ",
+            "number": "ت/2024/11"
+          }
         }
       ]
     },
     {
       "id": "kb-fiqh",
-      "name": { "ar": "مذاهب أهل الفقه", "en": "Schools of Jurisprudence" },
+      "name": {
+        "ar": "مذاهب أهل الفقه",
+        "en": "Schools of Jurisprudence"
+      },
       "icon": "🕌",
       "version": "2025.1.11",
       "updated": "1446/02/28هـ",
@@ -183,20 +565,56 @@
         {
           "id": "fiqh-sale-gharar",
           "type": "principle",
-          "title": { "ar": "تحريم بيع الغرر", "en": "Prohibition of Gharar Sales" },
-          "issuer": { "ar": "الفقه الإسلامي — إجماع", "en": "Islamic Jurisprudence — Consensus" },
+          "title": {
+            "ar": "تحريم بيع الغرر",
+            "en": "Prohibition of Gharar Sales"
+          },
+          "issuer": {
+            "ar": "الفقه الإسلامي — إجماع",
+            "en": "Islamic Jurisprudence — Consensus"
+          },
           "number": "—",
           "date": "—",
           "status": "settled",
           "version": 1,
-          "summary": { "ar": "قاعدة فقهية في تحريم بيع الغرر والجهالة.", "en": "Jurisprudential rule prohibiting gharar (uncertainty) sales." },
-          "versionHistory": [{ "version": 1, "date": "—", "change": { "ar": "الإصدار الأصلي", "en": "Original issue" }, "by": "—" }],
+          "summary": {
+            "ar": "قاعدة فقهية في تحريم بيع الغرر والجهالة.",
+            "en": "Jurisprudential rule prohibiting gharar (uncertainty) sales."
+          },
+          "versionHistory": [
+            {
+              "version": 1,
+              "date": "—",
+              "change": {
+                "ar": "الإصدار الأصلي",
+                "en": "Original issue"
+              },
+              "by": "—"
+            }
+          ],
           "articles": [
-            { "num": "القاعدة", "title": { "ar": "القاعدة", "en": "Rule" }, "text": "نهى النبي صلى الله عليه وسلم عن بيع الغرر، وهو ما فيه جهالة في العوض أو المعلول، واستثني منه البيع بالاستسقاء والعتائر والمسالمة والدبس." }
+            {
+              "num": "القاعدة",
+              "title": {
+                "ar": "القاعدة",
+                "en": "Rule"
+              },
+              "text": "نهى النبي صلى الله عليه وسلم عن بيع الغرر، وهو ما فيه جهالة في العوض أو المعلول، واستثني منه البيع بالاستسقاء والعتائر والمسالمة والدبس."
+            }
           ],
           "relations": [],
-          "sources": [{ "title": "الموسوعة الفقهية", "url": "https://al-eman.com" }],
-          "body": "# بيع الغرر\n\nقاعدة فقهية مستقرة عند جمهور الفقهاء."
+          "sources": [
+            {
+              "title": "الموسوعة الفقهية",
+              "url": "https://al-eman.com"
+            }
+          ],
+          "body": "# بيع الغرر\n\nقاعدة فقهية مستقرة عند جمهور الفقهاء.",
+          "issueTool": {
+            "tool": "—",
+            "date": "—",
+            "number": "—"
+          }
         }
       ]
     }

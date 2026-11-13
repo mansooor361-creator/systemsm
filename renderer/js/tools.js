@@ -92,9 +92,31 @@ const Tools = {
         <h2>🔄 ${I18n.t('toolConverter')}</h2>
         <p class="hint" style="margin-bottom:14px">${I18n.t('pickFile')}</p>
         <button class="primary" id="cvPick">📂 ${I18n.t('pickFile')}</button>
+        <div class="result-card" style="margin-top:18px">
+          <h3 style="margin-bottom:10px">📦 ${I18n.t('bulkConvert')}</h3>
+          <label class="check-item"><input type="checkbox" id="cvUpload" /> <span>${I18n.t('uploadToServer')}</span></label>
+          <p class="hint" style="margin:6px 0 12px">${I18n.t('connectorHint')}</p>
+          <button class="primary" id="cvFolder">📁 ${I18n.t('bulkConvert')}</button>
+        </div>
         <div id="cvOut"></div>
       </div>`);
     panel.appendChild(box);
+    box.querySelector('#cvFolder').onclick = async () => {
+      const upload = box.querySelector('#cvUpload').checked;
+      const connector = ((window.daaixSettings || {}).connectors || []).find(c => c.enabled !== false && c.url);
+      if (upload && !connector) { App.toast(I18n.t('addConnector')); return; }
+      const out = box.querySelector('#cvOut');
+      out.innerHTML = `<div class="result-card">${I18n.t('loading')}</div>`;
+      const res = await window.daaix.convertFolder(upload && connector ? { uploadUrl: connector.url, uploadKey: connector.apiKey || '' } : {});
+      out.innerHTML = '';
+      if (!res || !res.ok) { out.innerHTML = `<div class="result-card" style="color:var(--danger)">${(res && res.error) || '—'}</div>`; return; }
+      const card = this.el(`<div class="result-card">
+        <div class="big">✅ ${I18n.t('convertedCount')}: ${res.converted} ${I18n.t('files')}</div>
+        ${res.uploaded ? `<div class="result-line"><span>${I18n.t('uploadToServer')}</span><span>${res.uploaded}</span></div>` : ''}
+        ${res.failed && res.failed.length ? `<div class="result-note" style="color:var(--danger)">${I18n.t('failed')}: ${res.failed.map(f => esc(f.file) + ' — ' + esc(f.error)).join(' · ')}</div>` : ''}
+      </div>`);
+      out.appendChild(card);
+    };
     box.querySelector('#cvPick').onclick = async () => {
       const file = await window.daaix.pickFile('Documents', ['pdf', 'docx', 'txt', 'md', 'html', 'htm']);
       if (!file) return;
