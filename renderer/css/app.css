@@ -71,12 +71,8 @@ button { cursor: pointer; }
 
 
 /* ---------- home ---------- */
-.hero { text-align: center; padding: 40px 20px 24px; }
-.hero-logo { width: 220px; max-width: 60%; margin-bottom: 20px; }
-.hero h1 { font-size: 32px; margin-bottom: 10px; }
-.hero-sub { color: var(--muted); font-size: 18px; }
-.hero-cta { margin-top: 18px; font-size: 16px; padding: 12px 28px; }
-.quick-cards { display: flex; gap: 14px; justify-content: center; margin: 26px 0 10px; flex-wrap: wrap; }
+/* ---------- home: updates feed as a boxes grid ---------- */
+.quick-cards { display: flex; gap: 14px; justify-content: center; margin: 10px 0; flex-wrap: wrap; }
 .quick-card {
   background: var(--bg2); border: 1px solid var(--border); border-radius: 14px;
   padding: 18px 22px; min-width: 170px; max-width: 230px; cursor: pointer; text-align: center;
@@ -85,12 +81,15 @@ button { cursor: pointer; }
 .quick-card .qc-icon { font-size: 30px; margin-bottom: 8px; }
 .quick-card .qc-label { font-weight: 800; font-size: 16px; margin-bottom: 4px; }
 .quick-card .qc-desc { font-size: 12px; color: var(--muted); line-height: 1.6; }
-.feed-title { font-size: 22px; margin: 30px 0 14px; color: var(--accent); }
-.updates-feed { max-width: 900px; }
+.feed-title { font-size: 22px; margin: 18px 0 14px; color: var(--accent); }
+.updates-feed {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px; max-width: 1100px;
+}
 .feed-item {
-  display: flex; gap: 14px; align-items: flex-start;
+  display: flex; flex-direction: column; gap: 8px; align-items: flex-start;
   background: var(--bg2); border: 1px solid var(--border); border-radius: 12px;
-  padding: 14px 18px; margin-bottom: 10px; cursor: pointer;
+  padding: 14px 18px; cursor: pointer;
 }
 .feed-item:hover { border-color: var(--accent); }
 .feed-badge { font-size: 11px; padding: 3px 12px; border-radius: 12px; white-space: nowrap; font-weight: 700; }

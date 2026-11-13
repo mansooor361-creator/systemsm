@@ -102,10 +102,11 @@ function bootDom() {
       assert(doc.getElementById(id).classList.contains('hidden'), id + ' hidden'));
     assert(!doc.getElementById('btnDrawer').classList.contains('hidden'));
   });
-  test('home: quick cards + updates feed rendered, big hero', () => {
-    assert(doc.querySelectorAll('#quickCards .quick-card').length === 5);
-    assert(doc.querySelectorAll('.feed-item').length >= 5);
-    assert(doc.querySelector('.hero h1').textContent.length > 3);
+  test('home: hero + quick cards removed; updates feed kept as boxes grid', () => {
+    assert(!doc.querySelector('.hero'), 'hero removed');
+    assert(!doc.getElementById('quickCards'), 'quick cards removed');
+    assert(!doc.getElementById('btnOpenSite'), 'site button removed');
+    assert(doc.querySelectorAll('.feed-item').length >= 5, 'updates feed kept');
   });
 
   console.log('\n— Document reader (tabbed, classic) —');

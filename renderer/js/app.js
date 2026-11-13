@@ -261,7 +261,6 @@ const App = {
     this.applyTopbarButtons();
     this.renderKbMenu();
     this.renderKbPicker();
-    this.renderQuickCards();
     this.renderHomeToolCards();
     this.renderFeed();
     this.renderHomePanel();
@@ -317,7 +316,6 @@ const App = {
     document.getElementById('btnGraph').onclick = () => { this.showView('graph'); Graph.show(this.currentDocId); };
     document.getElementById('btnTools').onclick = () => Tools.open(Tools.active || 'consultant');
     document.getElementById('btnNotes').onclick = () => { this.showView('notes'); Notes.refresh(); };
-    document.getElementById('btnOpenSite').onclick = () => window.daaix.openExternal('https://smartk-ai.com/');
     document.getElementById('siteLink').onclick = (e) => {
       e.preventDefault();
       window.daaix.openExternal('https://smartk-ai.com/');
@@ -827,24 +825,6 @@ const App = {
   },
 
   /* ---------- home ---------- */
-  renderQuickCards() {
-    const wrap = document.getElementById('quickCards');
-    wrap.innerHTML = '';
-    [
-      { icon: '🤖', label: I18n.t('agents'), desc: I18n.t('agentsDesc'), action: () => Agents.open(Agents.current) },
-      { icon: '💬', label: I18n.t('chat'), desc: I18n.t('chatGrounded'), action: () => this.showView('chat') },
-      { icon: '🧰', label: I18n.t('tools'), desc: I18n.t('toolConsultant'), action: () => Tools.open(Tools.active || 'consultant') },
-      { icon: '🕸️', label: I18n.t('graph'), desc: I18n.t('relationsCount'), action: () => { this.showView('graph'); Graph.show(this.currentDocId); } },
-      { icon: '📝', label: I18n.t('notes'), desc: I18n.t('newNote'), action: () => { this.showView('notes'); Notes.refresh(); } }
-    ].forEach(c => {
-      const card = document.createElement('div');
-      card.className = 'quick-card';
-      card.innerHTML = `<div class="qc-icon">${c.icon}</div><div class="qc-label">${esc(c.label)}</div><div class="qc-desc">${esc(c.desc)}</div>`;
-      card.onclick = c.action;
-      wrap.appendChild(card);
-    });
-  },
-
   renderFeed() {
     const feed = document.getElementById('updatesFeed');
     feed.innerHTML = '';
