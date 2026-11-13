@@ -564,6 +564,44 @@ function bootDom() {
     assert(doc.getElementById('agentInput').value.length > 3, 'prompt prefilled');
   });
 
+  console.log('\n— v1.6.3: markdown TOC tree, info strip, unified paper background —');
+  test('markdown headings render as real h1-h6', () => {
+    const md = window.eval('renderMarkdown')('# H1\n## H2\n### H3\n#### H4\n##### H5\n###### H6');
+    ['H1','H2','H3','H4','H5','H6'].forEach((t, i) => {
+      const el = md.querySelector('h' + (i + 1));
+      assert(el && el.textContent === t, 'heading h' + (i + 1) + ' rendered');
+    });
+  });
+  test('TOC builds a collapsible tree: children nested under parents, toggle collapses', () => {
+    App.openDocument('sa-labor-law');
+    const body = doc.getElementById('docBody');
+    body.innerHTML = '<h1 id="t1">One</h1><h2 id="t2">Two</h2><h3 id="t3">Three</h3><h2 id="t4">TwoB</h2>';
+    App.buildToc();
+    const nodes = doc.querySelectorAll('#tocItems .toc-node');
+    assert(nodes.length === 4, 'four toc nodes');
+    const first = nodes[0];
+    const kids = first.querySelector(':scope > .toc-children');
+    assert(kids && kids.querySelectorAll(':scope > .toc-node').length === 2, 'h2 nodes nested under h1');
+    const nested = kids.querySelector(':scope > .toc-node > .toc-children');
+    assert(nested && nested.querySelectorAll(':scope > .toc-node').length === 1, 'h3 nested under h2');
+    const tg = first.querySelector(':scope > .toc-item > .toc-toggle');
+    assert(tg.textContent !== '', 'toggle mark present');
+    tg.click();
+    assert(kids.classList.contains('collapsed'), 'collapsing h1 hides its subtree');
+    assert(tg.textContent === '\u25b8', 'toggle flipped to collapsed arrow');
+    tg.click();
+    assert(!kids.classList.contains('collapsed'), 'expanding restores subtree');
+  });
+  test('document info strip: horizontal items merged with top of page', () => {
+    App.openDocument('sa-labor-law');
+    const strip = doc.querySelector('#docHeader .doc-info');
+    assert(strip, 'info strip present');
+    const items = strip.querySelectorAll('.info-item');
+    assert(items.length === 6, 'six info items');
+    assert(!strip.querySelector('.prop-row'), 'vertical rows replaced');
+    assert(strip.querySelector('.il') && strip.querySelector('.iv'), 'label + value spans');
+  });
+
   console.log('\n— Language toggle —');
   test('switching to English flips UI to LTR', async () => {
     await App.setLang('en');

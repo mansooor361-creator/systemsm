@@ -63,7 +63,7 @@ function renderMarkdown(md) {
       const level = line.match(/^#+/)[0].length;
       const text = inline(line.replace(/^#+\s*/, ''));
       const anchor = 'h-' + html.length;
-      html += `<h${Math.min(level, 4)} id="${anchor}">${text}</h${Math.min(level, 4)}>`;
+      html += `<h${level} id="${anchor}">${text}</h${level}>`;
     } else if (/^>\s?/.test(line)) {
       flushPara();
       html += `<blockquote>${inline(line.replace(/^>\s?/, ''))}</blockquote>`;
@@ -991,7 +991,7 @@ const App = {
     const title = doc.title[I18n.lang] || doc.title.ar || doc.title.en;
     const header = document.getElementById('docHeader');
     const infoRow = (label, value) =>
-      `<div class="prop-row"><span class="pl">${esc(label)}</span><span class="pv">${esc(value || '—')}</span></div>`;
+      `<div class="info-item"><span class="il">${esc(label)}</span><span class="iv">${esc(value || '—')}</span></div>`;
     header.innerHTML = `
       <h1>${esc(title)}</h1>
       <div class="doc-chips">
@@ -1232,15 +1232,56 @@ const App = {
   buildToc() {
     const toc = document.getElementById('tocItems');
     toc.innerHTML = '';
-    document.querySelectorAll('#docBody h1, #docBody h2, #docBody h3, #docBody .anum').forEach((h, i) => {
-      if (!h.id) h.id = 'toc-' + i;
-      const link = document.createElement('div');
-      link.className = 'toc-item' + (h.tagName === 'H1' ? ' lvl1' : h.tagName === 'H2' ? ' lvl2' : h.id.startsWith('toc-') ? ' art' : ' lvl3');
-      link.textContent = h.textContent.slice(0, 60);
-      link.onclick = () => h.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      toc.appendChild(link);
+    const heads = [...document.querySelectorAll('#docBody h1, #docBody h2, #docBody h3, #docBody h4, #docBody h5, #docBody h6')];
+    if (!heads.length) { toc.innerHTML = `<p class="hint">—</p>`; return; }
+    const used = new Set([...document.querySelectorAll('#docBody [id]')].map(e => e.id));
+    heads.forEach(h => {
+      if (!h.id || used.has(h.id) && h.id.indexOf('h-') !== 0) {
+        let k = 0;
+        while (used.has('h-' + k)) k++;
+        h.id = 'h-' + k;
+        used.add(h.id);
+      }
     });
-    if (!toc.children.length) toc.innerHTML = `<p class="hint">—</p>`;
+    const root = { level: 0, children: [] };
+    const stack = [root];
+    heads.forEach(h => {
+      const level = parseInt(h.tagName[1], 10);
+      const node = { level, el: h, children: [] };
+      while (stack.length > 1 && stack[stack.length - 1].level >= level) stack.pop();
+      stack[stack.length - 1].children.push(node);
+      stack.push(node);
+    });
+    const render = (nodes, container) => {
+      nodes.forEach(n => {
+        const item = document.createElement('div');
+        item.className = 'toc-node';
+        const row = document.createElement('div');
+        row.className = 'toc-item lvl' + n.level;
+        const tg = document.createElement('span');
+        tg.className = 'toc-toggle' + (n.children.length ? '' : ' leaf');
+        tg.textContent = n.children.length ? '\u25be' : '\u00b7';
+        tg.onclick = (e) => {
+          e.stopPropagation();
+          if (!n.children.length) return;
+          const collapsed = kids.classList.toggle('collapsed');
+          tg.textContent = collapsed ? '\u25b8' : '\u25be';
+        };
+        row.appendChild(tg);
+        const label = document.createElement('span');
+        label.className = 'toc-label';
+        label.textContent = n.el.textContent.slice(0, 80);
+        label.onclick = () => n.el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        row.appendChild(label);
+        item.appendChild(row);
+        const kids = document.createElement('div');
+        kids.className = 'toc-children';
+        render(n.children, kids);
+        item.appendChild(kids);
+        container.appendChild(item);
+      });
+    };
+    render(root.children, toc);
   },
 
   /* ---------- local edit mode ---------- */
