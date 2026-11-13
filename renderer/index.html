@@ -10,8 +10,7 @@
 
   <header id="topbar">
     <div class="brand">
-      <img src="assets/logo-mark.png" class="logo" alt="DaAIx" />
-      <span class="brand-name" id="brandHome">DaAIx</span>
+      <img src="assets/logo-full.png" class="logo-full" id="brandHome" alt="DaAIx" />
     </div>
     <input id="globalSearch" type="search" data-i18n-ph="search" autocomplete="off" />
     <button id="btnSearchMode" class="tb-btn mono" data-i18n-title="searchModeTitle">✦</button>
@@ -176,6 +175,7 @@
           <button class="set-tab active" data-set="settings" data-i18n="setTabSettings"></button>
           <button class="set-tab" data-set="kbs" data-i18n="setTabKbs"></button>
           <button class="set-tab" data-set="tools" data-i18n="setTabTools"></button>
+          <button class="set-tab" data-set="ai" data-i18n="setTabAi"></button>
         </div>
         <div id="setPaneSettings" class="set-pane">
         <div class="settings-grid">
@@ -196,11 +196,6 @@
             <button id="btnImportFolder" class="primary" data-i18n="importFolder"></button>
             <span id="importStatus" class="update-status"></span>
           </label>
-          <div class="wide sep" data-i18n="llmApi"></div>
-          <label><span data-i18n="baseUrl"></span><input id="setLlmUrl" type="url" placeholder="https://api.openai.com/v1" /></label>
-          <label><span data-i18n="apiKey"></span><input id="setLlmKey" type="password" autocomplete="off" /></label>
-          <label><span data-i18n="model"></span><input id="setLlmModel" type="text" placeholder="gpt-4o-mini" /></label>
-          <p class="hint wide" data-i18n="llmHint"></p>
           <div class="wide sep" data-i18n="connectorsTitle"></div>
           <p class="hint wide" data-i18n="connectorHint"></p>
           <div id="connectorList" class="wide"></div>
@@ -224,6 +219,30 @@
           <p class="hint" data-i18n="toolsPaneHint"></p>
           <input id="setToolSearch" type="search" class="tools-search" data-i18n-ph="toolsSearchPh" />
           <div id="toolSettingsList" class="settings-rows"></div>
+        </div>
+        <div id="setPaneAi" class="set-pane hidden">
+          <p class="hint" data-i18n="aiPaneHint"></p>
+          <div class="wide sep" data-i18n="llmApi"></div>
+          <div class="settings-grid">
+            <label><span data-i18n="baseUrl"></span><input id="setLlmUrl" type="url" placeholder="https://api.openai.com/v1" /></label>
+            <label><span data-i18n="apiKey"></span><input id="setLlmKey" type="password" autocomplete="off" /></label>
+            <label><span data-i18n="model"></span><input id="setLlmModel" type="text" list="modelPresets" placeholder="gpt-4o-mini" /></label>
+            <datalist id="modelPresets">
+              <option value="gpt-4o-mini"></option>
+              <option value="gpt-4o"></option>
+              <option value="claude-sonnet-4"></option>
+              <option value="gemini-2.0-flash"></option>
+              <option value="mistral-large-latest"></option>
+            </datalist>
+            <p class="hint wide" data-i18n="llmHint"></p>
+          </div>
+          <div class="wide sep" data-i18n="aiAgentsTitle"></div>
+          <div id="agentSettingsList" class="settings-rows"></div>
+          <div class="wide sep" data-i18n="aiCommandsTitle"></div>
+          <div id="commandList" class="settings-rows"></div>
+          <div class="wide sep" data-i18n="aiSkillsTitle"></div>
+          <div id="skillList" class="settings-rows"></div>
+          <button id="btnAiSave" class="primary" data-i18n="save"></button>
         </div>
       </section>
     </main>
@@ -250,10 +269,6 @@
         <label><span data-i18n="theme"></span>
           <select id="drawerTheme"><option value="dark" data-i18n="dark"></option><option value="light" data-i18n="light"></option></select>
         </label>
-      </div>
-      <div class="drawer-section">
-        <h4 data-i18n="showButtons"></h4>
-        <div id="buttonToggles"></div>
       </div>
       <div class="drawer-section">
         <button id="btnFullSettings" class="primary wide-btn">⚙️ <span data-i18n="settings"></span></button>

@@ -219,9 +219,6 @@ const App = {
 
   async boot() {
     this.settings = (await window.daaix.settingsGet()) || {};
-    if (!this.settings.showButtons) {
-      this.settings.showButtons = { agents: false, chat: false, graph: false, tools: false, notes: false };
-    }
     if (!this.settings.kbEnabled) this.settings.kbEnabled = {};
     if (!this.settings.toolEnabled) this.settings.toolEnabled = {};
     window.daaixSettings = this.settings;
@@ -257,13 +254,12 @@ const App = {
   },
 
   renderAll() {
-    this.applyTopbarButtons();
     this.renderKbPicker();
     this.renderToolRail();
     this.renderHomeToolCards();
     this.renderFeed();
     this.renderAccount();
-    this.renderButtonToggles();
+    this.renderAiSettings();
     this.renderKbSettings();
     this.renderToolSettings();
     this.applyLangUi();
@@ -279,14 +275,6 @@ const App = {
       : 'Click any node to open the document — colors represent document type';
     const warn = document.getElementById('editWarningText');
     if (warn) warn.textContent = I18n.t('editWarning');
-  },
-
-  applyTopbarButtons() {
-    const show = this.settings.showButtons || {};
-    [['btnAgents', 'agents'], ['btnChat', 'chat'], ['btnGraph', 'graph'], ['btnTools', 'tools'], ['btnNotes', 'notes']]
-      .forEach(([id, key]) => {
-        document.getElementById(id).classList.toggle('hidden', !show[key]);
-      });
   },
 
   bindTopbar() {
@@ -360,35 +348,6 @@ const App = {
   closeDrawer() {
     document.getElementById('drawer').classList.add('hidden');
     document.getElementById('drawerOverlay').classList.add('hidden');
-  },
-
-  renderButtonToggles() {
-    const wrap = document.getElementById('buttonToggles');
-    wrap.innerHTML = '';
-    const defs = [
-      ['agents', '🤖 ' + I18n.t('agents')],
-      ['chat', '💬 ' + I18n.t('chat')],
-      ['graph', '🕸️ ' + I18n.t('graph')],
-      ['tools', '🧰 ' + I18n.t('tools')],
-      ['notes', '📝 ' + I18n.t('notes')]
-    ];
-    defs.forEach(([key, label]) => {
-      const row = document.createElement('label');
-      row.className = 'check-item';
-      const cb = document.createElement('input');
-      cb.type = 'checkbox';
-      cb.checked = !!(this.settings.showButtons || {})[key];
-      cb.onchange = async () => {
-        this.settings.showButtons[key] = cb.checked;
-        await window.daaix.settingsSet({ showButtons: this.settings.showButtons });
-        this.applyTopbarButtons();
-      };
-      const span = document.createElement('span');
-      span.textContent = label;
-      row.appendChild(cb);
-      row.appendChild(span);
-      wrap.appendChild(row);
-    });
   },
 
   renderAccount() {
@@ -586,7 +545,7 @@ const App = {
     document.querySelectorAll('#setTabs .set-tab').forEach(btn => {
       btn.onclick = () => {
         document.querySelectorAll('#setTabs .set-tab').forEach(b => b.classList.toggle('active', b === btn));
-        ['settings', 'kbs', 'tools'].forEach(p =>
+        ['settings', 'kbs', 'tools', 'ai'].forEach(p =>
           document.getElementById('setPane' + p.charAt(0).toUpperCase() + p.slice(1)).classList.toggle('hidden', p !== btn.dataset.set));
       };
     });
@@ -651,22 +610,8 @@ const App = {
     };
     document.getElementById('setToolSearch').addEventListener('input', () => this.renderToolSettings());
 
-    document.getElementById('btnSaveSettings').onclick = async () => {
-      const patch = {
-        language: document.getElementById('setLang').value,
-        theme: document.getElementById('setTheme').value,
-        updateUrl: document.getElementById('setUpdateUrl').value,
-        llm: {
-          baseUrl: document.getElementById('setLlmUrl').value.trim(),
-          apiKey: document.getElementById('setLlmKey').value.trim(),
-          model: document.getElementById('setLlmModel').value.trim()
-        },
-        connectors: this.readConnectors()
-      };
-      this.settings = await window.daaix.settingsSet(patch);
-      window.daaixSettings = this.settings;
-      this.toast(I18n.t('save') + ' ✓');
-    };
+    document.getElementById('btnSaveSettings').onclick = () => this.saveSettingsForm();
+    document.getElementById('btnAiSave').onclick = () => this.saveSettingsForm();
     document.getElementById('btnAddConnector').onclick = () => {
       const connectors = this.settings.connectors || [];
       connectors.push({ name: '', url: '', apiKey: '', enabled: true });
@@ -688,6 +633,101 @@ const App = {
       this.applyTheme(e.target.value);
       window.daaix.settingsSet({ theme: e.target.value });
     };
+  },
+
+  saveSettingsForm() {
+    return (async () => {
+      const patch = {
+        language: document.getElementById('setLang').value,
+        theme: document.getElementById('setTheme').value,
+        updateUrl: document.getElementById('setUpdateUrl').value,
+        llm: {
+          baseUrl: document.getElementById('setLlmUrl').value.trim(),
+          apiKey: document.getElementById('setLlmKey').value.trim(),
+          model: document.getElementById('setLlmModel').value.trim()
+        },
+        connectors: this.readConnectors()
+      };
+      this.settings = await window.daaix.settingsSet(patch);
+      window.daaixSettings = this.settings;
+      this.toast(I18n.t('save') + ' ✓');
+    })();
+  },
+
+  agentIsOn(id) {
+    return (this.settings.agentsEnabled || {})[id] !== false;
+  },
+
+  renderAiSettings() {
+    const agentList = document.getElementById('agentSettingsList');
+    if (!agentList) return;
+    agentList.innerHTML = '';
+    Agents.list().forEach(a => {
+      const name = a.label[I18n.lang] || a.label.ar;
+      const desc = a.desc[I18n.lang] || a.desc.ar;
+      const row = document.createElement('div');
+      row.className = 'settings-row';
+      row.innerHTML = `
+        <span class="sr-icon">${a.icon}</span>
+        <div class="sr-main">
+          <div class="sr-name">${esc(name)}</div>
+          <div class="sr-desc">${esc(desc)}</div>
+        </div>
+        <label class="switch"><input type="checkbox" ${this.agentIsOn(a.id) ? 'checked' : ''} /><span class="sl"></span></label>`;
+      row.querySelector('input').onchange = async (e) => {
+        this.settings.agentsEnabled = this.settings.agentsEnabled || {};
+        this.settings.agentsEnabled[a.id] = e.target.checked;
+        await window.daaix.settingsSet({ agentsEnabled: this.settings.agentsEnabled });
+        Agents.renderMenu();
+        this.toast(`${e.target.checked ? I18n.t('agentOn') : I18n.t('agentOff')} — ${name}`);
+      };
+      agentList.appendChild(row);
+    });
+
+    const cmdList = document.getElementById('commandList');
+    cmdList.innerHTML = '';
+    Agents.commands().forEach(c => {
+      const label = c.label[I18n.lang] || c.label.ar;
+      const prompt = c.prompt[I18n.lang] || c.prompt.ar;
+      const row = document.createElement('div');
+      row.className = 'settings-row';
+      row.innerHTML = `
+        <span class="sr-icon">${c.icon}</span>
+        <div class="sr-main">
+          <div class="sr-name">/ ${esc(label)}</div>
+          <div class="sr-desc">${esc(prompt)}</div>
+        </div>
+        <button class="primary cmd-run">${I18n.t('run')}</button>`;
+      row.querySelector('.cmd-run').onclick = () => {
+        Agents.open('consultant');
+        document.getElementById('agentInput').value = prompt;
+        document.getElementById('agentInput').focus();
+      };
+      cmdList.appendChild(row);
+    });
+
+    const skillList = document.getElementById('skillList');
+    skillList.innerHTML = '';
+    Agents.skills().forEach(sk => {
+      const label = sk.label[I18n.lang] || sk.label.ar;
+      const desc = sk.desc[I18n.lang] || sk.desc.ar;
+      const prompt = sk.prompt[I18n.lang] || sk.prompt.ar;
+      const row = document.createElement('div');
+      row.className = 'settings-row';
+      row.innerHTML = `
+        <span class="sr-icon">${sk.icon}</span>
+        <div class="sr-main">
+          <div class="sr-name">${esc(label)}</div>
+          <div class="sr-desc">${esc(desc)}</div>
+        </div>
+        <button class="primary cmd-run">${I18n.t('run')}</button>`;
+      row.querySelector('.cmd-run').onclick = () => {
+        Agents.open(sk.agent);
+        document.getElementById('agentInput').value = prompt;
+        document.getElementById('agentInput').focus();
+      };
+      skillList.appendChild(row);
+    });
   },
 
   fillSettings() {

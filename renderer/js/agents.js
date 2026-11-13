@@ -133,6 +133,24 @@ const AGENTS = [
   }
 ];
 
+const AI_COMMANDS = [
+  { id: 'summarize', icon: '\ud83d\udcdd', label: { ar: '\u062a\u0644\u062e\u064a\u0635', en: 'Summarize' }, prompt: { ar: '\u0644\u062e\u0651\u0635 \u0627\u0644\u0623\u0633\u0627\u0633 \u0627\u0644\u0646\u0638\u0627\u0645\u064a \u0644\u0644\u0645\u0648\u0636\u0648\u0639', en: 'Summarize the legal basis' } },
+  { id: 'risks', icon: '\u26a0\ufe0f', label: { ar: '\u0627\u0644\u0645\u062e\u0627\u0637\u0631 \u0627\u0644\u0631\u0626\u064a\u0633\u064a\u0629', en: 'Key risks' }, prompt: { ar: '\u0627\u0630\u0643\u0631 \u0627\u0644\u0645\u062e\u0627\u0637\u0631 \u0627\u0644\u0631\u0626\u064a\u0633\u064a\u0629', en: 'List key risks' } },
+  { id: 'steps', icon: '\ud83e\udddd', label: { ar: '\u062e\u0637\u0648\u0627\u062a \u062a\u0646\u0641\u064a\u0630\u064a\u0629', en: 'Action steps' }, prompt: { ar: '\u0627\u0642\u062a\u0631\u062d \u062e\u0637\u0648\u0627\u062a \u062a\u0646\u0641\u064a\u0630\u064a\u0629', en: 'Suggest action steps' } },
+  { id: 'citations', icon: '\ud83d\udccc', label: { ar: '\u0627\u0644\u0627\u0633\u062a\u0634\u0647\u0627\u062f\u0627\u062a \u0641\u0642\u0637', en: 'Citations only' }, prompt: { ar: '\u0627\u0630\u0643\u0631 \u0627\u0644\u0646\u0635\u0648\u0635 \u0648\u0627\u0644\u0627\u0633\u062a\u0634\u0647\u0627\u062f\u0627\u062a \u0627\u0644\u0645\u0648\u062b\u0642\u0629 \u0641\u0642\u0637 \u062f\u0648\u0646 \u062a\u062d\u0644\u064a\u0644', en: 'List only documented texts and citations' } },
+  { id: 'versions', icon: '\ud83d\udd52', label: { ar: '\u0645\u0642\u0627\u0631\u0646\u0629 \u0627\u0644\u0625\u0635\u062f\u0627\u0631\u0627\u062a', en: 'Compare versions' }, prompt: { ar: '\u0642\u0627\u0631\u0646 \u0628\u064a\u0646 \u0625\u0635\u062f\u0627\u0631\u0627\u062a \u0627\u0644\u0648\u062b\u064a\u0642\u0629 \u0648\u0627\u0630\u0643\u0631 \u0627\u0644\u062a\u0639\u062f\u064a\u0644\u0627\u062a', en: 'Compare document versions and list amendments' } },
+  { id: 'relations', icon: '\ud83d\udd78\ufe0f', label: { ar: '\u0627\u0644\u0627\u0631\u062a\u0628\u0627\u0637\u0627\u062a \u0648\u0627\u0644\u0623\u062d\u0643\u0627\u0645', en: 'Relations & rulings' }, prompt: { ar: '\u0627\u0630\u0643\u0631 \u0627\u0631\u062a\u0628\u0627\u0637\u0627\u062a \u0627\u0644\u0648\u062b\u064a\u0642\u0629 \u0648\u0627\u0644\u0623\u062d\u0643\u0627\u0645 \u0627\u0644\u0645\u0631\u062a\u0628\u0637\u0629 \u0628\u0647\u0627', en: 'List document relations and related rulings' } }
+];
+
+const AI_SKILLS = [
+  { id: 'doc-analysis', icon: '\ud83d\udd0d', agent: 'consultant', label: { ar: '\u062a\u062d\u0644\u064a\u0644 \u0648\u062b\u064a\u0642\u0629', en: 'Document analysis' }, desc: { ar: '\u062a\u062d\u0644\u064a\u0644 \u0634\u0627\u0645\u0644 \u0644\u0648\u062b\u064a\u0642\u0629: \u0627\u0644\u062d\u0627\u0644\u0629\u060c \u0627\u0644\u0625\u0635\u062f\u0627\u0631\u0627\u062a\u060c \u0627\u0644\u0627\u0631\u062a\u0628\u0627\u0637\u0627\u062a\u060c \u0648\u0627\u0644\u0623\u062d\u0643\u0627\u0645 \u0627\u0644\u0645\u0631\u062a\u0628\u0637\u0629.', en: 'Full document analysis: status, versions, relations and rulings.' }, prompt: { ar: '\u062d\u0644\u0651\u0644 \u0647\u0630\u0647 \u0627\u0644\u0648\u062b\u064a\u0642\u0629 \u0628\u0627\u0644\u062a\u0641\u0635\u064a\u0644: \u0627\u0644\u062d\u0627\u0644\u0629 \u0627\u0644\u062a\u0634\u0631\u064a\u0639\u064a\u0629\u060c \u0627\u0644\u0625\u0635\u062f\u0627\u0631\u0627\u062a\u060c \u0627\u0644\u0627\u0631\u062a\u0628\u0627\u0637\u0627\u062a\u060c \u0648\u0627\u0644\u0623\u062d\u0643\u0627\u0645 \u0627\u0644\u0645\u0631\u062a\u0628\u0637\u0629.', en: 'Analyze this document in detail: legal status, versions, relations and rulings.' } },
+  { id: 'memo-draft', icon: '\ud83d\udcdc', agent: 'memo', label: { ar: '\u0635\u064a\u0627\u063a\u0629 \u0645\u0630\u0643\u0631\u0629', en: 'Memo drafting' }, desc: { ar: '\u0635\u064a\u0627\u063a\u0629 \u0645\u0630\u0643\u0631\u0629 \u062f\u0639\u0648\u0649 \u0623\u0648 \u0631\u062f \u0623\u0648 \u062f\u0641\u0648\u0639 \u0648\u0641\u0642 \u0627\u0644\u0646\u0645\u0627\u0630\u062c \u0627\u0644\u0642\u0636\u0627\u0626\u064a\u0629.', en: 'Draft a claim, reply or defense memo per judicial templates.' }, prompt: { ar: '\u0635\u063a \u0645\u0630\u0643\u0631\u0629 \u0648\u0641\u0642 \u0627\u0644\u0646\u0645\u0648\u0630\u062c \u0627\u0644\u0642\u0636\u0627\u0626\u064a \u0645\u0639 \u0627\u0644\u0623\u0633\u0627\u0646\u064a\u062f \u0627\u0644\u0646\u0638\u0627\u0645\u064a\u0629 \u0645\u0646 \u0642\u0627\u0639\u062f\u0629 \u0627\u0644\u0645\u0639\u0631\u0641\u0629.', en: 'Draft a memo per the judicial template with legal grounds from the KB.' } },
+  { id: 'strategy', icon: '\ud83d\uddfa\ufe0f', agent: 'strategy', label: { ar: '\u062e\u0631\u064a\u0637\u0629 \u0627\u0644\u062f\u0639\u0648\u0649', en: 'Litigation roadmap' }, desc: { ar: '\u0628\u0646\u0627\u0621 \u062e\u0631\u064a\u0637\u0629 \u062a\u0642\u0627\u0636\u064a: \u0627\u0644\u0645\u0633\u0627\u0631\u060c \u0627\u0644\u0645\u062f\u062f\u060c \u0627\u0644\u062a\u0643\u0627\u0644\u064a\u0641\u060c \u0648\u0627\u0644\u062f\u0641\u0648\u0639.', en: 'Litigation roadmap: track, durations, costs and defenses.' }, prompt: { ar: '\u0627\u0628\u0646 \u062e\u0631\u064a\u0637\u0629 \u062a\u0642\u0627\u0636\u064a \u0644\u0644\u0646\u0632\u0627\u0639: \u0627\u0644\u0645\u0633\u0627\u0631\u060c \u0627\u0644\u0645\u0631\u0627\u062d\u0644\u060c \u0627\u0644\u0623\u062f\u0644\u0629\u060c \u0648\u0627\u0644\u062a\u0643\u0627\u0644\u064a\u0641.', en: 'Build a litigation roadmap: track, stages, evidence and costs.' } },
+  { id: 'contract-review', icon: '\ud83e\udd1d', agent: 'contracts', label: { ar: '\u0645\u0631\u0627\u062c\u0639\u0629 \u0639\u0642\u062f', en: 'Contract review' }, desc: { ar: '\u0645\u0631\u0627\u062c\u0639\u0629 \u0628\u0646\u0648\u062f \u0627\u0644\u0639\u0642\u062f \u0648\u0627\u0643\u062a\u0634\u0627\u0641 \u0627\u0644\u0628\u0646\u0648\u062f \u0627\u0644\u0646\u0627\u0642\u0635\u0629 \u0648\u0627\u0644\u0645\u062e\u062a\u0631\u0629.', en: 'Review contract clauses, detect missing and risky wording.' }, prompt: { ar: '\u0631\u0627\u062c\u0639 \u0628\u0646\u0648\u062f \u0647\u0630\u0627 \u0627\u0644\u0639\u0642\u062f: \u0627\u0644\u0628\u0646\u0648\u062f \u0627\u0644\u0646\u0627\u0642\u0635\u0629\u060c \u0627\u0644\u0635\u064a\u0627\u063a \u0627\u0644\u062e\u0637\u0631\u0629\u060c \u0648\u0627\u0644\u062a\u0648\u0635\u064a\u0627\u062a.', en: 'Review this contract: missing clauses, risky wording and recommendations.' } },
+  { id: 'research', icon: '\ud83d\udcda', agent: 'research', label: { ar: '\u0628\u062d\u062b \u0642\u0627\u0646\u0648\u0646\u064a', en: 'Legal research' }, desc: { ar: '\u0625\u0639\u062f\u0627\u062f \u0628\u062d\u0648\u062b \u0648\u062f\u0631\u0627\u0633\u0627\u062a \u0645\u064f\u0633\u0646\u064e\u062f\u0629 \u0625\u0644\u0649 \u0642\u0627\u0639\u062f\u0629 \u0627\u0644\u0645\u0639\u0631\u0641\u0629.', en: 'KB-grounded legal research papers and studies.' }, prompt: { ar: '\u0627\u0639\u062f \u0628\u062d\u062b\u0627\u064b \u0642\u0627\u0646\u0648\u0646\u064a\u0627\u064b \u0645\u0646\u0638\u0651\u0645 \u062d\u0648\u0644 \u0627\u0644\u0645\u0648\u0636\u0648\u0639 \u0645\u0646 \u0648\u0627\u0642\u0639 \u0642\u0627\u0639\u062f\u0629 \u0627\u0644\u0645\u0639\u0631\u0641\u0629.', en: 'Prepare an organized legal research on the topic from the KB.' } },
+  { id: 'governance', icon: '\ud83c\udfdb\ufe0f', agent: 'governance', label: { ar: '\u0627\u0644\u062d\u0648\u0643\u0645\u0629 \u0648\u0627\u0644\u0645\u062e\u0627\u0637\u0631', en: 'Governance & risk' }, desc: { ar: '\u0628\u0646\u0627\u0621 \u0625\u0637\u0627\u0631\u0627\u062a \u0627\u0644\u062d\u0648\u0643\u0645\u0629 \u0648\u0625\u062f\u0627\u0631\u0629 \u0627\u0644\u0645\u062e\u0627\u0637\u0631 \u0644\u0644\u062c\u0647\u0627\u062a \u0648\u0627\u0644\u0634\u0631\u0643\u0627\u062a.', en: 'Governance frameworks and risk management for entities.' }, prompt: { ar: '\u0627\u0628\u0646 \u0625\u0637\u0627\u0631\u0627\u064b \u0644\u0644\u062d\u0648\u0643\u0645\u0629 \u0648\u0625\u062f\u0627\u0631\u0629 \u0627\u0644\u0645\u062e\u0627\u0637\u0631 \u0648\u0641\u0642 \u0627\u0644\u0623\u0646\u0638\u0645\u0629 \u0627\u0644\u0645\u0631\u062a\u0628\u0637\u0629.', en: 'Build a governance and risk framework per related laws.' } }
+];
+
 const Agents = {
   current: null,
   sessions: {},
@@ -140,6 +158,11 @@ const Agents = {
   context: [],
 
   list() { return AGENTS; },
+
+  visible() {
+    const on = (typeof App !== 'undefined' && App.settings && App.settings.agentsEnabled) || {};
+    return AGENTS.filter(a => on[a.id] !== false);
+  },
 
   get(id) { return AGENTS.find(a => a.id === id); },
 
@@ -153,7 +176,7 @@ const Agents = {
   renderMenu() {
     const menu = document.getElementById('agentsMenu');
     menu.innerHTML = '';
-    AGENTS.forEach(a => {
+    this.visible().forEach(a => {
       const chip = document.createElement('div');
       chip.className = 'tool-chip' + (this.current === a.id ? ' active' : '');
       chip.textContent = `${a.icon} ${a.label[I18n.lang] || a.label.ar}`;
@@ -162,13 +185,9 @@ const Agents = {
     });
   },
 
-  commands() {
-    return [
-      { ar: 'لخّص الأساس النظامي للموضوع', en: 'Summarize the legal basis' },
-      { ar: 'اذكر المخاطر الرئيسية', en: 'List key risks' },
-      { ar: 'اقترح خطوات تنفيذية', en: 'Suggest action steps' }
-    ];
-  },
+  commands() { return AI_COMMANDS; },
+
+  skills() { return AI_SKILLS; },
 
   /* Copilot-style chat interface: ask anything, @ for context, / for commands */
   render() {
@@ -241,10 +260,10 @@ const Agents = {
   renderCmdPopup(input, popup) {
     popup.innerHTML = '';
     this.commands().forEach(c => {
-      const label = c[I18n.lang] || c.ar;
+      const label = c.prompt[I18n.lang] || c.prompt.ar;
       const b = document.createElement('button');
       b.className = 'ctx-item';
-      b.innerHTML = `<span>/ ${esc(label)}</span>`;
+      b.innerHTML = `<span>${c.icon} ${esc(label)}</span>`;
       b.onmousedown = (e) => {
         e.preventDefault();
         input.value = label;

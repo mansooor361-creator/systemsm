@@ -96,15 +96,15 @@ function bootDom() {
     assert(!doc.getElementById('btnRailKb'), 'rail folder icon removed');
     assert(!doc.getElementById('kbMenu'), 'rail KB menu removed');
     assert(doc.getElementById('toolRail'), 'tool rail container present');
-    assert(doc.querySelector('#topbar .brand .logo'), 'logo-mark restored in topbar');
+    assert(doc.querySelector('#topbar .brand .logo-full'), 'official full logo in topbar');
     assert(!doc.getElementById('btnKbMenu'), 'folder icon removed from topbar');
     assert(doc.getElementById('btnKbPicker'), 'KB picker button next to search');
     assert(doc.getElementById('btnKbPicker').textContent.includes('\uD83D\uDCDA'), 'picker icon is books, not folder');
     assert(doc.getElementById('btnSearchMode') && doc.getElementById('btnSearchExpand') && doc.getElementById('searchModeMenu'), 'search mode dropdown button + expand button');
   });
-  test('topbar action buttons hidden by default; drawer gear visible', () => {
+  test('rail view buttons always visible (settings toggles removed in v1.6.2); drawer gear visible', () => {
     ['btnAgents', 'btnChat', 'btnGraph', 'btnTools', 'btnNotes'].forEach(id =>
-      assert(doc.getElementById(id).classList.contains('hidden'), id + ' hidden'));
+      assert(!doc.getElementById(id).classList.contains('hidden'), id + ' visible'));
     assert(!doc.getElementById('btnDrawer').classList.contains('hidden'));
   });
   test('home: hero + quick cards removed; updates feed kept as boxes grid', () => {
@@ -302,15 +302,12 @@ function bootDom() {
     await Notes.refresh();
     assert(doc.querySelectorAll('.note-card').length === 1);
   });
-  test('drawer opens with account + button toggles; toggling shows buttons', async () => {
+  test('drawer opens with account; rail-button toggles section removed (v1.6.2)', async () => {
     App.openDrawer();
     assert(!doc.getElementById('drawer').classList.contains('hidden'));
     assert(doc.getElementById('accountArea').querySelectorAll('button').length === 2, 'login + register');
-    const toggles = [...doc.querySelectorAll('#buttonToggles input[type=checkbox]')];
-    assert(toggles.length === 5);
-    toggles[1].click();
-    await new Promise(r => setTimeout(r, 50));
-    assert(!doc.getElementById('btnChat').classList.contains('hidden'), 'chat button shown after toggle');
+    assert(!doc.getElementById('buttonToggles'), 'buttonToggles removed from drawer');
+    assert(!doc.querySelector('[data-i18n=showButtons]'), 'showButtons section removed');
   });
 
   console.log('\n— Login (built-in account) —');
@@ -370,13 +367,14 @@ function bootDom() {
   });
 
   console.log('\n— Settings: 3 windows (v1.5) —');
-  test('settings tabs: three windows switch panes', () => {
+  test('settings tabs: four windows switch panes', () => {
     App.showView('settings');
     const tabs = doc.querySelectorAll('#setTabs .set-tab');
-    assert(tabs.length === 3, 'three settings windows');
+    assert(tabs.length === 4, 'four settings windows');
     assert(!doc.getElementById('setPaneSettings').classList.contains('hidden'), 'settings pane visible first');
     assert(doc.getElementById('setPaneKbs').classList.contains('hidden'));
     assert(doc.getElementById('setPaneTools').classList.contains('hidden'));
+    assert(doc.getElementById('setPaneAi').classList.contains('hidden'));
     tabs[1].click();
     assert(!doc.getElementById('setPaneKbs').classList.contains('hidden'), 'KB pane opens');
     assert(doc.getElementById('setPaneSettings').classList.contains('hidden'));
@@ -523,6 +521,47 @@ function bootDom() {
     const hint = pane.querySelector('.hint');
     assert(hint && hint.textContent.length > 5, 'noOriginalPdf hint for sample docs without PDF');
     App.showView('home');
+  });
+
+  console.log('\n— v1.6.2: brand logo, AI & agents window —');
+  test('topbar brand uses the official full logo image (no brown text)', () => {
+    const img = doc.querySelector('#topbar .brand .logo-full');
+    assert(img, 'logo-full image in topbar');
+    assert(img.getAttribute('src').includes('logo-full.png'), 'official logo-full asset');
+    assert(!doc.querySelector('#topbar .brand .brand-name'), 'brown brand-name text removed');
+  });
+  test('settings has 4th window: AI & agents with models, agents, commands, skills', () => {
+    App.showView('settings');
+    App.fillSettings();
+    const tabs = doc.querySelectorAll('#setTabs .set-tab');
+    assert(tabs.length === 4, 'four settings windows');
+    doc.querySelector('#setTabs [data-set=ai]').click();
+    assert(!doc.getElementById('setPaneAi').classList.contains('hidden'), 'AI pane visible');
+    assert(doc.getElementById('setLlmUrl') && doc.getElementById('setLlmKey') && doc.getElementById('setLlmModel'), 'LLM fields moved to AI pane');
+    assert(doc.getElementById('modelPresets'), 'model presets datalist');
+    assert(doc.querySelectorAll('#agentSettingsList .settings-row').length === 6, 'six agents with toggles');
+    assert(doc.querySelectorAll('#commandList .settings-row').length >= 5, 'quick commands listed');
+    assert(doc.querySelectorAll('#skillList .settings-row').length >= 5, 'skills listed');
+    assert(!doc.querySelector('#setPaneSettings #setLlmUrl'), 'LLM fields removed from main settings pane');
+  });
+  test('disabling an agent hides it from the agents menu', () => {
+    App.settings.agentsEnabled = { memo: false };
+    Agents.renderMenu();
+    const chips = [...doc.querySelectorAll('#agentsMenu .tool-chip')];
+    assert(chips.length === 5, 'disabled agent hidden from menu');
+    assert(!chips.some(c => c.textContent.includes('\u0645\u0630\u0643\u0631\u0627\u062a')), 'memo agent not listed');
+    App.settings.agentsEnabled = {};
+    Agents.renderMenu();
+    assert(doc.querySelectorAll('#agentsMenu .tool-chip').length === 6, 're-enabled');
+  });
+  test('command run button opens agents with prompt prefilled', () => {
+    App.showView('settings');
+    App.fillSettings();
+    doc.querySelector('#setTabs [data-set=ai]').click();
+    const btn = doc.querySelector('#commandList .cmd-run');
+    btn.click();
+    assert(!doc.getElementById('view-agents').classList.contains('hidden'), 'agents view opened');
+    assert(doc.getElementById('agentInput').value.length > 3, 'prompt prefilled');
   });
 
   console.log('\n— Language toggle —');
