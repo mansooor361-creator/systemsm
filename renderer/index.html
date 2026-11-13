@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https: http:; script-src 'self'" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https: http:; frame-src https: http:; script-src 'self'" />
   <title>DaAIx</title>
   <link rel="stylesheet" href="css/app.css" />
 </head>
@@ -14,9 +14,10 @@
       <span class="brand-name" id="brandHome">DaAIx</span>
     </div>
     <input id="globalSearch" type="search" data-i18n-ph="search" autocomplete="off" />
-    <button id="btnSearchText" class="tb-btn mono active" data-i18n-title="searchTextTitle">🔍</button>
-    <button id="btnSearchSemantic" class="tb-btn mono" data-i18n-title="searchSemanticTitle">✨</button>
+    <button id="btnSearchMode" class="tb-btn mono" data-i18n-title="searchModeTitle">✦</button>
+    <button id="btnSearchExpand" class="tb-btn mono" data-i18n-title="searchExpandTitle">⤢</button>
     <button id="btnKbPicker" class="tb-btn" data-i18n-title="kbPickerTitle">📚</button>
+    <div id="searchModeMenu" class="kb-menu search-mode-menu hidden"></div>
     <div id="kbPickerMenu" class="kb-menu kb-picker hidden"></div>
   </header>
 
@@ -261,17 +262,6 @@
         <a href="#" id="siteLink" class="site-link">smartk-ai.com</a>
       </div>
     </div>
-  </aside>
-
-  <!-- Home hover KB panel (right edge) -->
-  <div id="homeKbStrip" class="home-kb-strip">🗂️</div>
-  <aside id="homeKbPanel" class="home-kb-panel hidden">
-    <div class="hk-head">
-      <button id="hkHome" class="hk-home" data-i18n="kbHome">🏠</button>
-      <strong data-i18n="kbs"></strong>
-    </div>
-    <div id="hkCats" class="hk-cats"></div>
-    <div id="hkDocs" class="hk-docs"></div>
   </aside>
 
   <!-- Login modal -->

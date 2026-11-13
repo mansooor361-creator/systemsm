@@ -243,7 +243,6 @@ const App = {
     this.bindSettingsTabs();
     this.bindReaderTabs();
     this.bindLogin();
-    this.bindHomePanel();
     this.renderAll();
     I18n.apply();
 
@@ -263,7 +262,6 @@ const App = {
     this.renderToolRail();
     this.renderHomeToolCards();
     this.renderFeed();
-    this.renderHomePanel();
     this.renderAccount();
     this.renderButtonToggles();
     this.renderKbSettings();
@@ -294,13 +292,22 @@ const App = {
   bindTopbar() {
     document.getElementById('brandHome').onclick = () => this.showView('home');
     document.getElementById('btnRailHome').onclick = () => this.showView('home');
-    document.getElementById('btnSearchText').onclick = () => this.setSearchMode('text');
-    document.getElementById('btnSearchSemantic').onclick = () => this.setSearchMode('semantic');
+    document.getElementById('btnSearchMode').onclick = (e) => {
+      e.stopPropagation();
+      this.renderSearchModeMenu();
+      document.getElementById('searchModeMenu').classList.toggle('hidden');
+    };
+    document.getElementById('btnSearchExpand').onclick = () => {
+      const expanded = document.body.classList.toggle('search-expanded');
+      document.getElementById('btnSearchExpand').textContent = expanded ? '\u2923' : '\u2922';
+    };
     document.addEventListener('click', (e) => {
-      const menu = document.getElementById('kbPickerMenu');
-      if (menu && !menu.classList.contains('hidden') && !menu.contains(e.target)) {
-        menu.classList.add('hidden');
-      }
+      ['kbPickerMenu', 'searchModeMenu'].forEach(id => {
+        const menu = document.getElementById(id);
+        if (menu && !menu.classList.contains('hidden') && !menu.contains(e.target)) {
+          menu.classList.add('hidden');
+        }
+      });
     });
     document.getElementById('btnKbPicker').onclick = (e) => {
       e.stopPropagation();
@@ -472,7 +479,6 @@ const App = {
       this.currentKbId = null;
       this.currentCat = 'all';
       this.showView('home');
-      this.renderHomePanel();
     };
     menu.appendChild(all);
     KB.kbs.filter(kb => this.kbIsOn(kb.id)).forEach(kb => {
@@ -484,7 +490,6 @@ const App = {
         this.currentKbId = kb.id;
         this.currentCat = 'all';
         this.showView('home');
-        this.renderHomePanel();
         this.toast(`${kb.icon || '\ud83d\udcda'} ${kb.name[I18n.lang] || kb.name.ar}`);
       };
       menu.appendChild(b);
@@ -511,7 +516,6 @@ const App = {
         this.settings.kbEnabled[kb.id] = e.target.checked;
         await window.daaix.settingsSet({ kbEnabled: this.settings.kbEnabled });
         this.renderKbPicker();
-        this.renderHomePanel();
         this.toast(`${e.target.checked ? I18n.t('toolOn') : I18n.t('toolOff')} \u2014 ${name}`);
       };
       list.appendChild(row);
@@ -599,50 +603,6 @@ const App = {
     this.renderAll();
     statusEl.textContent = `${I18n.t('imported')}: ${res.count}`;
     this.toast(`${I18n.t('imported')}: ${res.count}`);
-  },
-
-  bindHomePanel() {
-    const strip = document.getElementById('homeKbStrip');
-    const panel = document.getElementById('homeKbPanel');
-    strip.addEventListener('mouseenter', () => panel.classList.remove('hidden'));
-    strip.addEventListener('mouseleave', () => panel.classList.add('hidden'));
-    panel.addEventListener('mouseenter', () => panel.classList.remove('hidden'));
-    panel.addEventListener('mouseleave', () => panel.classList.add('hidden'));
-    document.getElementById('hkHome').onclick = () => {
-      panel.classList.add('hidden');
-      this.showView('home');
-    };
-  },
-
-  renderHomePanel() {
-    const cats = document.getElementById('hkCats');
-    cats.innerHTML = '';
-    [['all', 'catAll'], ['legal', 'catLegal'], ['circulars', 'catCirculars'], ['rulings', 'catRulings'], ['agreements', 'catAgreements'], ['notes', 'catNotes']]
-      .forEach(([id, key]) => {
-        const b = document.createElement('button');
-        b.className = 'hk-cat' + (this.currentCat === id ? ' active' : '');
-        b.textContent = I18n.t(key);
-        b.onclick = () => {
-          this.currentCat = id;
-          this.currentKbId = null;
-          this.renderHomePanel();
-        };
-        cats.appendChild(b);
-      });
-    const docs = document.getElementById('hkDocs');
-    docs.innerHTML = '';
-    let hkDocs = KB.listByCat(this.currentCat, '');
-    if (this.currentKbId) hkDocs = hkDocs.filter(d => d.kbId === this.currentKbId);
-    hkDocs.slice(0, 20).forEach(doc => {
-      const item = document.createElement('div');
-      item.className = 'hk-doc';
-      item.innerHTML = `<span>${esc(doc.title[I18n.lang] || doc.title.ar || doc.title.en)}</span><span class="hk-type">${I18n.docTypeName(doc.type)}</span>`;
-      item.onclick = () => {
-        document.getElementById('homeKbPanel').classList.add('hidden');
-        this.openDocument(doc.id);
-      };
-      docs.appendChild(item);
-    });
   },
 
   async setLang(lang) {
@@ -827,13 +787,28 @@ const App = {
 
   /* ---------- search: textual + semantic modes, detailed result cards ---------- */
   searchMode: 'text',
+  searchCat: 'all',
 
   setSearchMode(mode) {
     this.searchMode = mode;
-    document.getElementById('btnSearchText').classList.toggle('active', mode === 'text');
-    document.getElementById('btnSearchSemantic').classList.toggle('active', mode === 'semantic');
+    document.getElementById('searchModeMenu').classList.add('hidden');
     const q = document.getElementById('globalSearch').value;
     if (q && q.trim().length >= 2) this.search(q);
+  },
+
+  renderSearchModeMenu() {
+    const menu = document.getElementById('searchModeMenu');
+    menu.innerHTML = '';
+    [
+      ['text', '\ud83d\udd0d', 'searchTextTitle'],
+      ['semantic', '\u2728', 'searchSemanticTitle']
+    ].forEach(([m, icon, key]) => {
+      const b = document.createElement('button');
+      b.className = 'kb-menu-item' + (this.searchMode === m ? ' active-mode' : '');
+      b.textContent = `${icon} ${I18n.t(key)}${this.searchMode === m ? ' \u2713' : ''}`;
+      b.onclick = () => this.setSearchMode(m);
+      menu.appendChild(b);
+    });
   },
 
   search(q) {
@@ -852,15 +827,26 @@ const App = {
     box.innerHTML = '';
     if (!active) return;
     const query = q.trim();
-    const results = this.searchMode === 'semantic' ? KB.searchSemantic(query, 30) : KB.search(query, 30);
+    const all = this.searchMode === 'semantic' ? KB.searchSemantic(query, 60) : KB.search(query, 60);
+    const results = this.searchCat === 'all' ? all : all.filter(r => r.doc.type === this.searchCat);
+
+    const kbName = this.currentKbId && KB.kbs.find(k => k.id === this.currentKbId)
+      ? KB.kbs.find(k => k.id === this.currentKbId).name[I18n.lang] || KB.kbs.find(k => k.id === this.currentKbId).name.ar
+      : I18n.t('chatAll');
 
     const head = document.createElement('div');
     head.className = 'sr-head';
+    const cats = [['all', 'catAll'], ['law', 'type_law_pl'], ['regulation', 'type_regulation_pl'],
+      ['decision', 'type_decision_pl'], ['agreement', 'type_agreement_pl'],
+      ['ruling', 'type_ruling_pl'], ['principle', 'type_principle_pl'], ['circular', 'type_circular_pl']];
     head.innerHTML = `
-      <button class="sr-mode ${this.searchMode === 'text' ? 'active' : ''}" data-m="text">🔍 ${I18n.t('searchTextTab')}</button>
-      <button class="sr-mode ${this.searchMode === 'semantic' ? 'active' : ''}" data-m="semantic">✨ ${I18n.t('searchSemanticTab')}</button>
-      <span class="sr-count">${results.length} ${I18n.t('resultsCount')}</span>`;
-    head.querySelectorAll('.sr-mode').forEach(b => { b.onclick = () => this.setSearchMode(b.dataset.m); });
+      <div class="sr-kbname">📚 ${esc(kbName)}</div>
+      <div class="sr-cats">${cats.map(([c, key]) =>
+        `<button class="sr-cat ${this.searchCat === c ? 'active' : ''}" data-cat="${c}">${I18n.t(key)}</button>`).join('')}</div>
+      <div class="sr-count">${results.length} ${I18n.t('resultsCount')}</div>`;
+    head.querySelectorAll('.sr-cat').forEach(b => {
+      b.onclick = () => { this.searchCat = b.dataset.cat; this.search(q); };
+    });
     box.appendChild(head);
 
     if (!results.length) {
@@ -876,7 +862,7 @@ const App = {
       const item = document.createElement('div');
       item.className = 'sr-item';
       item.innerHTML = `
-        <div class="sr-top"><div class="t">${esc(title)}</div><span class="chip type">${I18n.docTypeName(doc.type)}</span></div>
+        <div class="sr-top"><div class="t">${esc(title)}</div><span class="chip type t-${doc.type}">${I18n.docTypeName(doc.type)}</span></div>
         <a class="sr-open" href="#">${I18n.t('viewDetails')} ←</a>
         <div class="sr-props">
           <div><span>${I18n.t('docType')}:</span> ${I18n.docTypeName(doc.type)}</div>
@@ -1039,21 +1025,27 @@ const App = {
   renderOriginal(doc) {
     const wrap = document.getElementById('docOriginal');
     wrap.innerHTML = '';
-    document.getElementById('originalNote').textContent = I18n.t('originalNote');
-    if (doc.summary) {
-      const s = document.createElement('p');
-      s.className = 'doc-summary';
-      s.textContent = doc.summary[I18n.lang] || doc.summary.ar || doc.summary.en || '';
-      wrap.appendChild(s);
+    document.getElementById('originalNote').textContent = I18n.t('originalPdfNote');
+    const pdfUrl = doc.originalPdf || ((doc.sources || []).find(s => /\.pdf(\?|$)/i.test(s.url)) || {}).url;
+    if (pdfUrl) {
+      const frame = document.createElement('iframe');
+      frame.className = 'pdf-frame';
+      frame.src = pdfUrl;
+      wrap.appendChild(frame);
+      return;
     }
-    (doc.articles || []).forEach(a => {
-      const aTitle = a.title ? (a.title[I18n.lang] || a.title.ar || a.title.en || '') : '';
-      const card = document.createElement('div');
-      card.className = 'article-card';
-      card.innerHTML = `<div class="anum">${esc(a.num || '')}${aTitle ? ' — ' + esc(aTitle) : ''}</div><div>${esc(a.text || '')}</div>`;
-      wrap.appendChild(card);
-    });
-    if (doc.body) wrap.appendChild(renderMarkdown(doc.body));
+    const hint = document.createElement('p');
+    hint.className = 'hint';
+    hint.textContent = I18n.t('noOriginalPdf');
+    wrap.appendChild(hint);
+    const src = (doc.sources || [])[0];
+    if (src) {
+      const b = document.createElement('button');
+      b.className = 'primary';
+      b.textContent = I18n.t('openOfficialSource');
+      b.onclick = () => window.daaix.openExternal(src.url);
+      wrap.appendChild(b);
+    }
   },
 
   renderPublication(doc) {

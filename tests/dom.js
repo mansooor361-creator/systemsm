@@ -100,7 +100,7 @@ function bootDom() {
     assert(!doc.getElementById('btnKbMenu'), 'folder icon removed from topbar');
     assert(doc.getElementById('btnKbPicker'), 'KB picker button next to search');
     assert(doc.getElementById('btnKbPicker').textContent.includes('\uD83D\uDCDA'), 'picker icon is books, not folder');
-    assert(doc.getElementById('btnSearchText') && doc.getElementById('btnSearchSemantic'), 'search mode icon buttons');
+    assert(doc.getElementById('btnSearchMode') && doc.getElementById('btnSearchExpand') && doc.getElementById('searchModeMenu'), 'search mode dropdown button + expand button');
   });
   test('topbar action buttons hidden by default; drawer gear visible', () => {
     ['btnAgents', 'btnChat', 'btnGraph', 'btnTools', 'btnNotes'].forEach(id =>
@@ -128,7 +128,8 @@ function bootDom() {
   test('center tabs: original + publication reference panes', () => {
     doc.querySelector('#centerTabs [data-tab=original]').click();
     assert(!doc.getElementById('paneOriginal').classList.contains('hidden'));
-    assert(doc.getElementById('docOriginal').querySelectorAll('.article-card').length >= 3, 'original copy rendered');
+    assert(!doc.getElementById('docOriginal').querySelector('.article-card'), 'original tab is PDF-only, no text copy');
+    assert(doc.getElementById('docOriginal').querySelector('.hint'), 'noOriginalPdf hint when doc has no PDF');
     doc.querySelector('#centerTabs [data-tab=pub]').click();
     const pub = doc.getElementById('docPublication').textContent;
     assert(pub.includes('هيئة الخبراء بمجلس الوزراء'), 'publisher');
@@ -338,16 +339,11 @@ function bootDom() {
     btns[3].click();
     assert(!doc.getElementById('view-tools').classList.contains('hidden'), 'tool opens from rail');
   });
-  test('home hover panel shows categories + docs on strip hover', () => {
-    const strip = doc.getElementById('homeKbStrip');
-    const panel = doc.getElementById('homeKbPanel');
-    assert(panel.classList.contains('hidden'), 'panel hidden initially');
-    strip.dispatchEvent(new window.MouseEvent('mouseenter', { bubbles: true }));
-    assert(!panel.classList.contains('hidden'), 'panel appears on hover');
-    assert(doc.querySelectorAll('#hkCats .hk-cat').length === 6);
-    assert(doc.querySelectorAll('#hkDocs .hk-doc').length > 3, 'docs listed in panel');
-    strip.dispatchEvent(new window.MouseEvent('mouseleave', { bubbles: true }));
-    assert(panel.classList.contains('hidden'), 'panel disappears on leave');
+  test('home hover KB panel (strip + panel) permanently removed (v1.6.1)', () => {
+    assert(!doc.getElementById('homeKbStrip'), 'homeKbStrip removed');
+    assert(!doc.getElementById('homeKbPanel'), 'homeKbPanel removed');
+    assert(!doc.getElementById('hkCats'), 'hkCats removed');
+    assert(!doc.getElementById('hkDocs'), 'hkDocs removed');
   });
 
   console.log('\n— Agents @-context —');
@@ -450,7 +446,9 @@ function bootDom() {
     const items = doc.querySelectorAll('#searchResults .sr-item');
     assert(items.length >= 3, 'results visible under search');
     assert(doc.getElementById('updatesFeed').classList.contains('hidden'), 'feed hidden while searching');
-    assert(doc.querySelectorAll('#searchResults .sr-mode').length === 2, 'text/semantic mode tabs');
+    assert(doc.querySelector('#searchResults .sr-kbname'), 'searched KB name in results header');
+    assert(doc.querySelectorAll('#searchResults .sr-cat').length === 8, '8 classification chips centered');
+    assert(doc.querySelector('#searchResults .sr-cat.active').dataset.cat === 'all', 'all chip active by default');
     assert(doc.querySelector('#searchResults .sr-count').textContent.includes('3') ||
            doc.querySelector('#searchResults .sr-count').textContent.length > 1, 'result count shown');
     const first = items[0];
@@ -470,10 +468,61 @@ function bootDom() {
     input.dispatchEvent(new window.Event('input', { bubbles: true }));
     const items = doc.querySelectorAll('#searchResults .sr-item');
     assert(items.length >= 1, 'semantic results shown');
-    assert(doc.querySelector('#searchResults .sr-mode[data-m=semantic]').classList.contains('active'), 'semantic tab active');
+    assert(App.searchMode === 'semantic', 'semantic mode active');
     App.setSearchMode('text');
     input.value = '';
     input.dispatchEvent(new window.Event('input', { bubbles: true }));
+  });
+
+  console.log('\n— v1.6.1: mode dropdown, expand, category filter, PDF-only original —');
+  test('search mode button opens a dropdown with two options; selecting semantic switches mode', () => {
+    const btn = doc.getElementById('btnSearchMode');
+    const menu = doc.getElementById('searchModeMenu');
+    btn.click();
+    assert(!menu.classList.contains('hidden'), 'mode menu visible after click');
+    assert(menu.querySelectorAll('.kb-menu-item').length === 2, 'two mode options');
+    const items = menu.querySelectorAll('.kb-menu-item');
+    items[1].click();
+    assert(App.searchMode === 'semantic', 'semantic selected from dropdown');
+    assert(menu.classList.contains('hidden'), 'menu closes after selection');
+    App.setSearchMode('text');
+    assert(App.searchMode === 'text');
+  });
+  test('search expand button toggles full-width search', () => {
+    const btn = doc.getElementById('btnSearchExpand');
+    btn.click();
+    assert(doc.body.classList.contains('search-expanded'), 'body.search-expanded on');
+    btn.click();
+    assert(!doc.body.classList.contains('search-expanded'), 'body.search-expanded off');
+  });
+  test('category chip filters results by document type', () => {
+    App.showView('home');
+    const input = doc.getElementById('globalSearch');
+    input.value = 'العمل';
+    input.dispatchEvent(new window.Event('input', { bubbles: true }));
+    const lawChip = doc.querySelector('#searchResults .sr-cat[data-cat=law]');
+    assert(lawChip, 'law chip exists');
+    lawChip.click();
+    assert(App.searchCat === 'law', 'searchCat set to law');
+    const items = doc.querySelectorAll('#searchResults .sr-item');
+    assert(items.length >= 1, 'law-filtered results shown');
+    items.forEach(it => {
+      const chip = it.querySelector('.chip.type');
+      assert(chip && chip.classList.contains('t-law'), 'all filtered results are law type');
+    });
+    assert(doc.querySelector('#searchResults .sr-cat.active').dataset.cat === 'law', 'law chip active');
+    App.searchCat = 'all';
+    input.value = '';
+    input.dispatchEvent(new window.Event('input', { bubbles: true }));
+  });
+  test('original document tab shows official PDF frame only — no text, no editing', () => {
+    App.openDocument('sa-labor-law');
+    const pane = doc.getElementById('docOriginal');
+    assert(pane, 'original pane exists');
+    assert(!pane.querySelector('.article-card'), 'no textual article cards in original tab');
+    const hint = pane.querySelector('.hint');
+    assert(hint && hint.textContent.length > 5, 'noOriginalPdf hint for sample docs without PDF');
+    App.showView('home');
   });
 
   console.log('\n— Language toggle —');
