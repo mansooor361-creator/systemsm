@@ -34,9 +34,13 @@ const stubBridge = {
 
 let dom;
 let passed = 0, failed = 0;
-const test = (name, fn) => {
-  try { fn(); passed++; console.log('  ✓', name); }
-  catch (e) { failed++; console.error('  ✗', name, '\n   ', e.message); }
+const tests = [];
+const test = (name, fn) => { tests.push([name, fn]); };
+const runAll = async () => {
+  for (const [name, fn] of tests) {
+    try { await fn(); passed++; console.log('  ✓', name); }
+    catch (e) { failed++; console.error('  ✗', name, '\n   ', (e && e.message) || e); }
+  }
 };
 const assert = (c, m) => { if (!c) throw new Error(m || 'assertion failed'); };
 
@@ -82,10 +86,14 @@ function bootDom() {
   const Notes = window.eval('Notes');
 
   console.log('\n— Boot (redesigned) —');
-  test('boots; sidebar shows category tabs and flat doc list (no folders)', () => {
-    assert(doc.querySelectorAll('.cat-tab').length === 6);
-    assert(doc.querySelectorAll('#docList .doc-item').length === 9);
-    assert(doc.querySelectorAll('.kb-block').length === 0, 'folders removed');
+  test('boots; wide sidebar removed, narrow icon rail with home + kb icons', () => {
+    assert(!doc.getElementById('sidebar'), 'wide sidebar removed');
+    const rail = doc.getElementById('rail');
+    assert(rail, 'icon rail present');
+    ['btnRailHome', 'btnRailKb', 'btnAgents', 'btnChat', 'btnGraph', 'btnTools', 'btnNotes', 'btnDrawer']
+      .forEach(id => assert(rail.querySelector('#' + id), id + ' in rail'));
+    assert(doc.querySelector('#topbar .brand .logo'), 'logo-mark restored in topbar');
+    assert(!doc.getElementById('btnKbMenu'), 'folder icon removed from topbar');
   });
   test('topbar action buttons hidden by default; drawer gear visible', () => {
     ['btnAgents', 'btnChat', 'btnGraph', 'btnTools', 'btnNotes'].forEach(id =>
@@ -205,7 +213,9 @@ function bootDom() {
     await Agents.send();
     const answers = [...doc.querySelectorAll('#agentLog .chat-a .doc-body')];
     assert(answers.length >= 1, 'agent answered in chat');
-    assert(answers[answers.length - 1].textContent.includes('الأساس النظامي'), 'structured sections in answer');
+    const md = answers[answers.length - 1].textContent;
+    assert(!md.includes('لا توجد نصوص موثقة في قاعدة المعرفة لهذا القسم بعد'), 'no empty section placeholders');
+    assert(md.includes('المادة') || md.includes('نظام'), 'grounded KB passages in answer');
   });
   test('/ commands popup fills input', () => {
     const input = doc.getElementById('agentInput');
@@ -232,7 +242,7 @@ function bootDom() {
   });
   test('contract tool: generates structure + analyzes clauses', () => {
     Tools.open('contract');
-    assert(doc.querySelectorAll('#toolsMenu .tool-chip').length === 9, '9 tools now');
+    assert(doc.querySelectorAll('#toolsMenu .tool-chip').length === 11, '11 tools now');
     doc.getElementById('ctGen').click();
     const gen = doc.getElementById('ctOut').textContent;
     assert(gen.includes('أبجدية العقود'), 'contract alphabet in generated structure');
@@ -241,6 +251,41 @@ function bootDom() {
     const rep = doc.getElementById('ctOut').textContent;
     assert(rep.includes('بنود ناقصة'), 'missing clauses reported');
     assert(rep.includes('مطلق') || rep.includes('دون تحديد'), 'risky wording flagged');
+  });
+
+  test('social monitor: platforms, run without connector shows hint + KB context', async () => {
+    Tools.open('socialMonitor');
+    assert(doc.querySelectorAll('#smPlatforms input[type=checkbox]').length === 8, '8 platforms');
+    doc.getElementById('smTopic').value = 'مكافأة نهاية الخدمة';
+    doc.getElementById('smRun').click();
+    await new Promise(r => setTimeout(r, 150));
+    const rep = doc.getElementById('smOut').textContent;
+    assert(rep.includes('تقرير الرصد') || rep.includes('Monitoring report'), 'report rendered');
+    assert(rep.includes('مكافأة نهاية الخدمة'), 'topic in report');
+    assert(rep.includes('نظام العمل') || rep.includes('المادة'), 'KB regulatory context cited');
+  });
+  test('whatsapp responder: injected Q/A answered first, KB second, refusal otherwise', async () => {
+    Tools.open('whatsapp');
+    assert(doc.getElementById('waKb'), 'KB selector present');
+    doc.getElementById('waAddPair').click();
+    const pair = doc.querySelector('#waPairs .wa-pair');
+    pair.querySelector('input').value = 'كم عدد أيام الإجازة السنوية؟';
+    pair.querySelector('textarea').value = '21 يوماً حسب ما هو محفوظ محلياً.';
+    doc.getElementById('waTestQuery').value = 'كم عدد أيام الإجازة السنوية؟';
+    doc.getElementById('waTestBtn').click();
+    await new Promise(r => setTimeout(r, 50));
+    let out = doc.getElementById('waTestOut').textContent;
+    assert(out.includes('21 يوماً'), 'injected pair answered');
+    doc.getElementById('waTestQuery').value = 'ما أحكام مكافأة نهاية الخدمة عند الاستقالة؟';
+    doc.getElementById('waTestBtn').click();
+    await new Promise(r => setTimeout(r, 50));
+    out = doc.getElementById('waTestOut').textContent;
+    assert(out.includes('المادة') || out.includes('مكافأة'), 'KB-grounded answer');
+    doc.getElementById('waTestQuery').value = 'ما سعر البيتكوين اليوم؟';
+    doc.getElementById('waTestBtn').click();
+    await new Promise(r => setTimeout(r, 50));
+    out = doc.getElementById('waTestOut').textContent;
+    assert(out.includes('لن يرد المستجيب بتخمين'), 'refusal when nothing documented');
   });
 
   console.log('\n— Notes & drawer —');
@@ -277,8 +322,8 @@ function bootDom() {
   });
 
   console.log('\n— KB menu + home hover panel —');
-  test('KB icon menu lists knowledge bases and sources', () => {
-    doc.getElementById('btnKbMenu').click();
+  test('rail KB icon menu lists knowledge bases and sources', () => {
+    doc.getElementById('btnRailKb').click();
     const menu = doc.getElementById('kbMenu');
     assert(!menu.classList.contains('hidden'));
     assert(menu.textContent.includes('قانون وتشريعات'));
@@ -328,10 +373,11 @@ function bootDom() {
     assert(doc.documentElement.dir === 'ltr');
     App.openDocument('sa-labor-law');
     assert(doc.querySelector('#docHeader h1').textContent.includes('Labor Law'));
-    assert(doc.getElementById('docProps').textContent.includes('In Force (Amended)'));
+    assert(doc.querySelector('#docHeader .doc-info').textContent.includes('In Force (Amended)'));
     await App.setLang('ar');
   });
 
+  await runAll();
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);
 })().catch(e => { console.error('FATAL', e && (e.stack || e.message) || e); process.exit(1); });

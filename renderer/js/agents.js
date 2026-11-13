@@ -136,7 +136,6 @@ const AGENTS = [
 const Agents = {
   current: null,
   sessions: {},
-  outputs: {},
   logs: {},
   context: [],
 
@@ -354,7 +353,7 @@ const Agents = {
     log.scrollTop = log.scrollHeight;
 
     const brief = `${label}: ${msg}`;
-    const scopeIds = this.contextScopeIds() || (agent.scope ? new Set(agent.scope) : null);
+    const scopeIds = this.contextScopeIds();
     const kbRes = Retrieval.extractiveAnswer(brief, { scopeDocIds: scopeIds, topK: 10 });
 
     let external = [];
@@ -403,34 +402,22 @@ const Agents = {
   },
 
   extractiveRun(agent, inputs, kbRes, external) {
-    const lang = I18n.lang;
+    const hasKb = (kbRes.passages || []).length > 0;
+    if (!hasKb && !external.length) {
+      return {
+        markdown: `> [!WARNING]\n> ${I18n.t('chatNoAnswer')}`,
+        citations: [],
+        mode: 'extractive'
+      };
+    }
+
     const lines = [];
-    lines.push(`# ${agent.label[lang] || agent.label.ar}`);
-    lines.push('');
-    lines.push(`> ${I18n.t('chatGrounded')} — ${new Date().toLocaleDateString()}`);
-    lines.push('');
-
-    agent.sections.forEach(sec => {
-      lines.push(`## ${sec.title[lang] || sec.title.ar}`);
+    if (kbRes.answer && kbRes.answer !== I18n.t('chatNoAnswer')) {
+      lines.push(kbRes.answer);
       lines.push('');
-      const relevant = this.passagesForSection(sec.key, kbRes.passages);
-      if (relevant.length) {
-        relevant.forEach((p, i) => {
-          const art = p.articleNum ? ` (${p.articleNum})` : '';
-          lines.push(`**${p.docTitle}${art}**`);
-          lines.push(`> ${p.text}`);
-          lines.push('');
-        });
-      } else {
-        lines.push(lang === 'ar'
-          ? '— لا توجد نصوص موثقة في قاعدة المعرفة لهذا القسم بعد؛ أكمل الحقول أو أضف مصادر عبر الموصلات.'
-          : '— No documented KB passages for this section yet; complete the fields or add sources via connectors.');
-        lines.push('');
-      }
-    });
-
+    }
     if (external.length) {
-      lines.push(`## ${I18n.t('externalSources')}`);
+      lines.push(`**${I18n.t('externalSources')}**`);
       lines.push('');
       external.forEach(e => {
         lines.push(`**${e.name}**`);
@@ -438,36 +425,17 @@ const Agents = {
         lines.push('');
       });
     }
-
-    lines.push(`---`);
+    lines.push('---');
     lines.push(`*${I18n.t('agentDisclaimer')}*`);
     lines.push('');
-    lines.push(`${I18n.t('chatCitations')}: ${kbRes.citations.map((c, i) => `[${i + 1}] ${c.docTitle}${c.articleNum ? ' (' + c.articleNum + ')' : ''}`).join(' · ') || '—'}`);
+    lines.push(`${I18n.t('chatCitations')}: ${(kbRes.citations || []).map((c, i) => `[${i + 1}] ${c.docTitle}${c.articleNum ? ' (' + c.articleNum + ')' : ''}`).join(' · ') || '—'}`);
 
     return { markdown: lines.join('\n'), citations: kbRes.citations, mode: 'extractive' };
-  },
-
-  passagesForSection(key, passages) {
-    const hints = {
-      summary: null, basis: ['مادة', 'نظام', 'لائحة', 'article'], risks: ['مخاطر', 'غير مشروع', 'جزاء', 'risk'],
-      actions: ['يجب', 'على', 'طلب', 'steps'], header: [], facts: ['وقائع', 'facts'],
-      grounds: ['مادة', 'استناد', 'مبدأ', 'cites'], requests: ['طلب', 'طلبية', 'request'],
-      classification: null, roadmap: ['مرحلة', 'مدة', 'stage'], evidence: ['إثبات', 'دليل', 'evidence'],
-      defenses: ['دفوع', 'دفاع', 'defense'], costs: ['رسوم', 'مكافأة', 'تكلفة', 'fee'],
-      structure: null, clauses: ['شرط', 'بند', 'التزام', 'clause'], governing: ['قانون', 'تحكيم', 'اختصاص'],
-      intro: null, framework: ['نظام', 'لائحة', 'قرار'], analysis: null,
-      findings: null, refs: null, scope: null, controls: ['ضوابط', 'اشتراطات'], register: ['مخاطر', 'خطر']
-    };
-    const hint = hints[key];
-    if (!hint) return passages.slice(0, 3);
-    const matched = passages.filter(p => hint.some(h => p.text.toLowerCase().includes(h)));
-    return matched.length ? matched.slice(0, 3) : passages.slice(0, 2);
   },
 
   async llmRun(agent, inputs, brief, kbRes, external) {
     const lang = I18n.lang;
     const llm = window.daaixSettings.llm;
-    const template = agent.sections.map(s => `- ${s.title[lang] || s.title.ar}`).join('\n');
 
     const context = kbRes.passages.map((p, i) =>
       `[${i + 1}] (${p.docId}${p.articleNum ? ' — ' + p.articleNum : ''}) ${p.docTitle}\n${p.text}`
@@ -479,9 +447,9 @@ const Agents = {
     const system = [
       lang === 'ar' ? 'أنت وكيل ذكاء اصطناعي قانوني في منصة DaAIx.' : 'You are a legal AI agent in the DaAIx platform.',
       lang === 'ar' ? `مهمتك: ${agent.desc.ar}` : `Your task: ${agent.desc.en}`,
-      'STRICT RULES: Use ONLY the provided knowledge-base passages and external sources. Never invent laws, articles, numbers or dates. Cite passages inline with [n]. If a section lacks documented material, state that explicitly and keep it as a structured skeleton.',
+      'STRICT RULES: Use ONLY the provided knowledge-base passages and external sources. Never invent laws, articles, numbers or dates. Cite passages inline with [n]. Answer concisely and directly — no rigid section templates. If the context does not contain the answer, reply exactly with the refusal sentence you are given below.',
       lang === 'ar' ? 'أجب بالعربية الفصحى بصيغة Markdown.' : 'Answer in English in Markdown.',
-      `OUTPUT SECTIONS (follow exactly):\n${template}`
+      `REFUSAL SENTENCE: ${I18n.t('chatNoAnswer')}`
     ].join('\n');
 
     const history = (this.sessions[this.current] || []).slice(-6);
@@ -510,39 +478,5 @@ const Agents = {
       fallback.mode = 'extractive-fallback';
       return fallback;
     }
-  },
-
-  renderOutput(result) {
-    const out = document.getElementById('agentOutput');
-    out.innerHTML = '';
-    const card = document.createElement('div');
-    card.className = 'result-card agent-result';
-    card.appendChild(renderMarkdown(result.markdown));
-
-    const actions = document.createElement('div');
-    actions.className = 'note-actions';
-
-    const saveBtn = document.createElement('button');
-    saveBtn.className = 'primary';
-    saveBtn.textContent = '💾 ' + I18n.t('importToNotes');
-    saveBtn.onclick = async () => {
-      const titleMatch = result.markdown.match(/^#\s+(.+)$/m);
-      const id = 'agent-' + this.current + '-' + Date.now();
-      await window.daaix.notesSave({ id, markdown: result.markdown });
-      Notes.refresh();
-      App.toast(I18n.t('save') + ' ✓');
-    };
-
-    const copyBtn = document.createElement('button');
-    copyBtn.className = 'primary';
-    copyBtn.textContent = '📋 ' + I18n.t('copy');
-    copyBtn.onclick = () => {
-      navigator.clipboard.writeText(result.markdown).then(() => App.toast(I18n.t('copied')));
-    };
-
-    actions.appendChild(saveBtn);
-    actions.appendChild(copyBtn);
-    card.appendChild(actions);
-    out.appendChild(card);
   }
 };

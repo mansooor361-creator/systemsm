@@ -13,7 +13,9 @@ const Tools = {
       { id: 'competition', icon: '🏆', label: I18n.t('toolCompetition') },
       { id: 'offers', icon: '📊', label: I18n.t('toolOffers') },
       { id: 'building', icon: '🏗️', label: I18n.t('toolBuilding') },
-      { id: 'contract', icon: '📝', label: I18n.t('toolContract') }
+      { id: 'contract', icon: '📝', label: I18n.t('toolContract') },
+      { id: 'socialMonitor', icon: '📡', label: I18n.t('toolSocial') },
+      { id: 'whatsapp', icon: '💬', label: I18n.t('toolWhatsapp') }
     ];
   },
 
@@ -481,6 +483,267 @@ const Tools = {
       const card = document.createElement('div');
       card.className = 'result-card';
       card.appendChild(renderMarkdown(lines.join('\n')));
+      out.appendChild(card);
+    };
+  },
+
+  /* ============ 10. Social media topic monitoring ============ */
+  SOCIAL_PLATFORMS: [
+    { id: 'x', icon: '𝕏', key: 'platformX' },
+    { id: 'facebook', icon: '📘', key: 'platformFacebook' },
+    { id: 'instagram', icon: '📸', key: 'platformInstagram' },
+    { id: 'tiktok', icon: '🎵', key: 'platformTikTok' },
+    { id: 'linkedin', icon: '💼', key: 'platformLinkedIn' },
+    { id: 'snapchat', icon: '👻', key: 'platformSnapchat' },
+    { id: 'youtube', icon: '▶️', key: 'platformYouTube' },
+    { id: 'other', icon: '🌐', key: 'platformOther' }
+  ],
+
+  render_socialMonitor(panel) {
+    const box = this.el(`
+      <div>
+        <h2>📡 ${I18n.t('toolSocial')}</h2>
+        <p class="hint">${I18n.t('socialDesc')}</p>
+        <label style="display:block;margin-bottom:10px">${I18n.t('socialTopic')}
+          <textarea id="smTopic" rows="2" placeholder="${I18n.t('socialTopicPh')}" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px;outline:none"></textarea>
+        </label>
+        <div style="margin-bottom:10px">
+          <div class="side-section-title" style="margin:0 0 6px">${I18n.t('socialPlatforms')}</div>
+          <div id="smPlatforms" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+        </div>
+        <button id="smRun" class="primary">▶ ${I18n.t('socialRun')}</button>
+        <div id="smOut" style="margin-top:14px"></div>
+      </div>`);
+    panel.appendChild(box);
+
+    const plWrap = box.querySelector('#smPlatforms');
+    this.SOCIAL_PLATFORMS.forEach((p, i) => {
+      const label = document.createElement('label');
+      label.className = 'check-item';
+      label.style.cssText = 'background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 10px';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = i < 5;
+      cb.dataset.pl = p.id;
+      const span = document.createElement('span');
+      span.textContent = `${p.icon} ${I18n.t(p.key)}`;
+      label.appendChild(cb);
+      label.appendChild(span);
+      plWrap.appendChild(label);
+    });
+
+    box.querySelector('#smRun').onclick = async () => {
+      const out = box.querySelector('#smOut');
+      const topic = box.querySelector('#smTopic').value.trim();
+      out.innerHTML = '';
+      if (!topic) { out.innerHTML = `<p class="hint">—</p>`; return; }
+      out.innerHTML = `<div class="hint">${I18n.t('loading')}</div>`;
+
+      const platforms = [...plWrap.querySelectorAll('input:checked')].map(c => c.dataset.pl);
+      const lines = [];
+      lines.push(`# ${I18n.t('socialReport')} — ${topic}`);
+      lines.push('');
+
+      const connectors = ((window.daaixSettings || {}).connectors || []).filter(c => c.enabled !== false && c.url);
+      const posts = [];
+      for (const c of connectors) {
+        try {
+          const res = await window.daaix.netPost(c.url, c.apiKey || '', {
+            mode: 'social-monitor', query: topic, platforms, lang: I18n.lang
+          });
+          if (res && Array.isArray(res.posts)) posts.push(...res.posts.map(x => ({ ...x, source: c.name || c.url })));
+        } catch (e) { /* connector offline: skip */ }
+      }
+
+      if (posts.length) {
+        lines.push(`## ${I18n.t('socialPosts')} (${posts.length})`);
+        lines.push('');
+        posts.slice(0, 20).forEach(p => {
+          const pl = (this.SOCIAL_PLATFORMS.find(x => x.id === p.platform) || {}).icon || '🌐';
+          lines.push(`- ${pl} **${p.author || '—'}** (${p.platform || '—'}) — ${I18n.t('socialEngagement')}: ${p.engagement != null ? p.engagement : '—'} · ${I18n.t('socialReplies')}: ${p.replies != null ? p.replies : '—'}`);
+          if (p.text) lines.push(`  > ${String(p.text).slice(0, 220)}`);
+          if (p.url) lines.push(`  [${I18n.t('sourceLink')}](${p.url})`);
+        });
+        lines.push('');
+        const byPlat = {};
+        posts.forEach(p => {
+          const k = p.platform || '—';
+          byPlat[k] = (byPlat[k] || 0) + (Number(p.engagement) || 0);
+        });
+        const top = Object.entries(byPlat).sort((a, b) => b[1] - a[1])[0];
+        if (top) {
+          lines.push(`## ${I18n.t('socialAnalysis')}`);
+          lines.push('');
+          lines.push(`- ${I18n.t('socialTopPlatform')}: **${top[0]}** (${top[1]})`);
+          lines.push(`- ${I18n.t('socialTotalEngagement')}: ${Object.values(byPlat).reduce((a, b) => a + b, 0)}`);
+          lines.push('');
+        }
+      } else {
+        lines.push('> [!WARNING] ' + I18n.t('socialNeedConnector'));
+        lines.push('');
+        lines.push(`## ${I18n.t('socialAnalysis')}`);
+        lines.push('');
+        lines.push(`- ${I18n.t('socialMetric1')}`);
+        lines.push(`- ${I18n.t('socialMetric2')}`);
+        lines.push(`- ${I18n.t('socialMetric3')}`);
+        lines.push('');
+      }
+
+      const kbRes = Retrieval.extractiveAnswer(topic, { topK: 5 });
+      if ((kbRes.passages || []).length) {
+        lines.push(`## ${I18n.t('socialContext')}`);
+        lines.push('');
+        kbRes.passages.slice(0, 3).forEach(p => {
+          lines.push(`**${p.docTitle}${p.articleNum ? ' (' + p.articleNum + ')' : ''}**`);
+          lines.push(`> ${p.text}`);
+          lines.push('');
+        });
+        lines.push(`${I18n.t('chatCitations')}: ${(kbRes.citations || []).map((c, i) => `[${i + 1}] ${c.docTitle}`).join(' · ')}`);
+        lines.push('');
+      }
+      lines.push('---');
+      lines.push(`*${I18n.t('agentDisclaimer')}*`);
+
+      out.innerHTML = '';
+      const card = document.createElement('div');
+      card.className = 'result-card';
+      card.appendChild(renderMarkdown(lines.join('\n')));
+      out.appendChild(card);
+    };
+  },
+
+  /* ============ 11. WhatsApp knowledge-base auto-responder ============ */
+  render_whatsapp(panel) {
+    const kbOptions = KB.kbs.map(kb =>
+      `<option value="${kb.id}">${kb.icon || '📚'} ${kb.name[I18n.lang] || kb.name.ar}</option>`
+    ).join('');
+    const box = this.el(`
+      <div>
+        <h2>💬 ${I18n.t('toolWhatsapp')}</h2>
+        <p class="hint">${I18n.t('waDesc')}</p>
+        <div class="form-grid">
+          <label>${I18n.t('waKb')}
+            <select id="waKb">${kbOptions}</select>
+          </label>
+          <label>${I18n.t('waApiUrl')}
+            <input id="waUrl" type="url" placeholder="https://messages.example.com/webhook" />
+          </label>
+          <label>${I18n.t('waApiKey')}
+            <input id="waKey" type="password" autocomplete="off" />
+          </label>
+        </div>
+        <div style="margin:14px 0 6px" class="side-section-title">${I18n.t('waQa')}</div>
+        <div id="waPairs"></div>
+        <div style="display:flex;gap:8px;margin:10px 0">
+          <button id="waAddPair" class="primary">➕ ${I18n.t('waAddPair')}</button>
+          <button id="waSave" class="primary">💾 ${I18n.t('waSave')}</button>
+        </div>
+        <hr style="margin:18px 0;border-color:var(--border)" />
+        <div class="side-section-title" style="margin:0 0 6px">${I18n.t('waTest')}</div>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <input id="waTestQuery" type="text" placeholder="${I18n.t('waTestPh')}" style="flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px;outline:none" />
+          <button id="waTestBtn" class="primary">➤</button>
+        </div>
+        <div id="waTestOut"></div>
+      </div>`);
+    panel.appendChild(box);
+
+    const KEY = 'daaix-whatsapp';
+    const cfg = JSON.parse(localStorage.getItem(KEY) || '{}');
+    if (cfg.kbId) box.querySelector('#waKb').value = cfg.kbId;
+    if (cfg.url) box.querySelector('#waUrl').value = cfg.url;
+    if (cfg.apiKey) box.querySelector('#waKey').value = cfg.apiKey;
+
+    const pairsWrap = box.querySelector('#waPairs');
+    const addPair = (q, a) => {
+      const row = document.createElement('div');
+      row.className = 'wa-pair';
+      row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 34px;gap:6px;margin-bottom:6px';
+      row.innerHTML = `
+        <input type="text" placeholder="${I18n.t('waQ')}" value="${esc(q || '')}" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px;outline:none" />
+        <textarea rows="1" placeholder="${I18n.t('waA')}" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px;outline:none">${esc(a || '')}</textarea>
+        <button class="danger">✕</button>`;
+      row.querySelector('button').onclick = () => row.remove();
+      pairsWrap.appendChild(row);
+    };
+    (cfg.pairs || []).forEach(pr => addPair(pr.q, pr.a));
+    box.querySelector('#waAddPair').onclick = () => addPair('', '');
+
+    box.querySelector('#waSave').onclick = () => {
+      const pairs = [...pairsWrap.querySelectorAll('.wa-pair')].map(row => ({
+        q: row.querySelector('input').value.trim(),
+        a: row.querySelector('textarea').value.trim()
+      })).filter(pr => pr.q && pr.a);
+      const data = {
+        kbId: box.querySelector('#waKb').value,
+        url: box.querySelector('#waUrl').value.trim(),
+        apiKey: box.querySelector('#waKey').value.trim(),
+        pairs
+      };
+      localStorage.setItem(KEY, JSON.stringify(data));
+      App.toast('✓ ' + I18n.t('waSaved'));
+    };
+
+    const answerFor = (query) => {
+      const cfgNow = JSON.parse(localStorage.getItem(KEY) || '{}');
+      const norm = (x) => String(x || '').toLowerCase().replace(/[\u064B-\u065F\u0640]/g, '').replace(/\s+/g, ' ').trim();
+      const qn = norm(query);
+      const uiPairs = [...pairsWrap.querySelectorAll('.wa-pair')].map(row => ({
+        q: row.querySelector('input').value.trim(),
+        a: row.querySelector('textarea').value.trim()
+      })).filter(pr => pr.q && pr.a);
+      const allPairs = [...uiPairs, ...((cfgNow.pairs || []))];
+      const pair = allPairs.find(pr => qn && (norm(pr.q) === qn || norm(pr.q).includes(qn) || qn.includes(norm(pr.q))));
+      if (pair) return { reply: pair.a, source: 'injected' };
+
+      const kbId = cfgNow.kbId || (box.querySelector('#waKb') || {}).value;
+      const ids = new Set(KB.index.filter(e => e.kbId === kbId).map(e => e.doc.id));
+      const kbRes = Retrieval.extractiveAnswer(query, {
+        scopeDocIds: ids.size ? ids : new Set(['__none__']),
+        topK: 6
+      });
+      if ((kbRes.passages || []).length) {
+        return { reply: kbRes.answer, source: 'kb', citations: kbRes.citations };
+      }
+      return { reply: I18n.t('waNoMatch'), source: 'none' };
+    };
+
+    box.querySelector('#waTestBtn').onclick = async () => {
+      const out = box.querySelector('#waTestOut');
+      const query = box.querySelector('#waTestQuery').value.trim();
+      out.innerHTML = '';
+      if (!query) { out.innerHTML = '<p class="hint">—</p>'; return; }
+      const r = answerFor(query);
+      const lines = [];
+      lines.push(`**${I18n.t('waReply')}:**`);
+      lines.push('');
+      if (r.source === 'kb') lines.push(r.reply);
+      else lines.push(`> ${r.reply}`);
+      lines.push('');
+      lines.push(`— ${r.source === 'injected' ? I18n.t('waFromInjected') : r.source === 'kb' ? I18n.t('ctxKb') : I18n.t('waNoMatch')}`);
+      if (r.citations && r.citations.length) {
+        lines.push(`${I18n.t('chatCitations')}: ${r.citations.map((c, i) => `[${i + 1}] ${c.docTitle}${c.articleNum ? ' (' + c.articleNum + ')' : ''}`).join(' · ')}`);
+      }
+      const card = document.createElement('div');
+      card.className = 'result-card';
+      card.appendChild(renderMarkdown(lines.join('\n')));
+
+      const url = box.querySelector('#waUrl').value.trim();
+      const key = box.querySelector('#waKey').value.trim();
+      if (url) {
+        const sendBtn = document.createElement('button');
+        sendBtn.className = 'primary';
+        sendBtn.textContent = '📤 ' + I18n.t('waSend');
+        sendBtn.onclick = async () => {
+          try {
+            await window.daaix.netPost(url, key, { mode: 'whatsapp-reply', from: query, reply: r.reply });
+            App.toast('✓ ' + I18n.t('waSent'));
+          } catch (e) {
+            App.toast('⚠ ' + I18n.t('waSendFailed'));
+          }
+        };
+        card.appendChild(sendBtn);
+      }
       out.appendChild(card);
     };
   }

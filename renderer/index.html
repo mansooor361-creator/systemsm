@@ -10,32 +10,27 @@
 
   <header id="topbar">
     <div class="brand">
-      <button id="btnKbMenu" class="tb-btn kb-icon" data-i18n-title="kbIconTitle">🗂️</button>
+      <img src="assets/logo-mark.png" class="logo" alt="DaAIx" />
       <span class="brand-name" id="brandHome">DaAIx</span>
-      <div id="kbMenu" class="kb-menu hidden"></div>
     </div>
     <input id="globalSearch" type="search" data-i18n-ph="search" autocomplete="off" />
-    <div class="topbar-actions" id="topbarActions">
-      <button id="btnAgents" class="tb-btn" data-i18n-title="agents">🤖</button>
-      <button id="btnChat" class="tb-btn" data-i18n-title="chat">💬</button>
-      <button id="btnGraph" class="tb-btn" data-i18n-title="graph">🕸️</button>
-      <button id="btnTools" class="tb-btn" data-i18n-title="tools">🧰</button>
-      <button id="btnNotes" class="tb-btn" data-i18n-title="notes">📝</button>
-    </div>
-    <button id="btnDrawer" class="tb-btn" title="⚙️">⚙️</button>
   </header>
 
   <div id="layout">
-    <aside id="sidebar">
-      <div class="side-section-title" data-i18n="kbs"></div>
-      <div id="catTabs" class="cat-tabs"></div>
-      <input id="sideSearch" type="search" data-i18n-ph="search" autocomplete="off" />
-      <div id="docList" class="doc-list"></div>
-      <div class="sidebar-footer">
-        <a href="#" id="siteLink" class="site-link">smartk-ai.com</a>
-        <span id="appVersion" class="ver"></span>
-      </div>
-    </aside>
+    <nav id="rail">
+      <button id="btnRailHome" class="rail-btn" data-i18n-title="home">🏠</button>
+      <button id="btnRailKb" class="rail-btn" data-i18n-title="kbIconTitle">🗂️</button>
+      <div class="rail-sep"></div>
+      <button id="btnAgents" class="tb-btn rail-btn" data-i18n-title="agents">🤖</button>
+      <button id="btnChat" class="tb-btn rail-btn" data-i18n-title="chat">💬</button>
+      <button id="btnGraph" class="tb-btn rail-btn" data-i18n-title="graph">🕸️</button>
+      <button id="btnTools" class="tb-btn rail-btn" data-i18n-title="tools">🧰</button>
+      <button id="btnNotes" class="tb-btn rail-btn" data-i18n-title="notes">📝</button>
+      <div class="rail-spacer"></div>
+      <span id="appVersion" class="rail-ver"></span>
+      <button id="btnDrawer" class="tb-btn rail-btn" title="⚙️">⚙️</button>
+      <div id="kbMenu" class="kb-menu hidden"></div>
+    </nav>
 
     <main id="main">
       <!-- Home -->
@@ -241,6 +236,9 @@
       </div>
       <div class="drawer-section">
         <button id="btnFullSettings" class="primary wide-btn">⚙️ <span data-i18n="settings"></span></button>
+      </div>
+      <div class="drawer-footer">
+        <a href="#" id="siteLink" class="site-link">smartk-ai.com</a>
       </div>
     </div>
   </aside>

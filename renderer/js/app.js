@@ -183,7 +183,11 @@ const Chat = {
 
     const aEl = document.createElement('div');
     aEl.className = 'chat-a';
-    aEl.appendChild(renderMarkdown(res.answer));
+    if (!res.passages || !res.passages.length) {
+      aEl.appendChild(renderMarkdown(`> [!WARNING]\n> ${res.answer}`));
+    } else {
+      aEl.appendChild(renderMarkdown(res.answer));
+    }
 
     if (res.passages && res.passages.length) {
       const cites = document.createElement('div');
@@ -253,8 +257,6 @@ const App = {
   renderAll() {
     this.applyTopbarButtons();
     this.renderKbMenu();
-    this.renderCatTabs();
-    this.renderDocList();
     this.renderQuickCards();
     this.renderFeed();
     this.renderHomePanel();
@@ -285,7 +287,8 @@ const App = {
 
   bindTopbar() {
     document.getElementById('brandHome').onclick = () => this.showView('home');
-    document.getElementById('btnKbMenu').onclick = (e) => {
+    document.getElementById('btnRailHome').onclick = () => this.showView('home');
+    document.getElementById('btnRailKb').onclick = (e) => {
       e.stopPropagation();
       document.getElementById('kbMenu').classList.toggle('hidden');
     };
@@ -309,14 +312,15 @@ const App = {
     document.getElementById('globalSearch').addEventListener('input', (e) => {
       this.search(e.target.value);
     });
-    document.getElementById('sideSearch').addEventListener('input', (e) => {
-      this.renderDocList(e.target.value);
-    });
   },
 
   bindDrawer() {
     document.getElementById('btnDrawerClose').onclick = () => this.closeDrawer();
     document.getElementById('drawerOverlay').onclick = () => this.closeDrawer();
+    document.getElementById('siteLink').onclick = (e) => {
+      e.preventDefault();
+      window.daaix.openExternal('https://smartk-ai.com/');
+    };
     document.getElementById('drawerLang').onchange = async (e) => {
       await this.setLang(e.target.value);
     };
@@ -460,8 +464,9 @@ const App = {
         menu.classList.add('hidden');
         this.currentKbId = kb.id;
         this.currentCat = 'all';
-        this.renderCatTabs();
-        this.renderDocList('');
+        this.showView('home');
+        this.renderHomePanel();
+        this.toast(`${kb.icon || '📚'} ${kb.name[I18n.lang] || kb.name.ar}`);
       };
       menu.appendChild(b);
     });
@@ -476,8 +481,8 @@ const App = {
         menu.classList.add('hidden');
         this.currentKbId = null;
         this.currentCat = key === 'kbJudgments' ? 'rulings' : 'legal';
-        this.renderCatTabs();
-        this.renderDocList('');
+        this.showView('home');
+        this.renderHomePanel();
         this.toast(I18n.t(key));
       };
       menu.appendChild(b);
@@ -508,15 +513,15 @@ const App = {
         b.onclick = () => {
           this.currentCat = id;
           this.currentKbId = null;
-          this.renderCatTabs();
-          this.renderDocList('');
           this.renderHomePanel();
         };
         cats.appendChild(b);
       });
     const docs = document.getElementById('hkDocs');
     docs.innerHTML = '';
-    KB.listByCat(this.currentCat, '').slice(0, 20).forEach(doc => {
+    let hkDocs = KB.listByCat(this.currentCat, '');
+    if (this.currentKbId) hkDocs = hkDocs.filter(d => d.kbId === this.currentKbId);
+    hkDocs.slice(0, 20).forEach(doc => {
       const item = document.createElement('div');
       item.className = 'hk-doc';
       item.innerHTML = `<span>${esc(doc.title[I18n.lang] || doc.title.ar || doc.title.en)}</span><span class="hk-type">${I18n.docTypeName(doc.type)}</span>`;
@@ -715,43 +720,6 @@ const App = {
     });
   },
 
-  /* ---------- sidebar: categories + search list ---------- */
-  renderCatTabs() {
-    const tabs = document.getElementById('catTabs');
-    tabs.innerHTML = '';
-    [['all', 'catAll'], ['legal', 'catLegal'], ['circulars', 'catCirculars'], ['rulings', 'catRulings'], ['agreements', 'catAgreements'], ['notes', 'catNotes']]
-      .forEach(([id, key]) => {
-        const tab = document.createElement('button');
-        tab.className = 'cat-tab' + (this.currentCat === id ? ' active' : '');
-        tab.textContent = I18n.t(key);
-        tab.onclick = () => {
-          this.currentCat = id;
-          this.currentKbId = null;
-          this.renderCatTabs();
-          this.renderDocList(document.getElementById('sideSearch').value);
-        };
-        tabs.appendChild(tab);
-      });
-  },
-
-  renderDocList(query) {
-    const list = document.getElementById('docList');
-    list.innerHTML = '';
-    let docs = KB.listByCat(this.currentCat, query || '');
-    if (this.currentKbId) docs = docs.filter(d => d.kbId === this.currentKbId);
-    if (!docs.length) {
-      list.innerHTML = `<p class="hint" style="padding:12px">—</p>`;
-      return;
-    }
-    docs.forEach(doc => {
-      const item = document.createElement('div');
-      item.className = 'doc-item' + (doc.id === this.currentDocId ? ' active' : '');
-      const title = doc.title[I18n.lang] || doc.title.ar || doc.title.en;
-      item.innerHTML = `<span class="doc-item-title">${esc(title)}</span><span class="doc-item-type">${I18n.docTypeName(doc.type)}</span>`;
-      item.onclick = () => this.openDocument(doc.id);
-      list.appendChild(item);
-    });
-  },
 
   search(q) {
     const box = document.getElementById('searchResults');
@@ -846,7 +814,6 @@ const App = {
     this.currentDocId = id;
     this.editing = false;
     this.showView('doc');
-    this.renderDocList(document.getElementById('sideSearch').value);
 
     const title = doc.title[I18n.lang] || doc.title.ar || doc.title.en;
     const header = document.getElementById('docHeader');
