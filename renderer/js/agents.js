@@ -137,6 +137,8 @@ const Agents = {
   current: null,
   sessions: {},
   outputs: {},
+  logs: {},
+  context: [],
 
   list() { return AGENTS; },
 
@@ -161,6 +163,15 @@ const Agents = {
     });
   },
 
+  commands() {
+    return [
+      { ar: 'لخّص الأساس النظامي للموضوع', en: 'Summarize the legal basis' },
+      { ar: 'اذكر المخاطر الرئيسية', en: 'List key risks' },
+      { ar: 'اقترح خطوات تنفيذية', en: 'Suggest action steps' }
+    ];
+  },
+
+  /* Copilot-style chat interface: ask anything, @ for context, / for commands */
   render() {
     const agent = this.get(this.current);
     const ws = document.getElementById('agentWorkspace');
@@ -171,99 +182,179 @@ const Agents = {
     head.textContent = agent.desc[I18n.lang] || agent.desc.ar;
     ws.appendChild(head);
 
-    const form = document.createElement('div');
-    form.className = 'form-grid';
-    agent.fields.forEach(f => {
-      const label = document.createElement('label');
-      const span = document.createElement('span');
-      span.textContent = f.label[I18n.lang] || f.label.ar;
-      label.appendChild(span);
-      let input;
-      if (f.type === 'textarea') {
-        input = document.createElement('textarea');
-        input.rows = 3;
-      } else if (f.type === 'select') {
-        input = document.createElement('select');
-        (f.options[I18n.lang] || f.options.ar).forEach(o => {
-          const opt = document.createElement('option');
-          opt.textContent = o;
-          input.appendChild(opt);
-        });
+    const log = document.createElement('div');
+    log.id = 'agentLog';
+    log.className = 'chat-log agent-log';
+    ws.appendChild(log);
+
+    const ctxWrap = document.createElement('div');
+    ctxWrap.className = 'agent-ctx';
+    const chips = document.createElement('div');
+    chips.className = 'ctx-chips';
+    chips.id = 'ctxChips';
+    ctxWrap.appendChild(chips);
+    const popup = document.createElement('div');
+    popup.id = 'ctxPopup';
+    popup.className = 'ctx-popup hidden';
+    ctxWrap.appendChild(popup);
+    const cmdPopup = document.createElement('div');
+    cmdPopup.id = 'cmdPopup';
+    cmdPopup.className = 'ctx-popup hidden';
+    ctxWrap.appendChild(cmdPopup);
+    ws.appendChild(ctxWrap);
+    this.renderCtxChips(chips);
+
+    const row = document.createElement('div');
+    row.className = 'chat-input-row';
+    const input = document.createElement('textarea');
+    input.id = 'agentInput';
+    input.rows = 2;
+    input.placeholder = I18n.t('agentAsk');
+    const send = document.createElement('button');
+    send.className = 'primary';
+    send.id = 'agentSend';
+    send.textContent = '➤';
+    row.appendChild(input);
+    row.appendChild(send);
+    ws.appendChild(row);
+
+    input.addEventListener('input', () => {
+      const v = input.value;
+      if (v.startsWith('/')) {
+        popup.classList.add('hidden');
+        this.renderCmdPopup(input, cmdPopup);
       } else {
-        input = document.createElement('input');
-        input.type = 'text';
+        cmdPopup.classList.add('hidden');
+        this.renderCtxPopup(input, popup, chips);
       }
-      input.dataset.field = f.key;
-      label.appendChild(input);
-      form.appendChild(label);
     });
-    ws.appendChild(form);
+    input.addEventListener('blur', () => {
+      setTimeout(() => { popup.classList.add('hidden'); cmdPopup.classList.add('hidden'); }, 200);
+    });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.send(); }
+    });
+    send.onclick = () => this.send();
 
-    const cmds = document.createElement('div');
-    cmds.className = 'agent-commands';
-    const cmdLabel = document.createElement('span');
-    cmdLabel.className = 'hint';
-    cmdLabel.textContent = I18n.t('agentCommands') + ': ';
-    cmds.appendChild(cmdLabel);
-    [
-      { ar: 'لخّص الأساس النظامي', en: 'Summarize legal basis' },
-      { ar: 'اذكر المخاطر الرئيسية', en: 'List key risks' },
-      { ar: 'اقترح خطوات تنفيذية', en: 'Suggest action steps' }
-    ].forEach(c => {
+    this.restoreLog(log);
+  },
+
+  renderCmdPopup(input, popup) {
+    popup.innerHTML = '';
+    this.commands().forEach(c => {
+      const label = c[I18n.lang] || c.ar;
       const b = document.createElement('button');
-      b.className = 'cmd-chip';
-      b.textContent = c[I18n.lang] || c.ar;
-      b.onclick = () => {
-        const q = ws.querySelector('[data-field="question"], [data-field="dispute"], [data-field="topic"], [data-field="requirements"], [data-field="facts"], [data-field="entity"]');
-        if (q && !q.value) q.value = c[I18n.lang] || c.ar;
-        this.run();
+      b.className = 'ctx-item';
+      b.innerHTML = `<span>/ ${esc(label)}</span>`;
+      b.onmousedown = (e) => {
+        e.preventDefault();
+        input.value = label;
+        popup.classList.add('hidden');
+        input.focus();
       };
-      cmds.appendChild(b);
+      popup.appendChild(b);
     });
-    ws.appendChild(cmds);
+    popup.classList.remove('hidden');
+  },
 
-    const runBtn = document.createElement('button');
-    runBtn.className = 'primary';
-    runBtn.id = 'agentRun';
-    runBtn.textContent = '▶ ' + I18n.t('agentRun');
-    runBtn.onclick = () => this.run();
-    ws.appendChild(runBtn);
+  renderCtxPopup(input, popup, chips) {
+    const v = input.value;
+    const at = v.lastIndexOf('@');
+    if (at < 0) { popup.classList.add('hidden'); return; }
+    const q = v.slice(at + 1).trim().toLowerCase();
+    const items = [];
+    KB.kbs.forEach(kb => {
+      const name = kb.name[I18n.lang] || kb.name.ar;
+      if (!q || name.toLowerCase().includes(q)) {
+        items.push({ type: 'kb', id: kb.id, label: `${kb.icon || '📚'} ${name}`, sub: I18n.t('ctxKb') });
+      }
+    });
+    KB.index.forEach(e => {
+      const name = e.doc.title[I18n.lang] || e.doc.title.ar || e.doc.title.en;
+      if (!q || name.toLowerCase().includes(q)) {
+        items.push({ type: 'doc', id: e.doc.id, label: `📄 ${name}`, sub: I18n.docTypeName(e.doc.type) });
+      }
+    });
+    popup.innerHTML = '';
+    items.slice(0, 8).forEach(it => {
+      const b = document.createElement('button');
+      b.className = 'ctx-item';
+      b.innerHTML = `<span>${esc(it.label)}</span><span class="ctx-sub">${esc(it.sub)}</span>`;
+      b.onmousedown = (e) => {
+        e.preventDefault();
+        this.context.push({ type: it.type, id: it.id, label: it.label, sub: it.sub });
+        input.value = (v.slice(0, at) + v.slice(at + 1)).replace(/@s*$/, '').trim();
+        popup.classList.add('hidden');
+        this.renderCtxChips(chips);
+      };
+      popup.appendChild(b);
+    });
+    popup.classList.toggle('hidden', !items.length);
+  },
+
+  renderCtxChips(chips) {
+    chips.innerHTML = '';
+    this.context.forEach((c, i) => {
+      const chip = document.createElement('span');
+      chip.className = 'ctx-chip';
+      chip.innerHTML = `${esc(c.label)} <span class="ctx-sub">${esc(c.sub)}</span> <button class="ctx-del">✕</button>`;
+      chip.querySelector('.ctx-del').onclick = () => {
+        this.context.splice(i, 1);
+        this.renderCtxChips(chips);
+      };
+      chips.appendChild(chip);
+    });
+  },
+
+  contextScopeIds() {
+    if (!this.context.length) return null;
+    const ids = new Set();
+    this.context.forEach(c => {
+      if (c.type === 'doc') {
+        Retrieval.scopeDocIds(c.id, 1).forEach(id => ids.add(id));
+      } else if (c.type === 'kb') {
+        KB.index.forEach(e => { if (e.kbId === c.id) ids.add(e.doc.id); });
+      }
+    });
+    return ids.size ? ids : new Set(['__none__']);
+  },
+
+  restoreLog(log) {
+    (this.logs[this.current] || []).forEach(entry => {
+      const qEl = document.createElement('div');
+      qEl.className = 'chat-q';
+      qEl.textContent = entry.q;
+      log.appendChild(qEl);
+      const aEl = document.createElement('div');
+      aEl.className = 'chat-a';
+      aEl.appendChild(renderMarkdown(entry.md));
+      log.appendChild(aEl);
+    });
+    log.scrollTop = log.scrollHeight;
+  },
+
+  async send() {
+    const input = document.getElementById('agentInput');
+    const msg = input.value.trim();
+    if (!msg) return;
+    input.value = '';
+    const log = document.getElementById('agentLog');
+    const agent = this.get(this.current);
+    const label = agent.label[I18n.lang] || agent.label.ar;
+
+    const qEl = document.createElement('div');
+    qEl.className = 'chat-q';
+    qEl.textContent = `${agent.icon} ${label} — ${msg}`;
+    log.appendChild(qEl);
 
     const out = document.createElement('div');
-    out.id = 'agentOutput';
-    ws.appendChild(out);
+    out.className = 'chat-a';
+    out.innerHTML = `<div class="hint">${I18n.t('loading')}</div>`;
+    log.appendChild(out);
+    log.scrollTop = log.scrollHeight;
 
-    if (this.outputs[this.current]) {
-      this.renderOutput(this.outputs[this.current]);
-    }
-  },
-
-  collectInputs() {
-    const agent = this.get(this.current);
-    const inputs = {};
-    document.querySelectorAll('#agentWorkspace [data-field]').forEach(el => {
-      inputs[el.dataset.field] = el.value.trim();
-    });
-    return { agent, inputs };
-  },
-
-  buildBrief(agent, inputs) {
-    const lang = I18n.lang;
-    const parts = [agent.label[lang] || agent.label.ar];
-    agent.fields.forEach(f => {
-      const v = inputs[f.key];
-      if (v) parts.push(`${f.label[lang] || f.label.ar}: ${v}`);
-    });
-    return parts.join('\n');
-  },
-
-  async run() {
-    const { agent, inputs } = this.collectInputs();
-    const brief = this.buildBrief(agent, inputs);
-    const out = document.getElementById('agentOutput');
-    out.innerHTML = `<div class="result-card">${I18n.t('loading')}</div>`;
-
-    const scopeIds = agent.scope ? new Set(agent.scope) : null;
+    const brief = `${label}: ${msg}`;
+    const scopeIds = this.contextScopeIds() || (agent.scope ? new Set(agent.scope) : null);
     const kbRes = Retrieval.extractiveAnswer(brief, { scopeDocIds: scopeIds, topK: 10 });
 
     let external = [];
@@ -271,26 +362,44 @@ const Agents = {
     for (const c of connectors) {
       try {
         const res = await window.daaix.netPost(c.url, c.apiKey || '', { query: brief });
-        if (res && res.answer) {
-          external.push({ name: c.name || c.url, answer: String(res.answer) });
-        }
+        if (res && res.answer) external.push({ name: c.name || c.url, answer: String(res.answer) });
       } catch (e) { /* connector offline: skip */ }
     }
 
     const llm = (window.daaixSettings || {}).llm || {};
     let result;
     if (llm.apiKey && llm.baseUrl) {
-      result = await this.llmRun(agent, inputs, brief, kbRes, external);
+      result = await this.llmRun(agent, { message: msg }, brief, kbRes, external);
     } else {
-      result = this.extractiveRun(agent, inputs, kbRes, external);
+      result = this.extractiveRun(agent, { message: msg }, kbRes, external);
     }
 
-    this.outputs[this.current] = result;
+    this.logs[this.current] = this.logs[this.current] || [];
+    this.logs[this.current].push({ q: qEl.textContent, md: result.markdown });
     this.sessions[this.current] = this.sessions[this.current] || [];
     this.sessions[this.current].push({ role: 'user', content: brief });
     this.sessions[this.current].push({ role: 'agent', content: result.markdown });
 
-    this.renderOutput(result);
+    out.innerHTML = '';
+    out.appendChild(renderMarkdown(result.markdown));
+    const actions = document.createElement('div');
+    actions.className = 'note-actions';
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'primary';
+    saveBtn.textContent = '💾 ' + I18n.t('importToNotes');
+    saveBtn.onclick = async () => {
+      await window.daaix.notesSave({ id: 'agent-' + this.current + '-' + Date.now(), markdown: result.markdown });
+      Notes.refresh();
+      App.toast(I18n.t('save') + ' ✓');
+    };
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'primary';
+    copyBtn.textContent = '📋 ' + I18n.t('copy');
+    copyBtn.onclick = () => navigator.clipboard.writeText(result.markdown).then(() => App.toast(I18n.t('copied')));
+    actions.appendChild(saveBtn);
+    actions.appendChild(copyBtn);
+    out.appendChild(actions);
+    log.scrollTop = log.scrollHeight;
   },
 
   extractiveRun(agent, inputs, kbRes, external) {

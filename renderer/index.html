@@ -9,9 +9,10 @@
 <body class="theme-dark" dir="rtl">
 
   <header id="topbar">
-    <div class="brand" id="brandHome" title="DaAIx">
-      <img src="assets/logo-mark.png" alt="DaAIx" class="logo" />
-      <span class="brand-name">DaAIx</span>
+    <div class="brand">
+      <button id="btnKbMenu" class="tb-btn kb-icon" data-i18n-title="kbIconTitle">🗂️</button>
+      <span class="brand-name" id="brandHome">DaAIx</span>
+      <div id="kbMenu" class="kb-menu hidden"></div>
     </div>
     <input id="globalSearch" type="search" data-i18n-ph="search" autocomplete="off" />
     <div class="topbar-actions" id="topbarActions">
@@ -51,13 +52,19 @@
         <div id="searchResults" class="search-results"></div>
       </section>
 
-      <!-- Document reader: TOC | paper | properties -->
+      <!-- Document reader: TOC | center tabs | right tabbed panel -->
       <section id="view-doc" class="view hidden">
         <aside id="docToc" class="doc-toc">
           <h3 data-i18n="toc"></h3>
           <div id="tocItems"></div>
         </aside>
+        <button id="btnTocToggle" class="toc-toggle" data-i18n-title="tocHide">❮</button>
         <div id="docCenter" class="doc-center">
+          <div class="center-tabs" id="centerTabs">
+            <button class="ctab active" data-tab="props" data-i18n="tabProps"></button>
+            <button class="ctab" data-tab="original" data-i18n="tabOriginal"></button>
+            <button class="ctab" data-tab="pub" data-i18n="tabPublication"></button>
+          </div>
           <div id="editBanner" class="edit-banner hidden">
             <span id="editWarningText"></span>
             <div class="edit-banner-actions">
@@ -66,12 +73,49 @@
             </div>
           </div>
           <button id="btnEditDoc" class="edit-fab" title="✏️">✏️</button>
-          <div id="docPaper" class="doc-paper">
-            <div id="docHeader"></div>
-            <div id="docBody"></div>
+          <div id="paneProps" class="center-pane">
+            <div id="docPaper" class="doc-paper">
+              <div id="docHeader"></div>
+              <div id="docBody"></div>
+            </div>
+          </div>
+          <div id="paneOriginal" class="center-pane hidden">
+            <div class="doc-paper">
+              <div id="originalNote" class="hint pane-note"></div>
+              <div id="docOriginal"></div>
+            </div>
+          </div>
+          <div id="panePub" class="center-pane hidden">
+            <div class="doc-paper">
+              <div id="docPublication"></div>
+            </div>
           </div>
         </div>
-        <aside id="docProps" class="doc-props"></aside>
+        <aside id="docProps" class="doc-props">
+          <div class="right-tabs" id="rightTabs">
+            <button class="rtab active" data-tab="amend" data-i18n="rightAmend"></button>
+            <button class="rtab" data-tab="rulings" data-i18n="rightRulings"></button>
+            <button class="rtab" data-tab="relations" data-i18n="rightRelations"></button>
+            <button class="rtab" data-tab="chat" data-i18n="rightChat"></button>
+          </div>
+          <div id="rpaneAmend" class="right-pane">
+            <div class="sub-tabs">
+              <button class="stab active" data-sub="versions" data-i18n="subVersions"></button>
+              <button class="stab" data-sub="amends" data-i18n="subAmendments"></button>
+            </div>
+            <div id="rpVersions"></div>
+            <div id="rpAmends" class="hidden"></div>
+          </div>
+          <div id="rpaneRulings" class="right-pane hidden"></div>
+          <div id="rpaneRelations" class="right-pane hidden"></div>
+          <div id="rpaneChat" class="right-pane hidden">
+            <div id="docChatLog" class="chat-log doc-chat-log"></div>
+            <div class="chat-input-row">
+              <textarea id="docChatInput" rows="2" data-i18n-ph="chatPlaceholder"></textarea>
+              <button id="docChatSend" class="primary">➤</button>
+            </div>
+          </div>
+        </aside>
       </section>
 
       <!-- Chat -->
@@ -200,6 +244,38 @@
       </div>
     </div>
   </aside>
+
+  <!-- Home hover KB panel (right edge) -->
+  <div id="homeKbStrip" class="home-kb-strip">🗂️</div>
+  <aside id="homeKbPanel" class="home-kb-panel hidden">
+    <div class="hk-head">
+      <button id="hkHome" class="hk-home" data-i18n="kbHome">🏠</button>
+      <strong data-i18n="kbs"></strong>
+    </div>
+    <div id="hkCats" class="hk-cats"></div>
+    <div id="hkDocs" class="hk-docs"></div>
+  </aside>
+
+  <!-- Login modal -->
+  <div id="loginOverlay" class="drawer-overlay hidden"></div>
+  <div id="loginModal" class="login-modal hidden">
+    <div class="login-head">
+      <h3 data-i18n="loginTitle"></h3>
+      <button id="btnLoginClose" class="tb-btn">✕</button>
+    </div>
+    <label><span data-i18n="username"></span>
+      <input id="loginUser" type="email" autocomplete="off" />
+    </label>
+    <label><span data-i18n="password"></span>
+      <input id="loginPass" type="password" autocomplete="off" />
+    </label>
+    <div id="loginError" class="login-error hidden"></div>
+    <div class="login-actions">
+      <button id="btnLoginSubmit" class="primary" data-i18n="login"></button>
+      <button id="btnLoginRegister" class="danger" data-i18n="register"></button>
+    </div>
+    <p class="hint" data-i18n="accountHint"></p>
+  </div>
 
   <div id="toast" class="toast hidden"></div>
 

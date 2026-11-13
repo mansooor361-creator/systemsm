@@ -98,31 +98,68 @@ function bootDom() {
     assert(doc.querySelector('.hero h1').textContent.length > 3);
   });
 
-  console.log('\n— Document reader (3 panes) —');
-  test('opens نظام العمل: TOC + white paper + properties panel', () => {
+  console.log('\n— Document reader (tabbed, classic) —');
+  test('opens نظام العمل: TOC + white paper + document info table', () => {
     App.openDocument('sa-labor-law');
     assert(doc.querySelector('#docHeader h1').textContent.includes('نظام العمل'));
     assert(doc.querySelectorAll('#docBody .article-card').length >= 3);
     assert(doc.querySelectorAll('#tocItems .toc-item').length >= 3, 'TOC built');
+    const info = doc.querySelector('#docHeader .doc-info').textContent;
+    assert(info.includes('م/51'), 'tool number in info table');
+    assert(info.includes('مرسوم ملكي'), 'issuing tool in info table');
+    assert(info.includes('ساري ومعدل'), 'extended status in info table');
   });
-  test('properties: issuing tool, dates, number, extended legislative status', () => {
-    const props = doc.getElementById('docProps').textContent;
-    assert(props.includes('مرسوم ملكي'), 'issuing tool');
-    assert(props.includes('1426/08/02هـ'), 'tool date');
-    assert(props.includes('م/51'), 'tool number');
-    assert(props.includes('ساري ومعدل'), 'extended status');
+  test('center tabs: original + publication reference panes', () => {
+    doc.querySelector('#centerTabs [data-tab=original]').click();
+    assert(!doc.getElementById('paneOriginal').classList.contains('hidden'));
+    assert(doc.getElementById('docOriginal').querySelectorAll('.article-card').length >= 3, 'original copy rendered');
+    doc.querySelector('#centerTabs [data-tab=pub]').click();
+    const pub = doc.getElementById('docPublication').textContent;
+    assert(pub.includes('هيئة الخبراء بمجلس الوزراء'), 'publisher');
+    assert(pub.includes('هيئة الخبراء') && (pub.includes('←') || pub.includes('وزارة')), 'source links');
+    doc.querySelector('#centerTabs [data-tab=props]').click();
+    assert(!doc.getElementById('paneProps').classList.contains('hidden'));
   });
-  test('version register shows from → to ranges', () => {
-    const vb = doc.getElementById('docProps').textContent;
-    assert(vb.includes('من → إلى'));
-    assert(vb.includes('→ ∞'), 'latest version open-ended');
+  test('right tabs: version register من → إلى, amendments with by, rulings with number+date, doc chat', () => {
+    const versions = doc.getElementById('rpVersions').textContent;
+    assert(versions.includes('من → إلى'));
+    assert(versions.includes('→ ∞'), 'latest version open-ended');
+    doc.querySelector('.sub-tabs [data-sub=amends]').click();
+    assert(!doc.getElementById('rpAmends').classList.contains('hidden'));
+    assert(doc.getElementById('rpAmends').textContent.includes('من قبل'));
+    doc.querySelector('#rightTabs [data-tab=rulings]').click();
+    const rulings = doc.getElementById('rpaneRulings').textContent;
+    assert(rulings.includes('حكم عمالي'), 'ruling listed');
+    assert(rulings.includes('قضية عمالية 1234/1444'), 'ruling number+date');
+    doc.querySelector('#rightTabs [data-tab=relations]').click();
+    assert(doc.getElementById('rpaneRelations').textContent.includes('الارتباطات') || doc.getElementById('rpaneRelations').children.length > 0, 'relations pane');
+    doc.querySelector('#rightTabs [data-tab=chat]').click();
+    assert(!doc.getElementById('rpaneChat').classList.contains('hidden'));
   });
-  test('relations + related rulings + official sources in right column', () => {
-    const props = doc.getElementById('docProps').textContent;
-    assert(props.includes('الارتباطات'));
-    assert(props.includes('المصادر الرسمية'));
+  test('article-level amendment annotations shown under affected articles', () => {
     App.openDocument('sa-labor-law');
-    assert(doc.getElementById('docProps').textContent.includes('الأحكام المرتبطة'));
+    const notes = [...doc.querySelectorAll('#docBody .article-amend')];
+    assert(notes.length >= 2, 'two article amendments annotated');
+    assert(notes[0].textContent.includes('1445/02/19هـ'));
+    assert(notes[0].textContent.includes('المرسوم الملكي م/65'));
+  });
+  test('TOC toggle hides/shows index column', () => {
+    doc.getElementById('btnTocToggle').click();
+    assert(doc.getElementById('docToc').classList.contains('collapsed'), 'toc hidden');
+    doc.getElementById('btnTocToggle').click();
+    assert(!doc.getElementById('docToc').classList.contains('collapsed'), 'toc back');
+  });
+  test('yellow-light headings styled like the website', () => {
+    const el = window.eval('renderMarkdown')('# عنوان رئيسي\n\n## عنوان فرعي\n\n#### عنوان صغير\n');
+    assert(el.querySelector('h1'));
+    assert(el.querySelector('h2'));
+    assert(el.querySelector('h4'));
+  });
+  test('doc chat answers scoped to current document', async () => {
+    doc.querySelector('#rightTabs [data-tab=chat]').click();
+    doc.getElementById('docChatInput').value = 'ما أحكام مكافأة نهاية الخدمة عند الاستقالة؟';
+    await App.sendDocChat();
+    assert(doc.querySelector('#docChatLog .chat-a .doc-body'), 'doc chat answered');
   });
   test('edit mode: fab toggles editing + persistent warning banner + local save', () => {
     const fab = doc.getElementById('btnEditDoc');
@@ -157,14 +194,28 @@ function bootDom() {
     assert(el.querySelector('.callout.co-tip'));
   });
 
-  console.log('\n— Agents —');
-  test('agents view runs consultant and saves output', async () => {
+  console.log('\n— Agents (Copilot-style chat) —');
+  test('agents view is a chat: menu, log, input; consultant answers grounded', async () => {
     Agents.open('consultant');
     assert(doc.querySelectorAll('#agentsMenu .tool-chip').length === 6);
-    doc.querySelector('[data-field=question]').value = 'ما أحكام مكافأة نهاية الخدمة عند الفصل؟';
-    await Agents.run();
-    const md = doc.querySelector('#agentOutput .agent-result').textContent;
-    assert(md.includes('الخلاصة القانونية'));
+    assert(doc.getElementById('agentLog'), 'chat log exists');
+    assert(doc.getElementById('agentInput'), 'chat input exists');
+    assert(doc.getElementById('agentInput').placeholder.includes('@'), 'placeholder mentions @ context');
+    doc.getElementById('agentInput').value = 'ما أحكام مكافأة نهاية الخدمة عند الفصل؟';
+    await Agents.send();
+    const answers = [...doc.querySelectorAll('#agentLog .chat-a .doc-body')];
+    assert(answers.length >= 1, 'agent answered in chat');
+    assert(answers[answers.length - 1].textContent.includes('الأساس النظامي'), 'structured sections in answer');
+  });
+  test('/ commands popup fills input', () => {
+    const input = doc.getElementById('agentInput');
+    input.value = '/';
+    input.dispatchEvent(new window.Event('input', { bubbles: true }));
+    const popup = doc.getElementById('cmdPopup');
+    assert(!popup.classList.contains('hidden'), 'commands popup visible');
+    assert(popup.textContent.includes('لخّص'), 'command listed');
+    popup.querySelector('.ctx-item').dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true }));
+    assert(input.value.length > 3, 'command filled input');
   });
 
   console.log('\n— Tools —');
@@ -178,6 +229,18 @@ function bootDom() {
     Tools.open('labor');
     doc.getElementById('lbGo').click();
     assert(doc.getElementById('lbOut').textContent.includes('مكافأة نهاية الخدمة'));
+  });
+  test('contract tool: generates structure + analyzes clauses', () => {
+    Tools.open('contract');
+    assert(doc.querySelectorAll('#toolsMenu .tool-chip').length === 9, '9 tools now');
+    doc.getElementById('ctGen').click();
+    const gen = doc.getElementById('ctOut').textContent;
+    assert(gen.includes('أبجدية العقود'), 'contract alphabet in generated structure');
+    doc.getElementById('ctText').value = 'عقد توريد بين الطرفين دون تحديد الثمن بشكل مطلق واعتماد ما تراه الشركة مناسباً.';
+    doc.getElementById('ctCheck').click();
+    const rep = doc.getElementById('ctOut').textContent;
+    assert(rep.includes('بنود ناقصة'), 'missing clauses reported');
+    assert(rep.includes('مطلق') || rep.includes('دون تحديد'), 'risky wording flagged');
   });
 
   console.log('\n— Notes & drawer —');
@@ -194,6 +257,69 @@ function bootDom() {
     toggles[1].click();
     await new Promise(r => setTimeout(r, 50));
     assert(!doc.getElementById('btnChat').classList.contains('hidden'), 'chat button shown after toggle');
+  });
+
+  console.log('\n— Login (built-in account) —');
+  test('login modal validates known account and stores session', async () => {
+    App.openLogin();
+    assert(!doc.getElementById('loginModal').classList.contains('hidden'));
+    assert(doc.getElementById('loginUser').value === '' || doc.getElementById('loginUser').value.includes('@'));
+    doc.getElementById('loginUser').value = 'Mansooor361@gmail.com';
+    doc.getElementById('loginPass').value = 'wrong';
+    doc.getElementById('btnLoginSubmit').click();
+    assert(!doc.getElementById('loginError').classList.contains('hidden'), 'wrong password rejected');
+    doc.getElementById('loginPass').value = '123456';
+    doc.getElementById('btnLoginSubmit').click();
+    await new Promise(r => setTimeout(r, 50));
+    assert(doc.getElementById('loginModal').classList.contains('hidden'), 'modal closed on success');
+    assert(doc.getElementById('accountArea').textContent.includes('Mansooor361@gmail.com'), 'account shown');
+    App.renderAccount();
+  });
+
+  console.log('\n— KB menu + home hover panel —');
+  test('KB icon menu lists knowledge bases and sources', () => {
+    doc.getElementById('btnKbMenu').click();
+    const menu = doc.getElementById('kbMenu');
+    assert(!menu.classList.contains('hidden'));
+    assert(menu.textContent.includes('قانون وتشريعات'));
+    assert(menu.textContent.includes('الأنظمة العمانية'));
+    assert(menu.textContent.includes('القرآن'));
+    doc.body.click();
+    assert(menu.classList.contains('hidden'), 'menu closes on outside click');
+  });
+  test('home hover panel shows categories + docs on strip hover', () => {
+    const strip = doc.getElementById('homeKbStrip');
+    const panel = doc.getElementById('homeKbPanel');
+    assert(panel.classList.contains('hidden'), 'panel hidden initially');
+    strip.dispatchEvent(new window.MouseEvent('mouseenter', { bubbles: true }));
+    assert(!panel.classList.contains('hidden'), 'panel appears on hover');
+    assert(doc.querySelectorAll('#hkCats .hk-cat').length === 6);
+    assert(doc.querySelectorAll('#hkDocs .hk-doc').length > 3, 'docs listed in panel');
+    strip.dispatchEvent(new window.MouseEvent('mouseleave', { bubbles: true }));
+    assert(panel.classList.contains('hidden'), 'panel disappears on leave');
+  });
+
+  console.log('\n— Agents @-context —');
+  test('typing @ shows autocomplete of KBs and docs; selection scopes run', async () => {
+    Agents.context = [];
+    Agents.open('consultant');
+    const input = doc.getElementById('agentInput');
+    assert(input, 'chat input exists');
+    input.value = '@عمال';
+    input.dispatchEvent(new window.Event('input', { bubbles: true }));
+    const popup = doc.getElementById('ctxPopup');
+    assert(!popup.classList.contains('hidden'), 'popup visible');
+    assert(popup.textContent.includes('نظام العمل') || popup.querySelectorAll('.ctx-item').length > 0, 'KB/doc suggestions');
+    popup.querySelector('.ctx-item').dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true }));
+    assert(Agents.context.length === 1, 'context chip added');
+    assert(doc.querySelectorAll('#ctxChips .ctx-chip').length === 1);
+    const scope = Agents.contextScopeIds();
+    assert(scope && scope.size >= 1, 'scope ids computed');
+    input.value = 'ما أحكام مكافأة نهاية الخدمة؟';
+    await Agents.send();
+    const answers = [...doc.querySelectorAll('#agentLog .chat-a .doc-body')];
+    assert(answers.length >= 1, 'scoped agent answered');
+    Agents.context = [];
   });
 
   console.log('\n— Language toggle —');

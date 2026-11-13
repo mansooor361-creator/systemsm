@@ -363,3 +363,168 @@ button.danger { background: transparent; border: 1px solid var(--danger); color:
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
+
+/* ---------- v1.3: classic tabbed reader ---------- */
+.center-tabs, .right-tabs {
+  display: flex; gap: 2px; padding: 0 8px;
+  background: var(--bg2); border-bottom: 1px solid var(--border);
+}
+.ctab, .rtab {
+  padding: 10px 16px; border: none; background: transparent; color: var(--muted);
+  font-size: 14px; border-bottom: 2px solid transparent;
+}
+.ctab.active, .rtab.active { color: var(--text); font-weight: 700; border-bottom-color: var(--accent); background: var(--bg3); }
+.center-pane, .right-pane { flex: 1; overflow-y: auto; padding: 14px; }
+.doc-center { overflow: hidden; }
+.doc-props { overflow: hidden; }
+.pane-note { margin-bottom: 12px; font-size: 13px; }
+.sub-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+.stab {
+  padding: 6px 14px; font-size: 13px; background: var(--bg3);
+  border: 1px solid var(--border); border-radius: 6px; color: var(--muted);
+}
+.stab.active { color: var(--text); font-weight: 700; border-color: var(--accent); }
+.doc-center { display: flex; flex-direction: column; }
+.doc-props { display: flex; flex-direction: column; padding: 0; }
+#docToc.collapsed { display: none; }
+.toc-toggle {
+  align-self: center; margin: 4px 2px; padding: 2px 6px; font-size: 13px;
+  background: var(--bg3); color: var(--muted); border: 1px solid var(--border);
+  border-radius: 6px; height: fit-content;
+}
+
+/* yellow-light headings (like smartk-ai.com document view) */
+.doc-body h1, .doc-paper h1 {
+  font-size: 24px; color: #7a5c10; background: #fdf3d0;
+  padding: 10px 14px; border-radius: 8px; margin: 14px 0 10px;
+}
+.doc-body h2, .doc-body h3, .doc-body h4 {
+  color: #7a5c10; background: #fdf6dd; padding: 7px 12px;
+  border-radius: 6px; margin: 12px 0 8px; font-size: 17px;
+}
+.doc-body h3 { font-size: 16px; }
+.doc-body h4 { font-size: 15px; }
+body.theme-dark .doc-body h2, body.theme-dark .doc-body h3, body.theme-dark .doc-body h4 {
+  background: rgba(212, 169, 78, .14); color: #e8cd82;
+}
+body.theme-dark .doc-body h1, body.theme-dark .doc-paper h1 {
+  background: rgba(212, 169, 78, .18); color: #e8cd82;
+}
+
+/* article-level amendment annotation (in-app only, original text preserved) */
+.article-amend {
+  margin-top: 8px; padding: 7px 10px; font-size: 13px; color: var(--muted);
+  border-inline-start: 3px solid var(--accent); background: var(--bg3); border-radius: 6px;
+}
+.rel-note { font-size: 11px; color: var(--muted); }
+
+/* ---------- KB menu (topbar icon) ---------- */
+.brand { position: relative; }
+.kb-icon { font-size: 22px; }
+.kb-menu {
+  position: absolute; top: 46px; inset-inline-start: 0; z-index: 90; min-width: 280px;
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+  box-shadow: var(--shadow); padding: 6px; display: flex; flex-direction: column; gap: 2px;
+}
+.kb-menu-item {
+  text-align: start; padding: 9px 12px; background: transparent; border: none;
+  border-radius: 6px; font-size: 14px; color: var(--text);
+}
+.kb-menu-item:hover { background: var(--bg3); }
+.kb-soon { color: var(--muted); }
+
+/* ---------- home hover KB panel (right edge) ---------- */
+.home-kb-strip {
+  position: fixed; top: 50%; inset-inline-end: 0; transform: translateY(-50%);
+  z-index: 80; padding: 14px 6px; font-size: 20px;
+  background: var(--bg2); border: 1px solid var(--border); border-inline-end: none;
+  border-radius: 10px 0 0 10px; cursor: pointer; opacity: .55;
+}
+.home-kb-strip:hover { opacity: 1; }
+.home-kb-panel {
+  position: fixed; top: 66px; bottom: 0; inset-inline-end: 0; z-index: 79;
+  width: 320px; background: var(--bg2); border-inline-start: 1px solid var(--border);
+  box-shadow: var(--shadow); padding: 14px; overflow-y: auto;
+}
+.hk-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.hk-home {
+  padding: 6px 12px; background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 6px; color: var(--text);
+}
+.hk-cats { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.hk-cat {
+  padding: 5px 10px; font-size: 12px; background: var(--bg3); color: var(--muted);
+  border: 1px solid var(--border); border-radius: 14px;
+}
+.hk-cat.active { color: var(--text); border-color: var(--accent); font-weight: 700; }
+.hk-doc {
+  display: flex; justify-content: space-between; gap: 8px; padding: 8px 10px;
+  border-radius: 6px; cursor: pointer; font-size: 14px;
+}
+.hk-doc:hover { background: var(--bg3); }
+.hk-type { font-size: 11px; color: var(--muted); white-space: nowrap; }
+
+/* ---------- login modal ---------- */
+.login-modal {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  z-index: 120; width: 380px; background: var(--bg2);
+  border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); padding: 20px;
+}
+.login-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.login-modal label { display: block; margin-bottom: 12px; }
+.login-modal label span { display: block; font-size: 13px; color: var(--muted); margin-bottom: 5px; }
+.login-modal input {
+  width: 100%; padding: 10px 12px; background: var(--bg3);
+  border: 1px solid var(--border); border-radius: 8px; outline: none;
+}
+.login-error { color: var(--danger); font-size: 13px; margin-bottom: 10px; }
+.login-actions { display: flex; gap: 8px; margin-bottom: 10px; }
+.login-actions button { flex: 1; padding: 10px; }
+
+/* ---------- agent @-context ---------- */
+.agent-ctx { margin: 10px 0; position: relative; }
+.ctx-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.ctx-chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px;
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 14px; font-size: 13px;
+}
+.ctx-sub { font-size: 11px; color: var(--muted); }
+.ctx-del { background: none; border: none; color: var(--muted); padding: 0 2px; }
+.ctx-del:hover { color: var(--danger); }
+#agentCtxInput {
+  width: 100%; padding: 9px 12px; background: var(--bg3);
+  border: 1px dashed var(--border); border-radius: 8px; outline: none; font-size: 14px;
+}
+#agentCtxInput:focus { border-color: var(--accent); border-style: solid; }
+.ctx-popup {
+  position: absolute; top: 100%; inset-inline-start: 0; z-index: 60; width: 100%; max-height: 260px;
+  overflow-y: auto; background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 8px; box-shadow: var(--shadow); padding: 4px;
+}
+.ctx-item {
+  display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%;
+  text-align: start; padding: 8px 10px; background: transparent; border: none;
+  border-radius: 6px; font-size: 14px; color: var(--text);
+}
+.ctx-item:hover { background: var(--bg3); }
+
+/* doc chat (right pane) */
+.doc-chat-log { flex: 1; min-height: 200px; }
+#rpaneChat { display: flex; flex-direction: column; }
+#rpaneChat.hidden { display: none !important; }
+#rpaneChat .chat-input-row { display: flex; gap: 8px; }
+#rpaneChat textarea { flex: 1; resize: vertical; }
+
+/* document info table (props tab, top of paper) */
+.doc-info {
+  background: #f8f6f0; border: 1px solid #e5dec9; border-radius: 8px;
+  padding: 12px 16px; margin-bottom: 22px;
+}
+.doc-info .prop-row { display: flex; gap: 12px; padding: 4px 0; font-size: 14px; }
+.doc-info .pl { min-width: 170px; color: #8a6d1f; font-weight: 700; }
+.doc-info .pv { color: var(--paper-text); }
+
+/* agent chat (Copilot-style) */
+.agent-log { min-height: 260px; max-height: 46vh; }
+.agent-desc { color: var(--muted); font-size: 14px; margin-bottom: 10px; }
+#agentInput { flex: 1; resize: vertical; }

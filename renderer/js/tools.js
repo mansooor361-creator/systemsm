@@ -12,7 +12,8 @@ const Tools = {
       { id: 'laborConsultant', icon: '🧑‍⚖️', label: I18n.t('toolLaborConsultant') },
       { id: 'competition', icon: '🏆', label: I18n.t('toolCompetition') },
       { id: 'offers', icon: '📊', label: I18n.t('toolOffers') },
-      { id: 'building', icon: '🏗️', label: I18n.t('toolBuilding') }
+      { id: 'building', icon: '🏗️', label: I18n.t('toolBuilding') },
+      { id: 'contract', icon: '📝', label: I18n.t('toolContract') }
     ];
   },
 
@@ -349,5 +350,138 @@ const Tools = {
       wrap.appendChild(blk);
     });
     update();
+  },
+
+  /* ============ 9. Contract drafting & clause analysis ============ */
+  CONTRACT_CLAUSES: [
+    { ar: 'تمهيد وديباجة', en: 'Preamble' },
+    { ar: 'الأطراف وصفاتهم القانونية وأهليتهم', en: 'Parties & legal capacity' },
+    { ar: 'موضوع العقد ونطاقه', en: 'Subject & scope' },
+    { ar: 'المدة والجدول الزمني', en: 'Term & timeline' },
+    { ar: 'الثمن والبدلات وطريقة السداد', en: 'Price, fees & payment' },
+    { ar: 'الضمانات والكفالات', en: 'Guarantees & bonds' },
+    { ar: 'الالتزامات والواجبات المتبادلة', en: 'Mutual obligations' },
+    { ar: 'الملكية الفكرية والسرية', en: 'IP & confidentiality' },
+    { ar: 'التعويضات وتحديد المسؤولية', en: 'Indemnity & liability cap' },
+    { ar: 'القوة القاهرة والظروف الطارئة', en: 'Force majeure' },
+    { ar: 'الإنهاء وآثاره', en: 'Termination & effects' },
+    { ar: 'تسوية النزاعات والتحكيم', en: 'Dispute resolution & arbitration' },
+    { ar: 'القانون الواجب التطبيق والاختصاص', en: 'Governing law & jurisdiction' },
+    { ar: 'التوقيعات والشروط النهائية', en: 'Signatures & final provisions' }
+  ],
+  RISKY_PATTERNS: ['مطلق', 'غير محدد', 'دون تحديد', 'حصرياً', 'إلى ما تراه', 'بما تراه مناسباً', 'بلا حدود', 'irrevocable', 'unlimited', 'sole discretion'],
+
+  render_contract(panel) {
+    const box = this.el(`
+      <div>
+        <h2>📝 ${I18n.t('toolContract')}</h2>
+        <div class="form-grid">
+          <label>${I18n.t('contractType')}
+            <select id="ctType">
+              <option>توريد دولي</option><option>وكالة وتوزيع</option><option>مشروع مشترك</option>
+              <option>ترخيص تقني</option><option>خدمات استشارية</option><option>عقد عمل</option><option>عقد إيجار</option>
+            </select>
+          </label>
+          <label>${I18n.t('contractParties')}
+            <input id="ctParties" type="text" />
+          </label>
+          <label>${I18n.t('contractLaw')}
+            <select id="ctLaw">
+              <option>الأنظمة السعودية</option><option>الأنظمة الإماراتية</option><option>الأنظمة العمانية</option>
+              <option>القانون الإنجليزي</option><option>CISG (اتفاقية البيع الدولي)</option>
+            </select>
+          </label>
+        </div>
+        <button id="ctGen" class="primary">▶ ${I18n.t('contractGen')}</button>
+        <hr style="margin:18px 0;border-color:var(--border)" />
+        <label style="display:block;margin-bottom:8px">${I18n.t('contractAnalyze')}
+          <textarea id="ctText" rows="6" placeholder="${I18n.t('contractPaste')}" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px;outline:none"></textarea>
+        </label>
+        <button id="ctCheck" class="primary">🔍 ${I18n.t('contractCheck')}</button>
+        <div id="ctOut"></div>
+      </div>`);
+    panel.appendChild(box);
+
+    box.querySelector('#ctGen').onclick = () => {
+      const out = box.querySelector('#ctOut');
+      const type = box.querySelector('#ctType').value;
+      const parties = box.querySelector('#ctParties').value.trim() || '—';
+      const law = box.querySelector('#ctLaw').value;
+      const kbRes = Retrieval.extractiveAnswer(type + ' عقد ' + parties, { topK: 6 });
+      const lines = [];
+      lines.push('# عقد ' + type);
+      lines.push('');
+      lines.push('> [!WARNING] مسودة أولية');
+      lines.push('> ' + I18n.t('agentDisclaimer'));
+      lines.push('');
+      lines.push('## ' + I18n.t('contractChecklist'));
+      lines.push('');
+      const alpha = ['أ', 'ب', 'ت', 'ث', 'ج', 'ح', 'خ', 'د', 'ذ', 'ر', 'ز', 'س', 'ش', 'ص'];
+      this.CONTRACT_CLAUSES.forEach((c, i) => {
+        lines.push(`${alpha[i] || i + 1}. **${c.ar}** — يُستوفى وفق اتفاق الطرفين ووفق ${law}.`);
+      });
+      lines.push('');
+      lines.push('## الأساس النظامي من قاعدة المعرفة');
+      lines.push('');
+      (kbRes.passages || []).slice(0, 4).forEach(p => {
+        lines.push(`**${p.docTitle}${p.articleNum ? ' (' + p.articleNum + ')' : ''}**`);
+        lines.push('> ' + p.text);
+        lines.push('');
+      });
+      lines.push('---');
+      lines.push('*' + I18n.t('chatCitations') + ': ' + ((kbRes.citations || []).map(c => c.docTitle).join(' · ') || '—') + '*');
+      out.innerHTML = '';
+      const card = document.createElement('div');
+      card.className = 'result-card';
+      card.appendChild(renderMarkdown(lines.join('\n')));
+      const copy = document.createElement('button');
+      copy.className = 'primary';
+      copy.textContent = '📋 ' + I18n.t('copy');
+      copy.onclick = () => navigator.clipboard.writeText(lines.join('\n')).then(() => App.toast(I18n.t('copied')));
+      card.appendChild(copy);
+      out.appendChild(card);
+    };
+
+    box.querySelector('#ctCheck').onclick = () => {
+      const out = box.querySelector('#ctOut');
+      const text = box.querySelector('#ctText').value.trim();
+      out.innerHTML = '';
+      if (!text) { out.innerHTML = '<p class="hint">—</p>'; return; }
+      const lines = [];
+      lines.push('# ' + I18n.t('contractAnalyze'));
+      lines.push('');
+      const missing = this.CONTRACT_CLAUSES.filter(c => {
+        const key = c.ar.split(' ')[0];
+        return !text.includes(key);
+      });
+      lines.push('## ' + I18n.t('contractMissing'));
+      lines.push('');
+      if (missing.length) missing.forEach(c => lines.push('- ❌ ' + c.ar));
+      else lines.push('- ✓ ' + I18n.t('contractClean'));
+      lines.push('');
+      const lower = text.toLowerCase();
+      const risky = this.RISKY_PATTERNS.filter(p => lower.includes(p.toLowerCase()));
+      lines.push('## ' + I18n.t('contractRisky'));
+      lines.push('');
+      if (risky.length) risky.forEach(p => lines.push('- ⚠️ ' + p));
+      else lines.push('- ✓ —');
+      lines.push('');
+      const kbRes = Retrieval.extractiveAnswer(text.slice(0, 300), { topK: 5 });
+      if ((kbRes.passages || []).length) {
+        lines.push('## ' + I18n.t('officialSources'));
+        lines.push('');
+        kbRes.passages.slice(0, 3).forEach(p => {
+          lines.push(`**${p.docTitle}${p.articleNum ? ' (' + p.articleNum + ')' : ''}**`);
+          lines.push('> ' + p.text);
+          lines.push('');
+        });
+      }
+      lines.push('---');
+      lines.push('> [!NOTE] ' + I18n.t('agentDisclaimer'));
+      const card = document.createElement('div');
+      card.className = 'result-card';
+      card.appendChild(renderMarkdown(lines.join('\n')));
+      out.appendChild(card);
+    };
   }
 };
