@@ -1,7 +1,7 @@
 {
   "name": "daaix-desktop",
   "productName": "DaAIx",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "DaAIx — Legal Knowledge Base Desktop (قواعد المعرفة القانونية)",
   "main": "main/main.js",
   "author": "DaAIx (smartk-ai.com)",
@@ -21,20 +21,44 @@
   "devDependencies": {
     "electron": "^33.2.0",
     "electron-builder": "^25.1.8",
+    "jimp": "^0.22.12",
     "jsdom": "^31.0.0"
   },
   "build": {
     "appId": "com.smartkai.daaix",
     "productName": "DaAIx",
-    "directories": { "output": "dist" },
-    "files": ["main/**", "renderer/**", "package.json"],
-    "win": { "target": ["nsis", "portable"] },
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main/**",
+      "renderer/**",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "installerLanguages": ["ar_SA", "en_US"]
+      "installerLanguages": [
+        "ar_SA",
+        "en_US"
+      ]
     },
-    "mac": { "target": "dmg" },
-    "linux": { "target": ["AppImage", "deb"], "icon": "build/icons", "category": "Office" }
+    "mac": {
+      "target": "dmg"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "build/icons",
+      "category": "Office"
+    }
   }
 }

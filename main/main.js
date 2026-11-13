@@ -146,6 +146,24 @@ ipcMain.handle('kb:checkUpdates', async () => {
   try { return await checkForKbUpdates(store); } catch (e) { return { ok: false, error: String(e.message || e) }; }
 });
 
+ipcMain.handle('net:post', async (_e, url, apiKey, body) => {
+  try {
+    const { net } = require('electron');
+    const headers = { 'Content-Type': 'application/json' };
+    if (apiKey) headers['Authorization'] = 'Bearer ' + apiKey;
+    const res = await net.fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body || {}),
+      signal: AbortSignal.timeout(20000)
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (e) {
+    return { error: String(e.message || e) };
+  }
+});
+
 ipcMain.handle('kb:fetchRemote', async (_e, url) => {
   try {
     const res = await netFetch(url);

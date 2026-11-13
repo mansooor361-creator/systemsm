@@ -10,7 +10,7 @@
 
   <header id="topbar">
     <div class="brand" id="brandHome" title="DaAIx">
-      <img src="assets/logo.svg" alt="DaAIx" class="logo" />
+      <img src="assets/logo-mark.png" alt="DaAIx" class="logo" />
       <div class="brand-text">
         <span class="brand-name">DaAIx</span>
         <span class="brand-tag" data-i18n="tagline"></span>
@@ -18,6 +18,7 @@
     </div>
     <input id="globalSearch" type="search" data-i18n-ph="search" autocomplete="off" />
     <div class="topbar-actions">
+      <button id="btnAgents" class="tb-btn" data-i18n-title="agents">🤖</button>
       <button id="btnChat" class="tb-btn" data-i18n-title="chat">💬</button>
       <button id="btnGraph" class="tb-btn" data-i18n-title="graph">🕸️</button>
       <button id="btnTools" class="tb-btn" data-i18n-title="tools">🧰</button>
@@ -43,7 +44,7 @@
       <!-- Home -->
       <section id="view-home" class="view">
         <div class="hero">
-          <img src="assets/logo.svg" class="hero-logo" alt="" />
+          <img src="assets/logo-full.png" class="hero-logo" alt="DaAIx" />
           <h1 data-i18n="welcome"></h1>
           <p data-i18n="welcomeText"></p>
           <div id="homeStats" class="stats"></div>
@@ -58,6 +59,16 @@
           <div id="docBody" class="doc-body"></div>
         </div>
         <aside id="docSide" class="doc-side"></aside>
+      </section>
+
+      <!-- Agents -->
+      <section id="view-agents" class="view hidden">
+        <div class="agents-head">
+          <h2 data-i18n="agentsTitle"></h2>
+          <span class="badge grounded" data-i18n="chatGrounded"></span>
+        </div>
+        <div id="agentsMenu" class="agents-menu"></div>
+        <div id="agentWorkspace" class="agent-workspace"></div>
       </section>
 
       <!-- Chat -->
@@ -129,6 +140,12 @@
           <label><span data-i18n="apiKey"></span><input id="setLlmKey" type="password" autocomplete="off" /></label>
           <label><span data-i18n="model"></span><input id="setLlmModel" type="text" placeholder="gpt-4o-mini" /></label>
           <p class="hint wide" data-i18n="llmHint"></p>
+          <div class="wide sep" data-i18n="connectorsTitle"></div>
+          <p class="hint wide" data-i18n="connectorHint"></p>
+          <div id="connectorList" class="wide"></div>
+          <div class="wide">
+            <button id="btnAddConnector" class="primary" data-i18n="addConnector"></button>
+          </div>
         </div>
         <button id="btnSaveSettings" class="primary" data-i18n="save"></button>
       </section>
@@ -142,6 +159,7 @@
   <script src="js/retrieval.js"></script>
   <script src="js/calculators.js"></script>
   <script src="js/graph.js"></script>
+  <script src="js/agents.js"></script>
   <script src="js/tools.js"></script>
   <script src="js/app.js"></script>
 </body>

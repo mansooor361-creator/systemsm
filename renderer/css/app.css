@@ -168,6 +168,29 @@ button.danger { background: transparent; border: 1px solid var(--danger); color:
 #graphCanvas { width: 100%; height: 100%; display: block; cursor: grab; }
 .graph-hint { position: absolute; bottom: 16px; inset-inline-start: 20px; font-size: 12px; color: var(--muted); }
 
+/* ---------- agents ---------- */
+.agents-head { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+.agents-head h2 { font-size: 19px; }
+.agents-menu { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+.agent-desc { color: var(--muted); margin-bottom: 16px; max-width: 760px; line-height: 1.8; }
+.agent-workspace { max-width: 940px; }
+.agent-commands { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 14px 0; }
+.cmd-chip {
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 16px;
+  padding: 5px 14px; font-size: 12px; color: var(--accent2);
+}
+.cmd-chip:hover { border-color: var(--accent2); }
+.agent-result { max-height: none; }
+.agent-result .doc-body { font-size: 14px; }
+.connector-row {
+  display: grid; grid-template-columns: 1fr 2fr 1fr auto auto; gap: 8px; align-items: center;
+  padding: 8px 0; border-bottom: 1px dashed var(--border);
+}
+.connector-row input {
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; outline: none;
+}
+.connector-row .conn-del { padding: 6px 12px; border-radius: 8px; }
+
 /* ---------- tools ---------- */
 .tools-menu { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
 .tool-chip {

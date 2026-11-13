@@ -221,6 +221,7 @@ const App = {
 
   bindTopbar() {
     document.getElementById('brandHome').onclick = () => this.showView('home');
+    document.getElementById('btnAgents').onclick = () => Agents.open(Agents.current);
     document.getElementById('btnChat').onclick = () => this.showView('chat');
     document.getElementById('btnGraph').onclick = () => { this.showView('graph'); Graph.show(this.currentDocId); };
     document.getElementById('btnTools').onclick = () => Tools.open(Tools.active || 'consultant');
@@ -254,12 +255,20 @@ const App = {
           baseUrl: document.getElementById('setLlmUrl').value.trim(),
           apiKey: document.getElementById('setLlmKey').value.trim(),
           model: document.getElementById('setLlmModel').value.trim()
-        }
+        },
+        connectors: this.readConnectors()
       };
       this.settings = await window.daaix.settingsSet(patch);
       window.daaixSettings = this.settings;
       this.toast(I18n.t('save') + ' ✓');
     };
+    document.getElementById('btnAddConnector').onclick = () => {
+      const connectors = this.settings.connectors || [];
+      connectors.push({ name: '', url: '', apiKey: '', enabled: true });
+      this.settings.connectors = connectors;
+      this.renderConnectors();
+    };
+
     document.getElementById('btnCheckUpdates').onclick = async () => {
       const status = document.getElementById('updateStatus');
       status.textContent = '...';
@@ -287,6 +296,41 @@ const App = {
     document.getElementById('setLlmUrl').value = llm.baseUrl || '';
     document.getElementById('setLlmKey').value = llm.apiKey || '';
     document.getElementById('setLlmModel').value = llm.model || '';
+    this.renderConnectors();
+  },
+
+  renderConnectors() {
+    const list = document.getElementById('connectorList');
+    list.innerHTML = '';
+    const connectors = this.settings.connectors || [];
+    connectors.forEach((c, idx) => {
+      const row = document.createElement('div');
+      row.className = 'connector-row';
+      row.innerHTML = `
+        <input type="text" data-c="name" placeholder="${I18n.t('connectorName')}" value="${esc(c.name || '')}" />
+        <input type="url" data-c="url" placeholder="${I18n.t('connectorUrl')}" value="${esc(c.url || '')}" />
+        <input type="password" data-c="apiKey" placeholder="${I18n.t('apiKey')}" value="${esc(c.apiKey || '')}" autocomplete="off" />
+        <label class="check-item"><input type="checkbox" data-c="enabled" ${c.enabled !== false ? 'checked' : ''} /></label>
+        <button class="danger conn-del">✕</button>`;
+      row.querySelector('.conn-del').onclick = () => {
+        this.settings.connectors.splice(idx, 1);
+        this.renderConnectors();
+      };
+      list.appendChild(row);
+    });
+    if (!connectors.length) {
+      list.innerHTML = `<p class="hint">—</p>`;
+    }
+  },
+
+  readConnectors() {
+    const rows = [...document.querySelectorAll('#connectorList .connector-row')];
+    return rows.map(row => ({
+      name: row.querySelector('[data-c=name]').value.trim(),
+      url: row.querySelector('[data-c=url]').value.trim(),
+      apiKey: row.querySelector('[data-c=apiKey]').value.trim(),
+      enabled: row.querySelector('[data-c=enabled]').checked
+    })).filter(c => c.url);
   },
 
   async toggleLang() {
@@ -301,7 +345,7 @@ const App = {
   },
 
   showView(name) {
-    ['home', 'doc', 'chat', 'graph', 'tools', 'notes', 'settings'].forEach(v => {
+    ['home', 'doc', 'chat', 'graph', 'agents', 'tools', 'notes', 'settings'].forEach(v => {
       document.getElementById('view-' + v).classList.toggle('hidden', v !== name);
     });
     if (name !== 'graph') Graph.stop();

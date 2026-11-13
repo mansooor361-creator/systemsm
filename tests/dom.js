@@ -149,6 +149,29 @@ const assert = (c, m) => { if (!c) throw new Error(m || 'assertion failed'); };
     assert(doc.getElementById('blPct').textContent.includes('6%') || doc.getElementById('blPct').textContent.includes('6'), doc.getElementById('blPct').textContent);
   });
 
+  console.log('\n— Agents —');
+  test('agents view renders 6 agents and runs consultant', async () => {
+    const Agents = window.eval('Agents');
+    Agents.open('consultant');
+    assert(doc.querySelectorAll('#agentsMenu .tool-chip').length === 6);
+    doc.querySelector('[data-field=question]').value = 'ما أحكام مكافأة نهاية الخدمة عند الفصل؟';
+    doc.querySelector('[data-field=sector]').value = 'شركات';
+    await Agents.run();
+    const md = doc.querySelector('#agentOutput .agent-result').textContent;
+    assert(md.includes('الخلاصة القانونية'), 'sections rendered');
+    assert(md.includes('المادة') || md.includes('['), 'grounded content');
+  });
+  test('agent output can be saved to notes', async () => {
+    const Agents = window.eval('Agents');
+    const Notes = window.eval('Notes');
+    const saved = [];
+    window.daaix.notesSave = async (n) => { saved.push(n); return { ok: true }; };
+    const saveBtn = [...doc.querySelectorAll('#agentOutput button')].find(b => b.textContent.includes('ملاحظاتي'));
+    saveBtn.click();
+    await new Promise(r => setTimeout(r, 100));
+    assert(saved.length === 1 && saved[0].markdown.includes('المستشار القانوني'));
+  });
+
   console.log('\n— Notes —');
   test('notes load and editor opens', async () => {
     await Notes.refresh();
