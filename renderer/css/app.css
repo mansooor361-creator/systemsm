@@ -26,7 +26,7 @@ button { cursor: pointer; }
 #topbar {
   display: flex; align-items: center; gap: 14px;
   padding: 8px 16px; background: var(--bg2); border-bottom: 1px solid var(--border);
-  height: 58px;
+  height: 58px; position: relative;
 }
 .brand { display: flex; align-items: center; gap: 10px; cursor: pointer; }
 .logo { width: 42px; height: 42px; object-fit: contain; }
@@ -419,6 +419,60 @@ body.theme-dark .doc-body h1, body.theme-dark .doc-paper h1 {
 }
 .kb-menu-item:hover { background: var(--bg3); }
 .kb-soon { color: var(--muted); }
+
+/* ---------- v1.5: settings — 3 windows (settings | KBs | tools) ---------- */
+.kb-picker { top: 52px; inset-inline-start: auto; inset-inline-end: 12px; }
+.kb-picker-title { font-size: 12px; color: var(--muted); padding: 6px 12px 2px; }
+.set-tabs {
+  display: flex; gap: 2px; padding: 0 8px; max-width: 860px; margin-bottom: 16px;
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+}
+.set-tab {
+  padding: 10px 18px; border: none; background: transparent; color: var(--muted);
+  font-size: 14px; border-bottom: 2px solid transparent;
+}
+.set-tab.active {
+  color: var(--text); font-weight: 700; border-bottom-color: var(--accent); background: var(--bg3);
+}
+.set-pane { max-width: 860px; }
+.kb-add-row { display: flex; gap: 10px; align-items: center; margin: 12px 0 18px; flex-wrap: wrap; }
+.kb-add-row input {
+  flex: 1; min-width: 260px; padding: 10px 12px; font-size: 14px;
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; outline: none;
+}
+.kb-add-row input:focus { border-color: var(--accent); }
+.tools-search {
+  width: 100%; max-width: 420px; padding: 10px 14px; font-size: 14px; margin-bottom: 16px;
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; outline: none;
+}
+.tools-search:focus { border-color: var(--accent); }
+.settings-rows { display: flex; flex-direction: column; gap: 10px; }
+.settings-row {
+  display: flex; align-items: center; gap: 14px; padding: 12px 14px;
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+}
+.sr-icon { font-size: 22px; width: 34px; text-align: center; flex: none; }
+.sr-main { flex: 1; min-width: 0; }
+.sr-name { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sr-desc { font-size: 13px; color: var(--muted); margin-top: 3px; }
+.cat-chip { font-size: 11px; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); font-weight: 400; }
+.cat-chip.legal { color: var(--accent); border-color: var(--accent); }
+.cat-chip.ai { color: var(--accent2); border-color: var(--accent2); }
+.cat-chip.paid { color: var(--danger); border-color: var(--danger); }
+.cat-chip.src { color: var(--accent2); border-color: var(--accent2); }
+.switch { position: relative; width: 42px; height: 24px; flex: none; cursor: pointer; }
+.switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+.switch .sl {
+  position: absolute; inset: 0; background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 999px; transition: .15s;
+}
+.switch .sl::before {
+  content: ''; position: absolute; top: 2px; inset-inline-start: 2px;
+  width: 18px; height: 18px; border-radius: 50%; background: var(--muted); transition: .15s;
+}
+.switch input:checked + .sl { background: var(--accent); border-color: var(--accent); }
+.switch input:checked + .sl::before { transform: translateX(-18px); background: var(--bg); }
+html[dir="ltr"] .switch input:checked + .sl::before { transform: translateX(18px); }
 
 /* ---------- home hover KB panel (right edge) ---------- */
 .home-kb-strip {

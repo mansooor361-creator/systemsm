@@ -14,6 +14,8 @@
       <span class="brand-name" id="brandHome">DaAIx</span>
     </div>
     <input id="globalSearch" type="search" data-i18n-ph="search" autocomplete="off" />
+    <button id="btnKbPicker" class="tb-btn" data-i18n-title="kbPickerTitle">🗂️</button>
+    <div id="kbPickerMenu" class="kb-menu kb-picker hidden"></div>
   </header>
 
   <div id="layout">
@@ -42,6 +44,8 @@
           <button id="btnOpenSite" class="primary hero-cta">🌐 smartk-ai.com</button>
         </div>
         <div class="quick-cards" id="quickCards"></div>
+        <h2 class="feed-title hidden" id="homeToolsTitle" data-i18n="homeTools"></h2>
+        <div class="quick-cards" id="homeToolCards"></div>
         <h2 class="feed-title" data-i18n="latestUpdates"></h2>
         <div id="updatesFeed" class="updates-feed"></div>
         <div id="searchResults" class="search-results"></div>
@@ -173,6 +177,12 @@
       <!-- Settings -->
       <section id="view-settings" class="view hidden">
         <h2 data-i18n="settings"></h2>
+        <div class="set-tabs" id="setTabs">
+          <button class="set-tab active" data-set="settings" data-i18n="setTabSettings"></button>
+          <button class="set-tab" data-set="kbs" data-i18n="setTabKbs"></button>
+          <button class="set-tab" data-set="tools" data-i18n="setTabTools"></button>
+        </div>
+        <div id="setPaneSettings" class="set-pane">
         <div class="settings-grid">
           <label><span data-i18n="language"></span>
             <select id="setLang"><option value="ar">العربية</option><option value="en">English</option></select>
@@ -204,6 +214,22 @@
           </div>
         </div>
         <button id="btnSaveSettings" class="primary" data-i18n="save"></button>
+        </div>
+        <div id="setPaneKbs" class="set-pane hidden">
+          <p class="hint" data-i18n="kbPaneHint"></p>
+          <div class="kb-add-row">
+            <input id="setKbApiUrl" type="url" data-i18n-ph="kbApiPh" />
+            <button id="btnKbAddApi" class="primary" data-i18n="kbAddApi"></button>
+            <button id="btnKbImportFolder2" class="primary" data-i18n="importFolder"></button>
+            <span id="kbAddStatus" class="update-status"></span>
+          </div>
+          <div id="kbSettingsList" class="settings-rows"></div>
+        </div>
+        <div id="setPaneTools" class="set-pane hidden">
+          <p class="hint" data-i18n="toolsPaneHint"></p>
+          <input id="setToolSearch" type="search" class="tools-search" data-i18n-ph="toolsSearchPh" />
+          <div id="toolSettingsList" class="settings-rows"></div>
+        </div>
       </section>
     </main>
   </div>

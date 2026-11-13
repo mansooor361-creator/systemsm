@@ -84,6 +84,7 @@ function bootDom() {
   const Tools = window.eval('Tools');
   const Agents = window.eval('Agents');
   const Notes = window.eval('Notes');
+  const KB = window.eval('KB');
 
   console.log('\n— Boot (redesigned) —');
   test('boots; wide sidebar removed, narrow icon rail with home + kb icons', () => {
@@ -94,6 +95,7 @@ function bootDom() {
       .forEach(id => assert(rail.querySelector('#' + id), id + ' in rail'));
     assert(doc.querySelector('#topbar .brand .logo'), 'logo-mark restored in topbar');
     assert(!doc.getElementById('btnKbMenu'), 'folder icon removed from topbar');
+    assert(doc.getElementById('btnKbPicker'), 'KB picker button next to search');
   });
   test('topbar action buttons hidden by default; drawer gear visible', () => {
     ['btnAgents', 'btnChat', 'btnGraph', 'btnTools', 'btnNotes'].forEach(id =>
@@ -101,7 +103,7 @@ function bootDom() {
     assert(!doc.getElementById('btnDrawer').classList.contains('hidden'));
   });
   test('home: quick cards + updates feed rendered, big hero', () => {
-    assert(doc.querySelectorAll('.quick-card').length === 5);
+    assert(doc.querySelectorAll('#quickCards .quick-card').length === 5);
     assert(doc.querySelectorAll('.feed-item').length >= 5);
     assert(doc.querySelector('.hero h1').textContent.length > 3);
   });
@@ -365,6 +367,74 @@ function bootDom() {
     const answers = [...doc.querySelectorAll('#agentLog .chat-a .doc-body')];
     assert(answers.length >= 1, 'scoped agent answered');
     Agents.context = [];
+  });
+
+  console.log('\n— Settings: 3 windows (v1.5) —');
+  test('settings tabs: three windows switch panes', () => {
+    App.showView('settings');
+    const tabs = doc.querySelectorAll('#setTabs .set-tab');
+    assert(tabs.length === 3, 'three settings windows');
+    assert(!doc.getElementById('setPaneSettings').classList.contains('hidden'), 'settings pane visible first');
+    assert(doc.getElementById('setPaneKbs').classList.contains('hidden'));
+    assert(doc.getElementById('setPaneTools').classList.contains('hidden'));
+    tabs[1].click();
+    assert(!doc.getElementById('setPaneKbs').classList.contains('hidden'), 'KB pane opens');
+    assert(doc.getElementById('setPaneSettings').classList.contains('hidden'));
+    tabs[2].click();
+    assert(!doc.getElementById('setPaneTools').classList.contains('hidden'), 'tools pane opens');
+    tabs[0].click();
+    assert(!doc.getElementById('setPaneSettings').classList.contains('hidden'));
+  });
+  test('KB window: rows with toggles + source; disabling removes from top picker', async () => {
+    const rows = doc.querySelectorAll('#kbSettingsList .settings-row');
+    assert(rows.length === KB.kbs.length, 'one row per KB');
+    assert(rows[0].querySelector('.cat-chip'), 'source chip on KB row');
+    doc.getElementById('btnKbPicker').click();
+    const before = doc.querySelectorAll('#kbPickerMenu .kb-menu-item').length;
+    assert(before === KB.kbs.length + 1, 'All + enabled KBs in picker');
+    doc.body.click();
+    rows[0].querySelector('input').click();
+    await new Promise(r => setTimeout(r, 50));
+    doc.getElementById('btnKbPicker').click();
+    const after = doc.querySelectorAll('#kbPickerMenu .kb-menu-item').length;
+    assert(after === before - 1, 'disabled KB removed from picker');
+    doc.body.click();
+    rows[0].querySelector('input').click();
+    await new Promise(r => setTimeout(r, 50));
+  });
+  test('KB window: add via API fetches remote manifest and adds KB', async () => {
+    const before = KB.kbs.length;
+    doc.getElementById('setKbApiUrl').value = 'https://example.com/kb.json';
+    doc.getElementById('btnKbAddApi').click();
+    await new Promise(r => setTimeout(r, 50));
+    assert(KB.kbs.length === before, 'failed fetch adds nothing (stub returns ok:false)');
+  });
+  test('tools window: search filters; toggle off hides tool from menu + home', async () => {
+    doc.getElementById('setToolSearch').value = 'واتساب';
+    App.renderToolSettings();
+    let rows = doc.querySelectorAll('#toolSettingsList .settings-row');
+    assert(rows.length === 1, 'search filters tools');
+    doc.getElementById('setToolSearch').value = '';
+    App.renderToolSettings();
+    rows = doc.querySelectorAll('#toolSettingsList .settings-row');
+    assert(rows.length === 11, 'all 11 tools listed');
+    assert(rows[0].querySelector('.cat-chip'), 'category chip on tool row');
+    const waRow = [...rows].find(r => r.textContent.includes('واتساب'));
+    assert(waRow, 'whatsapp tool row found');
+    waRow.querySelector('input').click();
+    await new Promise(r => setTimeout(r, 50));
+    const chips = [...doc.querySelectorAll('#toolsMenu .tool-chip')];
+    assert(chips.length === 10, 'disabled tool removed from tools menu');
+    assert(!chips.some(c => c.textContent.includes('واتساب')), 'whatsapp chip hidden');
+    assert(!doc.getElementById('homeToolCards').textContent.includes('واتساب'), 'disabled tool hidden from home');
+    waRow.querySelector('input').click();
+    await new Promise(r => setTimeout(r, 50));
+    assert(doc.querySelectorAll('#toolsMenu .tool-chip').length === 11, 're-enabled');
+  });
+  test('enabled tools appear as home cards', () => {
+    App.renderHomeToolCards();
+    assert(doc.querySelectorAll('#homeToolCards .quick-card').length === 11, 'all enabled tools on home');
+    assert(!doc.getElementById('homeToolsTitle').classList.contains('hidden'), 'home tools title visible');
   });
 
   console.log('\n— Language toggle —');

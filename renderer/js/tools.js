@@ -5,24 +5,25 @@ const Tools = {
 
   list() {
     return [
-      { id: 'consultant', icon: '⚖️', label: I18n.t('toolConsultant') },
-      { id: 'converter', icon: '🔄', label: I18n.t('toolConverter') },
-      { id: 'costs', icon: '🧾', label: I18n.t('toolCosts') },
-      { id: 'labor', icon: '👷', label: I18n.t('toolLabor') },
-      { id: 'laborConsultant', icon: '🧑‍⚖️', label: I18n.t('toolLaborConsultant') },
-      { id: 'competition', icon: '🏆', label: I18n.t('toolCompetition') },
-      { id: 'offers', icon: '📊', label: I18n.t('toolOffers') },
-      { id: 'building', icon: '🏗️', label: I18n.t('toolBuilding') },
-      { id: 'contract', icon: '📝', label: I18n.t('toolContract') },
-      { id: 'socialMonitor', icon: '📡', label: I18n.t('toolSocial') },
-      { id: 'whatsapp', icon: '💬', label: I18n.t('toolWhatsapp') }
+      { id: 'consultant', icon: '⚖️', label: I18n.t('toolConsultant'), cat: 'ai', desc: I18n.t('descConsultant') },
+      { id: 'converter', icon: '🔄', label: I18n.t('toolConverter'), cat: 'free', desc: I18n.t('descConverter') },
+      { id: 'costs', icon: '🧾', label: I18n.t('toolCosts'), cat: 'legal', desc: I18n.t('descCosts') },
+      { id: 'labor', icon: '👷', label: I18n.t('toolLabor'), cat: 'legal', desc: I18n.t('descLabor') },
+      { id: 'laborConsultant', icon: '🧑‍⚖️', label: I18n.t('toolLaborConsultant'), cat: 'legal', desc: I18n.t('descLaborConsultant') },
+      { id: 'competition', icon: '🏆', label: I18n.t('toolCompetition'), cat: 'legal', desc: I18n.t('descCompetition') },
+      { id: 'offers', icon: '📊', label: I18n.t('toolOffers'), cat: 'legal', desc: I18n.t('descOffers') },
+      { id: 'building', icon: '🏗️', label: I18n.t('toolBuilding'), cat: 'legal', desc: I18n.t('descBuilding') },
+      { id: 'contract', icon: '📝', label: I18n.t('toolContract'), cat: 'legal', desc: I18n.t('descContract') },
+      { id: 'socialMonitor', icon: '📡', label: I18n.t('toolSocial'), cat: 'ai', desc: I18n.t('socialDesc') },
+      { id: 'whatsapp', icon: '💬', label: I18n.t('toolWhatsapp'), cat: 'ai', desc: I18n.t('waDesc') }
     ];
   },
 
   renderMenu() {
     const menu = document.getElementById('toolsMenu');
     menu.innerHTML = '';
-    this.list().forEach(t => {
+    const enabled = (typeof App !== 'undefined' && App.settings && App.settings.toolEnabled) || {};
+    this.list().filter(t => enabled[t.id] !== false).forEach(t => {
       const chip = document.createElement('div');
       chip.className = 'tool-chip' + (this.active === t.id ? ' active' : '');
       chip.textContent = `${t.icon} ${t.label}`;

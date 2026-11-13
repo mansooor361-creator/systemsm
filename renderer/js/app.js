@@ -222,6 +222,8 @@ const App = {
     if (!this.settings.showButtons) {
       this.settings.showButtons = { agents: false, chat: false, graph: false, tools: false, notes: false };
     }
+    if (!this.settings.kbEnabled) this.settings.kbEnabled = {};
+    if (!this.settings.toolEnabled) this.settings.toolEnabled = {};
     window.daaixSettings = this.settings;
 
     I18n.lang = this.settings.language || 'ar';
@@ -238,6 +240,7 @@ const App = {
     this.bindTopbar();
     this.bindDrawer();
     this.bindViews();
+    this.bindSettingsTabs();
     this.bindReaderTabs();
     this.bindLogin();
     this.bindHomePanel();
@@ -257,11 +260,15 @@ const App = {
   renderAll() {
     this.applyTopbarButtons();
     this.renderKbMenu();
+    this.renderKbPicker();
     this.renderQuickCards();
+    this.renderHomeToolCards();
     this.renderFeed();
     this.renderHomePanel();
     this.renderAccount();
     this.renderButtonToggles();
+    this.renderKbSettings();
+    this.renderToolSettings();
     this.applyLangUi();
   },
 
@@ -293,11 +300,17 @@ const App = {
       document.getElementById('kbMenu').classList.toggle('hidden');
     };
     document.addEventListener('click', (e) => {
-      const menu = document.getElementById('kbMenu');
-      if (menu && !menu.classList.contains('hidden') && !menu.contains(e.target)) {
-        menu.classList.add('hidden');
-      }
+      ['kbMenu', 'kbPickerMenu'].forEach(id => {
+        const menu = document.getElementById(id);
+        if (menu && !menu.classList.contains('hidden') && !menu.contains(e.target)) {
+          menu.classList.add('hidden');
+        }
+      });
     });
+    document.getElementById('btnKbPicker').onclick = (e) => {
+      e.stopPropagation();
+      document.getElementById('kbPickerMenu').classList.toggle('hidden');
+    };
     document.getElementById('btnDrawer').onclick = () => this.openDrawer();
     document.getElementById('btnAgents').onclick = () => Agents.open(Agents.current);
     document.getElementById('btnChat').onclick = () => this.showView('chat');
@@ -489,6 +502,140 @@ const App = {
     });
   },
 
+  /* ---------- v1.5: enabled KB/tool toggles + top KB picker ---------- */
+  kbIsOn(id) { return (this.settings.kbEnabled || {})[id] !== false; },
+  toolIsOn(id) { return (this.settings.toolEnabled || {})[id] !== false; },
+
+  renderKbPicker() {
+    const menu = document.getElementById('kbPickerMenu');
+    menu.innerHTML = '';
+    const title = document.createElement('div');
+    title.className = 'kb-picker-title';
+    title.textContent = I18n.t('kbs');
+    menu.appendChild(title);
+    const all = document.createElement('button');
+    all.className = 'kb-menu-item';
+    all.textContent = '\ud83c\udf10 ' + I18n.t('all');
+    all.onclick = () => {
+      menu.classList.add('hidden');
+      this.currentKbId = null;
+      this.currentCat = 'all';
+      this.showView('home');
+      this.renderHomePanel();
+    };
+    menu.appendChild(all);
+    KB.kbs.filter(kb => this.kbIsOn(kb.id)).forEach(kb => {
+      const b = document.createElement('button');
+      b.className = 'kb-menu-item';
+      b.textContent = `${kb.icon || '\ud83d\udcda'} ${kb.name[I18n.lang] || kb.name.ar} (${(kb.documents || []).length})`;
+      b.onclick = () => {
+        menu.classList.add('hidden');
+        this.currentKbId = kb.id;
+        this.currentCat = 'all';
+        this.showView('home');
+        this.renderHomePanel();
+        this.toast(`${kb.icon || '\ud83d\udcda'} ${kb.name[I18n.lang] || kb.name.ar}`);
+      };
+      menu.appendChild(b);
+    });
+  },
+
+  renderKbSettings() {
+    const list = document.getElementById('kbSettingsList');
+    if (!list) return;
+    list.innerHTML = '';
+    KB.kbs.forEach(kb => {
+      const name = kb.name[I18n.lang] || kb.name.ar || kb.id;
+      const src = kb.source === 'local' ? I18n.t('kbSourceFolder') : I18n.t('kbSourceApi');
+      const row = document.createElement('div');
+      row.className = 'settings-row';
+      row.innerHTML = `
+        <span class="sr-icon">${kb.icon || '\ud83d\udcda'}</span>
+        <div class="sr-main">
+          <div class="sr-name">${esc(name)} <span class="cat-chip src">${esc(src)}</span></div>
+          <div class="sr-desc">${(kb.documents || []).length} ${I18n.t('documentsPl')}</div>
+        </div>
+        <label class="switch"><input type="checkbox" ${this.kbIsOn(kb.id) ? 'checked' : ''} /><span class="sl"></span></label>`;
+      row.querySelector('input').onchange = async (e) => {
+        this.settings.kbEnabled[kb.id] = e.target.checked;
+        await window.daaix.settingsSet({ kbEnabled: this.settings.kbEnabled });
+        this.renderKbPicker();
+        this.renderKbMenu();
+        this.renderHomePanel();
+        this.toast(`${e.target.checked ? I18n.t('toolOn') : I18n.t('toolOff')} \u2014 ${name}`);
+      };
+      list.appendChild(row);
+    });
+  },
+
+  renderToolSettings() {
+    const list = document.getElementById('toolSettingsList');
+    if (!list) return;
+    const q = (document.getElementById('setToolSearch').value || '').trim().toLowerCase();
+    list.innerHTML = '';
+    Tools.list()
+      .filter(t => !q || t.label.toLowerCase().includes(q) || (t.desc || '').toLowerCase().includes(q))
+      .forEach(t => {
+        const row = document.createElement('div');
+        row.className = 'settings-row';
+        row.innerHTML = `
+          <span class="sr-icon">${t.icon}</span>
+          <div class="sr-main">
+            <div class="sr-name">${esc(t.label)} <span class="cat-chip ${t.cat}">${esc(I18n.t('cat_' + t.cat))}</span></div>
+            <div class="sr-desc">${esc(t.desc || '')}</div>
+          </div>
+          <label class="switch"><input type="checkbox" ${this.toolIsOn(t.id) ? 'checked' : ''} /><span class="sl"></span></label>`;
+        row.querySelector('input').onchange = async (e) => {
+          this.settings.toolEnabled[t.id] = e.target.checked;
+          await window.daaix.settingsSet({ toolEnabled: this.settings.toolEnabled });
+          Tools.renderMenu();
+          this.renderHomeToolCards();
+          this.toast(`${e.target.checked ? I18n.t('toolOn') : I18n.t('toolOff')} \u2014 ${t.label}`);
+        };
+        list.appendChild(row);
+      });
+    if (!list.children.length) list.innerHTML = `<p class="hint">\u2014</p>`;
+  },
+
+  renderHomeToolCards() {
+    const title = document.getElementById('homeToolsTitle');
+    const wrap = document.getElementById('homeToolCards');
+    if (!wrap) return;
+    const enabled = Tools.list().filter(t => this.toolIsOn(t.id));
+    title.classList.toggle('hidden', !enabled.length);
+    wrap.innerHTML = '';
+    enabled.forEach(t => {
+      const card = document.createElement('div');
+      card.className = 'quick-card';
+      card.innerHTML = `<div class="qc-icon">${t.icon}</div><div class="qc-label">${esc(t.label)}</div><div class="qc-desc">${esc(t.desc || '')}</div>`;
+      card.onclick = () => Tools.open(t.id);
+      wrap.appendChild(card);
+    });
+  },
+
+  bindSettingsTabs() {
+    document.querySelectorAll('#setTabs .set-tab').forEach(btn => {
+      btn.onclick = () => {
+        document.querySelectorAll('#setTabs .set-tab').forEach(b => b.classList.toggle('active', b === btn));
+        ['settings', 'kbs', 'tools'].forEach(p =>
+          document.getElementById('setPane' + p.charAt(0).toUpperCase() + p.slice(1)).classList.toggle('hidden', p !== btn.dataset.set));
+      };
+    });
+  },
+
+  async doImportFolder(statusEl) {
+    statusEl.textContent = '...';
+    const res = await window.daaix.importFolder();
+    if (!res || !res.ok) { statusEl.textContent = (res && res.error) || '\u2014'; return; }
+    res.kb.source = 'local';
+    KB.addDownloaded([res.kb]);
+    Retrieval.build();
+    await window.daaix.kbSaveDownloaded(res.kb);
+    this.renderAll();
+    statusEl.textContent = `${I18n.t('imported')}: ${res.count}`;
+    this.toast(`${I18n.t('imported')}: ${res.count}`);
+  },
+
   bindHomePanel() {
     const strip = document.getElementById('homeKbStrip');
     const panel = document.getElementById('homeKbPanel');
@@ -556,18 +703,28 @@ const App = {
     document.getElementById('btnSaveEdits').onclick = () => this.saveEdits();
     document.getElementById('btnDiscardEdits').onclick = () => this.discardEdits();
 
-    document.getElementById('btnImportFolder').onclick = async () => {
-      const status = document.getElementById('importStatus');
+    document.getElementById('btnImportFolder').onclick = () => this.doImportFolder(document.getElementById('importStatus'));
+    document.getElementById('btnKbImportFolder2').onclick = () => this.doImportFolder(document.getElementById('kbAddStatus'));
+    document.getElementById('btnKbAddApi').onclick = async () => {
+      const status = document.getElementById('kbAddStatus');
+      const url = document.getElementById('setKbApiUrl').value.trim();
+      if (!url) { status.textContent = '—'; return; }
       status.textContent = '...';
-      const res = await window.daaix.importFolder();
-      if (!res || !res.ok) { status.textContent = (res && res.error) || '—'; return; }
-      KB.addDownloaded([res.kb]);
+      const res = await window.daaix.kbFetchRemote(url);
+      if (!res || !res.ok) { status.textContent = (res && res.error) || 'error'; return; }
+      const data = res.data;
+      const kbs = Array.isArray(data) ? data : (data.kbs || [data]);
+      for (const kb of kbs) {
+        kb.source = 'api';
+        KB.addDownloaded([kb]);
+        await window.daaix.kbSaveDownloaded(kb);
+      }
       Retrieval.build();
-      await window.daaix.kbSaveDownloaded(res.kb);
       this.renderAll();
-      status.textContent = `${I18n.t('imported')}: ${res.count}`;
-      this.toast(`${I18n.t('imported')}: ${res.count}`);
+      status.textContent = `${I18n.t('imported')}: ${kbs.length}`;
+      this.toast(`${I18n.t('imported')}: ${kbs.length}`);
     };
+    document.getElementById('setToolSearch').addEventListener('input', () => this.renderToolSettings());
 
     document.getElementById('btnSaveSettings').onclick = async () => {
       const patch = {

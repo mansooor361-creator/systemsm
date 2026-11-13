@@ -116,7 +116,24 @@ const I18N = {
     waSave: 'حفظ الإعدادات', waSaved: 'تم حفظ إعدادات واتساب',
     waTest: 'اختبار الرد', waTestPh: 'اكتب رسالة واردة من مستخدم لاختبار الرد...', waReply: 'الرد الذي سيُرسل',
     waSend: 'إرسال عبر API', waSent: 'تم الإرسال عبر API', waSendFailed: 'تعذر الإرسال — تحقق من الرابط',
-    waNoMatch: 'لا توجد إجابة موثقة في قاعدة المعرفة لهذه الرسالة — لن يرد المستجيب بتخمين.', waFromInjected: 'من البيانات المحقونة'
+    waNoMatch: 'لا توجد إجابة موثقة في قاعدة المعرفة لهذه الرسالة — لن يرد المستجيب بتخمين.', waFromInjected: 'من البيانات المحقونة',
+    setTabSettings: 'الإعدادات', setTabKbs: 'قواعد المعرفة', setTabTools: 'الأدوات',
+    kbPaneHint: 'اربط قواعد المعرفة عبر API أو من مجلد على جهازك، وفعّل ما تريد ظهوره في زر قواعد المعرفة بجانب البحث.',
+    kbAddApi: 'إضافة عبر API', kbApiPh: 'رابط API لقاعدة معرفة (Manifest JSON)',
+    kbSourceApi: 'API', kbSourceFolder: 'مجلد',
+    toolsPaneHint: 'فعّل الأدوات التي تريد ظهورها في الصفحة الرئيسية وفي قائمة الأدوات.',
+    toolsSearchPh: 'ابحث في الأدوات...', toolOn: 'مُفعّلة', toolOff: 'معطّلة',
+    kbPickerTitle: 'قواعد المعرفة المفعّلة', homeTools: 'الأدوات المفعّلة',
+    cat_legal: 'قانوني', cat_free: 'مجاني', cat_paid: 'مدفوع', cat_ai: 'ذكاء اصطناعي',
+    descConsultant: 'استشارات قانونية مُسنَدة إلى قاعدة المعرفة — بدون هلوسة.',
+    descConverter: 'تحويل ملفات PDF وWord وTXT إلى Markdown.',
+    descCosts: 'تقدير التكاليف القضائية والمدة التقديرية للدعوى.',
+    descLabor: 'حاسبة مكافأة نهاية الخدمة ومدة الإخطار.',
+    descLaborConsultant: 'استشارات مُسنَدة إلى نظام العمل ولوائحه التنفيذية.',
+    descCompetition: 'استشارات أنظمة المنافسات والحواجز الجمركية.',
+    descOffers: 'تقييم العروض ومقارنتها وفق الاشتراطات.',
+    descBuilding: 'الاشتراطات الفنية والإدارية لأعمال البناء.',
+    descContract: 'إعداد العقود وفق أبجدية البنود وتحليل الصياغات الخطرة.'
   },
   en: {
     appName: 'DaAIx', tagline: 'Legal Knowledge Bases',
@@ -233,7 +250,24 @@ const I18N = {
     waSave: 'Save settings', waSaved: 'WhatsApp settings saved',
     waTest: 'Test the reply', waTestPh: 'Type an incoming user message to test the reply...', waReply: 'Reply to be sent',
     waSend: 'Send via API', waSent: 'Sent via API', waSendFailed: 'Send failed \u2014 check the URL',
-    waNoMatch: 'No documented answer in the knowledge base for this message \u2014 the responder will not guess.', waFromInjected: 'From injected data'
+    waNoMatch: 'No documented answer in the knowledge base for this message \u2014 the responder will not guess.', waFromInjected: 'From injected data',
+    setTabSettings: 'Settings', setTabKbs: 'Knowledge Bases', setTabTools: 'Tools',
+    kbPaneHint: 'Link knowledge bases via API or from a folder on your device, and enable the ones you want in the KB button next to search.',
+    kbAddApi: 'Add via API', kbApiPh: 'Knowledge base API URL (Manifest JSON)',
+    kbSourceApi: 'API', kbSourceFolder: 'Folder',
+    toolsPaneHint: 'Enable the tools you want to appear on the home screen and in the tools menu.',
+    toolsSearchPh: 'Search tools...', toolOn: 'Enabled', toolOff: 'Disabled',
+    kbPickerTitle: 'Enabled knowledge bases', homeTools: 'Enabled Tools',
+    cat_legal: 'Legal', cat_free: 'Free', cat_paid: 'Paid', cat_ai: 'AI',
+    descConsultant: 'Legal consultations grounded in the knowledge base \u2014 no hallucination.',
+    descConverter: 'Convert PDF, Word and TXT files to Markdown.',
+    descCosts: 'Estimate court costs and expected case duration.',
+    descLabor: 'End-of-service benefit and notice period calculator.',
+    descLaborConsultant: 'Consultations grounded in the Labor Law and its regulations.',
+    descCompetition: 'Competition law and customs barriers consultations.',
+    descOffers: 'Evaluate and compare offers against requirements.',
+    descBuilding: 'Technical and administrative building requirements.',
+    descContract: 'Draft contracts per the clause alphabet and analyze risky wordings.'
   }
 };
 
