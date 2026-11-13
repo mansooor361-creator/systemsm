@@ -91,11 +91,16 @@ function bootDom() {
     assert(!doc.getElementById('sidebar'), 'wide sidebar removed');
     const rail = doc.getElementById('rail');
     assert(rail, 'icon rail present');
-    ['btnRailHome', 'btnRailKb', 'btnAgents', 'btnChat', 'btnGraph', 'btnTools', 'btnNotes', 'btnDrawer']
+    ['btnRailHome', 'btnAgents', 'btnChat', 'btnGraph', 'btnTools', 'btnNotes', 'btnDrawer']
       .forEach(id => assert(rail.querySelector('#' + id), id + ' in rail'));
+    assert(!doc.getElementById('btnRailKb'), 'rail folder icon removed');
+    assert(!doc.getElementById('kbMenu'), 'rail KB menu removed');
+    assert(doc.getElementById('toolRail'), 'tool rail container present');
     assert(doc.querySelector('#topbar .brand .logo'), 'logo-mark restored in topbar');
     assert(!doc.getElementById('btnKbMenu'), 'folder icon removed from topbar');
     assert(doc.getElementById('btnKbPicker'), 'KB picker button next to search');
+    assert(doc.getElementById('btnKbPicker').textContent.includes('\uD83D\uDCDA'), 'picker icon is books, not folder');
+    assert(doc.getElementById('btnSearchText') && doc.getElementById('btnSearchSemantic'), 'search mode icon buttons');
   });
   test('topbar action buttons hidden by default; drawer gear visible', () => {
     ['btnAgents', 'btnChat', 'btnGraph', 'btnTools', 'btnNotes'].forEach(id =>
@@ -324,16 +329,14 @@ function bootDom() {
     App.renderAccount();
   });
 
-  console.log('\n— KB menu + home hover panel —');
-  test('rail KB icon menu lists knowledge bases and sources', () => {
-    doc.getElementById('btnRailKb').click();
-    const menu = doc.getElementById('kbMenu');
-    assert(!menu.classList.contains('hidden'));
-    assert(menu.textContent.includes('قانون وتشريعات'));
-    assert(menu.textContent.includes('الأنظمة العمانية'));
-    assert(menu.textContent.includes('القرآن'));
-    doc.body.click();
-    assert(menu.classList.contains('hidden'), 'menu closes on outside click');
+  console.log('\n— Home hover panel + tool rail —');
+  test('enabled tools appear as monochrome icons in the rail; click opens the tool', () => {
+    App.renderToolRail();
+    const btns = doc.querySelectorAll('#toolRail .tool-rail-btn');
+    assert(btns.length === 11, 'all enabled tools in rail');
+    assert(btns[0].title.length > 2, 'tooltip shows tool name');
+    btns[3].click();
+    assert(!doc.getElementById('view-tools').classList.contains('hidden'), 'tool opens from rail');
   });
   test('home hover panel shows categories + docs on strip hover', () => {
     const strip = doc.getElementById('homeKbStrip');
@@ -436,6 +439,41 @@ function bootDom() {
     App.renderHomeToolCards();
     assert(doc.querySelectorAll('#homeToolCards .quick-card').length === 11, 'all enabled tools on home');
     assert(!doc.getElementById('homeToolsTitle').classList.contains('hidden'), 'home tools title visible');
+  });
+
+  console.log('\n— Search: text + semantic (v1.6) —');
+  test('typing in search shows detailed result cards with mode tabs; feed hidden', () => {
+    App.showView('home');
+    const input = doc.getElementById('globalSearch');
+    input.value = 'العمل';
+    input.dispatchEvent(new window.Event('input', { bubbles: true }));
+    const items = doc.querySelectorAll('#searchResults .sr-item');
+    assert(items.length >= 3, 'results visible under search');
+    assert(doc.getElementById('updatesFeed').classList.contains('hidden'), 'feed hidden while searching');
+    assert(doc.querySelectorAll('#searchResults .sr-mode').length === 2, 'text/semantic mode tabs');
+    assert(doc.querySelector('#searchResults .sr-count').textContent.includes('3') ||
+           doc.querySelector('#searchResults .sr-count').textContent.length > 1, 'result count shown');
+    const first = items[0];
+    assert(first.querySelector('.chip.type'), 'type chip on result');
+    assert(first.textContent.includes('عرض التفاصيل'), 'view details link');
+    const props = first.querySelector('.sr-props').textContent;
+    assert(props.includes('مرسوم ملكي') || props.includes('أداة الإصدار'), 'issuing tool in result');
+    assert(props.includes('ساري'), 'legislative status in result');
+    input.value = '';
+    input.dispatchEvent(new window.Event('input', { bubbles: true }));
+    assert(!doc.getElementById('updatesFeed').classList.contains('hidden'), 'feed restored on clear');
+  });
+  test('semantic search mode returns ranked results', () => {
+    App.setSearchMode('semantic');
+    const input = doc.getElementById('globalSearch');
+    input.value = 'مكافأة نهاية الخدمة';
+    input.dispatchEvent(new window.Event('input', { bubbles: true }));
+    const items = doc.querySelectorAll('#searchResults .sr-item');
+    assert(items.length >= 1, 'semantic results shown');
+    assert(doc.querySelector('#searchResults .sr-mode[data-m=semantic]').classList.contains('active'), 'semantic tab active');
+    App.setSearchMode('text');
+    input.value = '';
+    input.dispatchEvent(new window.Event('input', { bubbles: true }));
   });
 
   console.log('\n— Language toggle —');

@@ -133,7 +133,10 @@ const I18N = {
     descCompetition: 'استشارات أنظمة المنافسات والحواجز الجمركية.',
     descOffers: 'تقييم العروض ومقارنتها وفق الاشتراطات.',
     descBuilding: 'الاشتراطات الفنية والإدارية لأعمال البناء.',
-    descContract: 'إعداد العقود وفق أبجدية البنود وتحليل الصياغات الخطرة.'
+    descContract: 'إعداد العقود وفق أبجدية البنود وتحليل الصياغات الخطرة.',
+    searchTextTitle: 'بحث نصي', searchSemanticTitle: 'بحث دلالي',
+    searchTextTab: 'بحث بالكلمات', searchSemanticTab: 'بحث دلالي',
+    resultsCount: 'نتيجة', viewDetails: 'عرض التفاصيل', docNumber: 'رقم الوثيقة'
   },
   en: {
     appName: 'DaAIx', tagline: 'Legal Knowledge Bases',
@@ -267,7 +270,10 @@ const I18N = {
     descCompetition: 'Competition law and customs barriers consultations.',
     descOffers: 'Evaluate and compare offers against requirements.',
     descBuilding: 'Technical and administrative building requirements.',
-    descContract: 'Draft contracts per the clause alphabet and analyze risky wordings.'
+    descContract: 'Draft contracts per the clause alphabet and analyze risky wordings.',
+    searchTextTitle: 'Text search', searchSemanticTitle: 'Semantic search',
+    searchTextTab: 'Keyword search', searchSemanticTab: 'Semantic search',
+    resultsCount: 'results', viewDetails: 'View details', docNumber: 'Document No.'
   }
 };
 
@@ -287,6 +293,9 @@ const I18n = {
     });
     document.querySelectorAll('[data-i18n-ph]').forEach(el => {
       el.placeholder = this.t(el.getAttribute('data-i18n-ph'));
+    });
+    document.querySelectorAll('[data-i18n-title]').forEach(el => {
+      el.title = this.t(el.getAttribute('data-i18n-title'));
     });
   }
 };

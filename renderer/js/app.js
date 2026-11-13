@@ -259,8 +259,8 @@ const App = {
 
   renderAll() {
     this.applyTopbarButtons();
-    this.renderKbMenu();
     this.renderKbPicker();
+    this.renderToolRail();
     this.renderHomeToolCards();
     this.renderFeed();
     this.renderHomePanel();
@@ -294,17 +294,13 @@ const App = {
   bindTopbar() {
     document.getElementById('brandHome').onclick = () => this.showView('home');
     document.getElementById('btnRailHome').onclick = () => this.showView('home');
-    document.getElementById('btnRailKb').onclick = (e) => {
-      e.stopPropagation();
-      document.getElementById('kbMenu').classList.toggle('hidden');
-    };
+    document.getElementById('btnSearchText').onclick = () => this.setSearchMode('text');
+    document.getElementById('btnSearchSemantic').onclick = () => this.setSearchMode('semantic');
     document.addEventListener('click', (e) => {
-      ['kbMenu', 'kbPickerMenu'].forEach(id => {
-        const menu = document.getElementById(id);
-        if (menu && !menu.classList.contains('hidden') && !menu.contains(e.target)) {
-          menu.classList.add('hidden');
-        }
-      });
+      const menu = document.getElementById('kbPickerMenu');
+      if (menu && !menu.classList.contains('hidden') && !menu.contains(e.target)) {
+        menu.classList.add('hidden');
+      }
     });
     document.getElementById('btnKbPicker').onclick = (e) => {
       e.stopPropagation();
@@ -457,49 +453,6 @@ const App = {
     };
   },
 
-  /* ---------- KB menu (topbar icon) + home hover panel ---------- */
-  renderKbMenu() {
-    const menu = document.getElementById('kbMenu');
-    menu.innerHTML = '';
-    const home = document.createElement('button');
-    home.className = 'kb-menu-item';
-    home.textContent = '🏠 ' + I18n.t('kbHome');
-    home.onclick = () => { menu.classList.add('hidden'); this.showView('home'); };
-    menu.appendChild(home);
-
-    KB.kbs.forEach(kb => {
-      const b = document.createElement('button');
-      b.className = 'kb-menu-item';
-      b.textContent = `${kb.icon || '📚'} ${kb.name[I18n.lang] || kb.name.ar} (${(kb.documents || []).length})`;
-      b.onclick = () => {
-        menu.classList.add('hidden');
-        this.currentKbId = kb.id;
-        this.currentCat = 'all';
-        this.showView('home');
-        this.renderHomePanel();
-        this.toast(`${kb.icon || '📚'} ${kb.name[I18n.lang] || kb.name.ar}`);
-      };
-      menu.appendChild(b);
-    });
-
-    [
-      ['⚖️', 'kbJudgments'], ['🇸🇦', 'kbSaudi'], ['🇴🇲', 'kbOman'], ['🇦🇪', 'kbUae'], ['📖', 'kbQuran']
-    ].forEach(([icon, key]) => {
-      const b = document.createElement('button');
-      b.className = 'kb-menu-item kb-soon';
-      b.textContent = `${icon} ${I18n.t(key)}`;
-      b.onclick = () => {
-        menu.classList.add('hidden');
-        this.currentKbId = null;
-        this.currentCat = key === 'kbJudgments' ? 'rulings' : 'legal';
-        this.showView('home');
-        this.renderHomePanel();
-        this.toast(I18n.t(key));
-      };
-      menu.appendChild(b);
-    });
-  },
-
   /* ---------- v1.5: enabled KB/tool toggles + top KB picker ---------- */
   kbIsOn(id) { return (this.settings.kbEnabled || {})[id] !== false; },
   toolIsOn(id) { return (this.settings.toolEnabled || {})[id] !== false; },
@@ -558,7 +511,6 @@ const App = {
         this.settings.kbEnabled[kb.id] = e.target.checked;
         await window.daaix.settingsSet({ kbEnabled: this.settings.kbEnabled });
         this.renderKbPicker();
-        this.renderKbMenu();
         this.renderHomePanel();
         this.toast(`${e.target.checked ? I18n.t('toolOn') : I18n.t('toolOff')} \u2014 ${name}`);
       };
@@ -587,12 +539,27 @@ const App = {
           this.settings.toolEnabled[t.id] = e.target.checked;
           await window.daaix.settingsSet({ toolEnabled: this.settings.toolEnabled });
           Tools.renderMenu();
+          this.renderToolRail();
           this.renderHomeToolCards();
           this.toast(`${e.target.checked ? I18n.t('toolOn') : I18n.t('toolOff')} \u2014 ${t.label}`);
         };
         list.appendChild(row);
       });
     if (!list.children.length) list.innerHTML = `<p class="hint">\u2014</p>`;
+  },
+
+  renderToolRail() {
+    const wrap = document.getElementById('toolRail');
+    if (!wrap) return;
+    wrap.innerHTML = '';
+    Tools.list().filter(t => this.toolIsOn(t.id)).forEach(t => {
+      const b = document.createElement('button');
+      b.className = 'rail-btn tool-rail-btn mono';
+      b.title = t.label;
+      b.textContent = t.icon;
+      b.onclick = () => Tools.open(t.id);
+      wrap.appendChild(b);
+    });
   },
 
   renderHomeToolCards() {
@@ -858,26 +825,69 @@ const App = {
   },
 
 
+  /* ---------- search: textual + semantic modes, detailed result cards ---------- */
+  searchMode: 'text',
+
+  setSearchMode(mode) {
+    this.searchMode = mode;
+    document.getElementById('btnSearchText').classList.toggle('active', mode === 'text');
+    document.getElementById('btnSearchSemantic').classList.toggle('active', mode === 'semantic');
+    const q = document.getElementById('globalSearch').value;
+    if (q && q.trim().length >= 2) this.search(q);
+  },
+
   search(q) {
     const box = document.getElementById('searchResults');
+    const feed = document.getElementById('updatesFeed');
+    const feedTitle = document.getElementById('feedTitle');
+    const toolsTitle = document.getElementById('homeToolsTitle');
+    const toolCards = document.getElementById('homeToolCards');
     this.showView('home');
-    if (!q || q.trim().length < 2) { box.innerHTML = ''; return; }
-    const results = KB.search(q.trim(), 30);
+    const active = q && q.trim().length >= 2;
+    feed.classList.toggle('hidden', !!active);
+    feedTitle.classList.toggle('hidden', !!active);
+    const toolsOn = Tools.list().some(t => this.toolIsOn(t.id));
+    toolsTitle.classList.toggle('hidden', !!active || !toolsOn);
+    toolCards.classList.toggle('hidden', !!active);
     box.innerHTML = '';
+    if (!active) return;
+    const query = q.trim();
+    const results = this.searchMode === 'semantic' ? KB.searchSemantic(query, 30) : KB.search(query, 30);
+
+    const head = document.createElement('div');
+    head.className = 'sr-head';
+    head.innerHTML = `
+      <button class="sr-mode ${this.searchMode === 'text' ? 'active' : ''}" data-m="text">🔍 ${I18n.t('searchTextTab')}</button>
+      <button class="sr-mode ${this.searchMode === 'semantic' ? 'active' : ''}" data-m="semantic">✨ ${I18n.t('searchSemanticTab')}</button>
+      <span class="sr-count">${results.length} ${I18n.t('resultsCount')}</span>`;
+    head.querySelectorAll('.sr-mode').forEach(b => { b.onclick = () => this.setSearchMode(b.dataset.m); });
+    box.appendChild(head);
+
     if (!results.length) {
-      box.innerHTML = `<p style="color:var(--muted);text-align:center;padding:20px">—</p>`;
+      box.innerHTML += `<p class="hint" style="text-align:center;padding:20px">—</p>`;
       return;
     }
     results.forEach(r => {
       const doc = r.doc;
       const title = doc.title[I18n.lang] || doc.title.ar || doc.title.en;
+      const issueTool = doc.issueTool
+        ? (doc.issueTool.tool || doc.issueTool.ar || doc.issueTool)
+        : (doc.issuer ? (doc.issuer[I18n.lang] || doc.issuer.ar || doc.issuer.en) : '—');
       const item = document.createElement('div');
       item.className = 'sr-item';
-      const snippet = (doc.summary ? (doc.summary.ar || doc.summary.en || '') : (doc.body || '')).slice(0, 160);
-      item.innerHTML = `<div class="t">${esc(title)}</div>
-        <div class="m">${I18n.docTypeName(doc.type)} · ${Math.round(r.score * 100)}</div>
-        <div class="snip">${esc(snippet)}…</div>`;
-      item.onclick = () => { document.getElementById('globalSearch').value = ''; this.openDocument(doc.id); };
+      item.innerHTML = `
+        <div class="sr-top"><div class="t">${esc(title)}</div><span class="chip type">${I18n.docTypeName(doc.type)}</span></div>
+        <a class="sr-open" href="#">${I18n.t('viewDetails')} ←</a>
+        <div class="sr-props">
+          <div><span>${I18n.t('docType')}:</span> ${I18n.docTypeName(doc.type)}</div>
+          <div><span>${I18n.t('issueTool')}:</span> ${esc(issueTool)}</div>
+          <div><span>${I18n.t('docNumber')}:</span> ${esc(doc.issueTool ? doc.issueTool.number : (doc.number || '—'))}</div>
+          <div><span>${I18n.t('issueToolDate')}:</span> ${esc(doc.issueTool ? doc.issueTool.date : (doc.date || '—'))}</div>
+          <div><span>${I18n.t('legislativeStatus')}:</span> ${I18n.t('status_' + (doc.status || 'in_force'))}</div>
+        </div>`;
+      const open = () => { document.getElementById('globalSearch').value = ''; this.search(''); this.openDocument(doc.id); };
+      item.querySelector('.sr-open').onclick = (e) => { e.preventDefault(); open(); };
+      item.onclick = (e) => { if (e.target.tagName !== 'A') open(); };
       box.appendChild(item);
     });
   },

@@ -86,6 +86,30 @@ const KB = {
     return results.slice(0, limit);
   },
 
+  searchSemantic(query, limit = 40) {
+    const qTokens = this.tokenize(query);
+    if (!qTokens.length) return [];
+    const results = [];
+    for (const entry of this.index) {
+      const set = new Set(entry.tokens);
+      let hits = 0;
+      for (const q of qTokens) {
+        if (set.has(q)) { hits += 1; continue; }
+        let best = 0;
+        for (const t of set) {
+          if (q.length >= 3 && t.includes(q)) best = Math.max(best, 0.6);
+          else if (t.length >= 3 && q.includes(t)) best = Math.max(best, 0.4);
+        }
+        hits += best;
+      }
+      if (hits <= 0) continue;
+      const score = (hits / qTokens.length) / Math.sqrt(entry.tokens.length || 1);
+      results.push({ doc: entry.doc, kbName: entry.kbName, score: score * 10 });
+    }
+    results.sort((a, b) => b.score - a.score);
+    return results.slice(0, limit);
+  },
+
   get(id) { return this.byId.get(id); },
 
   catFor(doc) {

@@ -14,14 +14,16 @@
       <span class="brand-name" id="brandHome">DaAIx</span>
     </div>
     <input id="globalSearch" type="search" data-i18n-ph="search" autocomplete="off" />
-    <button id="btnKbPicker" class="tb-btn" data-i18n-title="kbPickerTitle">🗂️</button>
+    <button id="btnSearchText" class="tb-btn mono active" data-i18n-title="searchTextTitle">🔍</button>
+    <button id="btnSearchSemantic" class="tb-btn mono" data-i18n-title="searchSemanticTitle">✨</button>
+    <button id="btnKbPicker" class="tb-btn" data-i18n-title="kbPickerTitle">📚</button>
     <div id="kbPickerMenu" class="kb-menu kb-picker hidden"></div>
   </header>
 
   <div id="layout">
     <nav id="rail">
-      <button id="btnRailHome" class="rail-btn" data-i18n-title="home">🏠</button>
-      <button id="btnRailKb" class="rail-btn" data-i18n-title="kbIconTitle">🗂️</button>
+      <button id="btnRailHome" class="rail-btn rail-home" data-i18n-title="home">⌂</button>
+      <div id="toolRail" class="tool-rail"></div>
       <div class="rail-sep"></div>
       <button id="btnAgents" class="tb-btn rail-btn" data-i18n-title="agents">🤖</button>
       <button id="btnChat" class="tb-btn rail-btn" data-i18n-title="chat">💬</button>
@@ -31,7 +33,6 @@
       <div class="rail-spacer"></div>
       <span id="appVersion" class="rail-ver"></span>
       <button id="btnDrawer" class="tb-btn rail-btn" title="⚙️">⚙️</button>
-      <div id="kbMenu" class="kb-menu hidden"></div>
     </nav>
 
     <main id="main">
@@ -39,9 +40,9 @@
       <section id="view-home" class="view">
         <h2 class="feed-title hidden" id="homeToolsTitle" data-i18n="homeTools"></h2>
         <div class="quick-cards" id="homeToolCards"></div>
-        <h2 class="feed-title" data-i18n="latestUpdates"></h2>
-        <div id="updatesFeed" class="updates-feed"></div>
         <div id="searchResults" class="search-results"></div>
+        <h2 class="feed-title" id="feedTitle" data-i18n="latestUpdates"></h2>
+        <div id="updatesFeed" class="updates-feed"></div>
       </section>
 
       <!-- Document reader: TOC | center tabs | right tabbed panel -->
@@ -85,10 +86,10 @@
         </div>
         <aside id="docProps" class="doc-props">
           <div class="right-tabs" id="rightTabs">
-            <button class="rtab active" data-tab="amend" data-i18n="rightAmend"></button>
-            <button class="rtab" data-tab="rulings" data-i18n="rightRulings"></button>
-            <button class="rtab" data-tab="relations" data-i18n="rightRelations"></button>
-            <button class="rtab" data-tab="chat" data-i18n="rightChat"></button>
+            <button class="rtab mono active" data-tab="amend" data-i18n-title="rightAmend" title="سجل التعديلات">🕒</button>
+            <button class="rtab mono" data-tab="rulings" data-i18n-title="rightRulings" title="الأحكام المرتبطة">🔨</button>
+            <button class="rtab mono" data-tab="relations" data-i18n-title="rightRelations" title="الارتباطات">🔗</button>
+            <button class="rtab mono" data-tab="chat" data-i18n-title="rightChat" title="شات جي بي تي">💬</button>
           </div>
           <div id="rpaneAmend" class="right-pane">
             <div class="sub-tabs">
