@@ -703,7 +703,7 @@ const App = {
     const active = this.settings.activeProvider || '';
     list.innerHTML = '';
     this.settings.providers.forEach((p) => {
-      const name = p.name[I18n.lang] || p.name.ar;
+      const name = p.name.en || p.name.ar;
       const row = document.createElement('div');
       row.className = 'settings-row provider-row';
       row.innerHTML = `
@@ -739,29 +739,13 @@ const App = {
   renderAiSettings() {
     this.renderProviderList();
     const agentList = document.getElementById('agentSettingsList');
-    if (!agentList) return;
-    agentList.innerHTML = '';
-    Agents.list().forEach(a => {
-      const name = a.label.en || a.label.ar;
-      const desc = a.desc[I18n.lang] || a.desc.ar;
-      const row = document.createElement('div');
-      row.className = 'settings-row';
-      row.innerHTML = `
-        <span class="sr-icon">${a.icon}</span>
-        <div class="sr-main">
-          <div class="sr-name">${esc(name)}</div>
-          <div class="sr-desc">${esc(desc)}</div>
-        </div>
-        <label class="switch"><input type="checkbox" ${this.agentIsOn(a.id) ? 'checked' : ''} /><span class="sl"></span></label>`;
-      row.querySelector('input').onchange = async (e) => {
-        this.settings.agentsEnabled = this.settings.agentsEnabled || {};
-        this.settings.agentsEnabled[a.id] = e.target.checked;
-        await window.daaix.settingsSet({ agentsEnabled: this.settings.agentsEnabled });
-        Agents.renderMenu();
-        this.toast(`${e.target.checked ? I18n.t('agentOn') : I18n.t('agentOff')} — ${name}`);
-      };
-      agentList.appendChild(row);
-    });
+    if (agentList) {
+      agentList.innerHTML = '';
+      agentList.classList.add('hidden');
+    }
+
+    this.renderCustomSkillBuilder();
+    this.renderCustomSkillList();
 
     const cmdList = document.getElementById('commandList');
     cmdList.innerHTML = '';
@@ -788,24 +772,77 @@ const App = {
     const skillList = document.getElementById('skillList');
     skillList.innerHTML = '';
     Agents.skills().forEach(sk => {
-      const label = sk.label[I18n.lang] || sk.label.ar;
-      const desc = sk.desc[I18n.lang] || sk.desc.ar;
-      const prompt = sk.prompt[I18n.lang] || sk.prompt.ar;
+      const label = sk.label.en;
+      const desc = sk.desc.en || sk.desc.ar;
+      const prompt = sk.prompt.en || sk.prompt.ar;
       const row = document.createElement('div');
       row.className = 'cmd-item';
       row.innerHTML = `
         <span class="cmd-icon">${sk.icon}</span>
         <div class="cmd-main">
-          <div class="cmd-name">${esc(label)}</div>
+          <div class="cmd-name">@ ${esc(label)}</div>
           <div class="cmd-desc">${esc(desc)}</div>
         </div>
         <button class="ghost-btn cmd-run">${I18n.t('run')}</button>`;
       row.querySelector('.cmd-run').onclick = () => {
         Agents.open(sk.agent);
-        document.getElementById('agentInput').value = prompt;
+        document.getElementById('agentInput').value = '@' + sk.label.en + ' ' + prompt;
         document.getElementById('agentInput').focus();
       };
       skillList.appendChild(row);
+    });
+  },
+
+  renderCustomSkillBuilder() {
+    const wrap = document.getElementById('customSkillBuilder');
+    if (!wrap) return;
+    const agentOpts = Agents.list().map(a => `<option value="${esc(a.id)}">${esc(a.label.en || a.label.ar)}</option>`).join('');
+    wrap.innerHTML = `
+      <div class="skill-builder">
+        <input id="skillNameInput" type="text" placeholder="${esc(I18n.t('skillName'))}" />
+        <select id="skillAgentSelect">${agentOpts}</select>
+        <input id="skillModelInput" type="text" list="modelPresets" placeholder="${esc(I18n.t('skillModel'))}" />
+        <input id="skillInstrInput" type="text" placeholder="${esc(I18n.t('skillInstructions'))}" />
+        <button id="btnAddSkill" class="ghost-btn">${I18n.t('addSkill')}</button>
+      </div>`;
+    wrap.querySelector('#btnAddSkill').onclick = async () => {
+      const name = wrap.querySelector('#skillNameInput').value.trim();
+      if (!name) { this.toast(I18n.t('skillName')); return; }
+      this.settings.customSkills = this.settings.customSkills || [];
+      this.settings.customSkills.push({
+        id: 'skill-' + Date.now(),
+        name,
+        agent: wrap.querySelector('#skillAgentSelect').value,
+        model: wrap.querySelector('#skillModelInput').value.trim(),
+        instructions: wrap.querySelector('#skillInstrInput').value.trim()
+      });
+      await window.daaix.settingsSet({ customSkills: this.settings.customSkills });
+      this.renderAiSettings();
+      this.toast(I18n.t('addSkill') + ' \u2713');
+    };
+  },
+
+  renderCustomSkillList() {
+    const list = document.getElementById('customSkillList');
+    if (!list) return;
+    list.innerHTML = '';
+    (this.settings.customSkills || []).forEach(sk => {
+      const agent = Agents.get(sk.agent);
+      const row = document.createElement('div');
+      row.className = 'cmd-item';
+      row.innerHTML = `
+        <span class="cmd-icon">✨</span>
+        <div class="cmd-main">
+          <div class="cmd-name">@ ${esc(sk.name)}</div>
+          <div class="cmd-desc">${esc((agent && agent.label.en) || '')}${sk.model ? ' · ' + esc(sk.model) : ''}</div>
+        </div>
+        <button class="ghost-btn skill-del">✕</button>`;
+      row.querySelector('.skill-del').onclick = async () => {
+        this.settings.customSkills = (this.settings.customSkills || []).filter(x => x.id !== sk.id);
+        await window.daaix.settingsSet({ customSkills: this.settings.customSkills });
+        this.renderAiSettings();
+      };
+      list.appendChild(row);
     });
   },
 

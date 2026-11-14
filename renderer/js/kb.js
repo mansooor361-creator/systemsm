@@ -22,8 +22,9 @@ const KB = {
     this.index = [];
     this.byId = new Map();
     this.kbs.forEach(kb => {
-      (kb.documents || []).forEach(doc => {
+      (kb.documents || []).forEach((doc, di) => {
         doc.kbId = kb.id;
+        while (this.byId.has(doc.id)) doc.id = doc.id + '-x' + di;
         this.byId.set(doc.id, doc);
         this.index.push({
           doc,
@@ -73,6 +74,19 @@ const KB = {
     return { exact, partial, ok, total: exact + partial };
   },
 
+  searchScore(entry, qTokens, phrase) {
+    const titleNorm = this.tokenize((entry.doc.title && (entry.doc.title.ar || entry.doc.title.en)) || '').join(' ');
+    const titlePhrase = titleNorm.includes(phrase);
+    const bodyPhrase = entry.text.includes(phrase);
+    const m = this.matchScore(qTokens, entry.tokens);
+    const th = this.titleHits(qTokens, entry.doc);
+    if (!m.ok && !titlePhrase && !bodyPhrase) return null;
+    let score = m.exact * 3 + m.partial * 0.5 + th * 2;
+    if (titlePhrase) score += 100;
+    if (bodyPhrase) score += 40;
+    return { m, score, strong: m.exact > 0 || titlePhrase || bodyPhrase };
+  },
+
   titleHits(qTokens, doc) {
     const titleTokens = this.tokenize((doc.title && (doc.title.ar || doc.title.en)) || '');
     return qTokens.filter(q => titleTokens.some(t => t === q || (q.length >= 3 && (t.includes(q) || q.includes(t))))).length;
@@ -93,15 +107,17 @@ const KB = {
   search(query, limit = 40) {
     const qTokens = this.tokenize(query);
     if (!qTokens.length) return [];
-    const results = [];
+    const phrase = qTokens.join(' ');
+    const strong = [], weak = [];
     for (const entry of this.index) {
-      const m = this.matchScore(qTokens, entry.tokens);
-      if (!m.ok) continue;
-      const score = (m.total + this.titleHits(qTokens, entry.doc) * 2) / Math.sqrt(entry.tokens.length || 1);
-      results.push({ doc: entry.doc, kbName: entry.kbName, score, snippet: this.snippetFor(entry.text, qTokens) });
+      const r = this.searchScore(entry, qTokens, phrase);
+      if (!r) continue;
+      const hit = { doc: entry.doc, kbName: entry.kbName, score: r.score / Math.sqrt(entry.tokens.length || 1), snippet: this.snippetFor(entry.text, qTokens) };
+      (r.strong ? strong : weak).push(hit);
     }
-    results.sort((a, b) => b.score - a.score);
-    return results.slice(0, limit);
+    strong.sort((a, b) => b.score - a.score);
+    weak.sort((a, b) => b.score - a.score);
+    return (strong.length >= 5 ? strong : strong.concat(weak)).slice(0, limit);
   },
 
   searchSemantic(query, limit = 40) {
@@ -121,7 +137,12 @@ const KB = {
         hits += best;
       }
       if (hits <= 0) continue;
-      const score = ((hits / qTokens.length) + this.titleHits(qTokens, entry.doc) * 0.5) / Math.sqrt(entry.tokens.length || 1);
+      const phrase = qTokens.join(' ');
+      const titleNorm = this.tokenize((entry.doc.title && (entry.doc.title.ar || entry.doc.title.en)) || '').join(' ');
+      let boost = this.titleHits(qTokens, entry.doc) * 0.5;
+      if (titleNorm.includes(phrase)) boost += 8;
+      if (entry.text.includes(phrase)) boost += 3;
+      const score = ((hits / qTokens.length) + boost) / Math.sqrt(entry.tokens.length || 1);
       results.push({ doc: entry.doc, kbName: entry.kbName, score: score * 10, snippet: this.snippetFor(entry.text, qTokens) });
     }
     results.sort((a, b) => b.score - a.score);

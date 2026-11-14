@@ -80,6 +80,32 @@ test('v1.6.11: results carry a snippet from the matched text; title matches rank
   assert(r[0].doc.id === 'sa-labor-law' || r[0].doc.id === 'sa-ruling-labor-1', 'title/body match ranks first');
 });
 
+test('v1.6.12: exact title phrase ranks first', () => {
+  const r = KB.search('اتفاقية برنامج المحتوى المحلي', 200);
+  assert(r.length >= 1);
+  assert(r[0].doc.id === 'sa-agreement-icv', 'title-phrase doc first, got ' + r[0].doc.id);
+});
+test('v1.6.12: searchScore marks title-phrase hits strong with title boost', () => {
+  const entry = KB.index.find(e => e.doc.id === 'sa-labor-law');
+  const qTokens = KB.tokenize('نظام العمل');
+  const r = KB.searchScore(entry, qTokens, qTokens.join(' '));
+  assert(r && r.strong === true, 'title phrase is strong');
+  assert(r.score >= 100, 'title phrase boost applied, got ' + r.score);
+});
+test('v1.6.12: rebuild dedupes colliding doc ids', () => {
+  const clone = JSON.parse(JSON.stringify(sample));
+  const kbs = clone.kbs || clone;
+  const dup = JSON.parse(JSON.stringify(kbs[0].documents[0]));
+  const baseId = dup.id;
+  kbs[0].documents.push(dup);
+  KB.load(clone);
+  const ids = KB.index.map(e => e.doc.id);
+  assert(new Set(ids).size === ids.length, 'ids unique after rebuild');
+  const titles = KB.index.filter(e => e.doc.id.startsWith(baseId)).length;
+  assert(titles === 2, 'both docs survive with distinct ids');
+  KB.load(sample);
+});
+
 console.log('\n— Grounded retrieval —');
 test('builds passages from articles, versions and relations', () => {
   Retrieval.build();

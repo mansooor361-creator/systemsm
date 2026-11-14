@@ -122,6 +122,8 @@ const I18N = {
     providersTitle: 'مزوّدو الذكاء (حساب + مفتاح API)', providerHint: 'سجّل حسابك لدى المزوّد، خذ مفتاح API واربطه، ثم اختر المزوّد النشط لتشغيل المعالجة على قاعدة معرفة محددة.', activeProvider: 'المزوّد النشط',
     usageTitle: 'حد الاستخدام', usage_hourly: 'كل ساعة', usage_daily: 'يومي', usage_weekly: 'أسبوعي', usage_monthly: 'شهري',
     addContextPlus: 'إضافة قاعدة معرفة أو ملف', sourcesBased: 'عناوين الوثائق المبنية على الإجابة',
+    customSkillsTitle: 'المهارات المخصصة (@ داخل AI DaAIx)', skillName: 'اسم المهارة (إنجليزي)', skillAgent: 'الوكيل', skillModel: 'النموذج', skillInstructions: 'تعليمات المهارة (اختياري)', addSkill: '+ إضافة مهارة', ctxSkill: 'مهارة',
+    customSkillsTitle: 'Custom skills (@ inside AI DaAIx)', skillName: 'Skill name (English)', skillAgent: 'Agent', skillModel: 'Model', skillInstructions: 'Skill instructions (optional)', addSkill: '+ Add skill', ctxSkill: 'Skill',
     tabPrev: 'النافذة السابقة', tabNext: 'النافذة التالية', tabNewWindow: 'فتح نافذة جديدة',
     docChatExpand: 'توسيع الدردشة', feedListView: 'عرض مصفوف أسفل بعضها', feedGridView: 'عرض كمربعات', tabsMax: 'الحد الأقصى 10 نوافذ',
     kbPaneHint: 'اربط قواعد المعرفة عبر API أو من مجلد على جهازك، وفعّل ما تريد ظهوره في زر قواعد المعرفة بجانب البحث.',

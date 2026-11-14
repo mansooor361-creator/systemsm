@@ -366,18 +366,26 @@ function bootDom() {
   });
 
   console.log('\n— Agents @-context —');
-  test('typing @ shows autocomplete of KBs and docs; selection scopes run', async () => {
+  test('typing @ shows skills; # shows KBs/docs; # selection scopes run (v1.6.12)', async () => {
     Agents.context = [];
     Agents.open('consultant');
     const input = doc.getElementById('agentInput');
     assert(input, 'chat input exists');
-    input.value = '@عمال';
+    input.value = '@doc';
     input.dispatchEvent(new window.Event('input', { bubbles: true }));
-    const popup = doc.getElementById('ctxPopup');
-    assert(!popup.classList.contains('hidden'), 'popup visible');
+    let popup = doc.getElementById('ctxPopup');
+    assert(!popup.classList.contains('hidden'), 'popup visible for @');
+    const skillItems = [...popup.querySelectorAll('.ctx-item')];
+    assert(skillItems.length > 0, 'skill suggestions for @');
+    assert(skillItems.some(b => /Document/.test(b.textContent)), 'builtin skills listed in English');
+    input.value = '#عمال';
+    input.dispatchEvent(new window.Event('input', { bubbles: true }));
+    popup = doc.getElementById('ctxPopup');
+    assert(!popup.classList.contains('hidden'), 'popup visible for #');
     assert(popup.textContent.includes('نظام العمل') || popup.querySelectorAll('.ctx-item').length > 0, 'KB/doc suggestions');
     popup.querySelector('.ctx-item').dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true }));
     assert(Agents.context.length === 1, 'context chip added');
+    assert(Agents.context[0].type === 'kb' || Agents.context[0].type === 'doc', '# adds kb/doc chip');
     assert(doc.querySelectorAll('#ctxChips .ctx-chip').length === 1);
     const scope = Agents.contextScopeIds();
     assert(scope && scope.size >= 1, 'scope ids computed');
@@ -385,6 +393,19 @@ function bootDom() {
     await Agents.send();
     const answers = [...doc.querySelectorAll('#agentLog .chat-a .doc-body')];
     assert(answers.length >= 1, 'scoped agent answered');
+    Agents.context = [];
+  });
+  test('selecting a @ skill chip routes the run to the skill agent (v1.6.12)', async () => {
+    Agents.context = [];
+    Agents.open('consultant');
+    const skill = Agents.allSkills()[0];
+    Agents.context.push({ type: 'skill', id: skill.id, label: '✨ ' + skill.name, sub: 'Skill' });
+    const input = doc.getElementById('agentInput');
+    input.value = 'evaluate this case';
+    await Agents.send();
+    assert(Agents.current === skill.agent, 'skill chip switches internal agent');
+    const answers = [...doc.querySelectorAll('#agentLog .chat-a .doc-body')];
+    assert(answers.length >= 1, 'skill run produced an answer');
     Agents.context = [];
   });
 
@@ -563,9 +584,17 @@ function bootDom() {
     assert(!doc.getElementById('setPaneAi').classList.contains('hidden'), 'AI pane visible');
     assert(doc.getElementById('setLlmUrl') && doc.getElementById('setLlmKey') && doc.getElementById('setLlmModel'), 'LLM fields moved to AI pane');
     assert(doc.getElementById('modelPresets'), 'model presets datalist');
-    assert(doc.querySelectorAll('#agentSettingsList .settings-row').length === 6, 'six agents with toggles');
+    const agentList = doc.getElementById('agentSettingsList');
+    assert(!agentList || agentList.classList.contains('hidden') || agentList.children.length === 0, 'agents list removed (v1.6.12)');
+    assert(doc.getElementById('customSkillBuilder') && doc.getElementById('skillNameInput') && doc.getElementById('skillAgentSelect') && doc.getElementById('skillModelInput') && doc.getElementById('btnAddSkill'), 'custom skill builder present');
     assert(doc.querySelectorAll('#commandList .cmd-item').length >= 5, 'quick commands listed');
-    assert(doc.querySelectorAll('#skillList .cmd-item').length >= 5, 'skills listed');
+    const skillNames = [...doc.querySelectorAll('#skillList .cmd-name')].map(e => e.textContent.trim());
+    assert(skillNames.length >= 5, 'skills listed');
+    assert(skillNames.every(t => t.startsWith('@')), 'skills prefixed with @');
+    assert(!skillNames.some(t => /[؀-ۿ]/.test(t)), 'skill names in English only');
+    const provNames = [...doc.querySelectorAll('#providerList .sr-name')].map(e => e.textContent);
+    assert(provNames.length >= 4, 'providers listed');
+    assert(!provNames.some(t => /[؀-ۿ]/.test(t)), 'provider names in English only');
     assert(!doc.querySelector('#setPaneSettings #setLlmUrl'), 'LLM fields removed from main settings pane');
   });
   test('agent toggles gate internal routing (Agents.visible)', () => {

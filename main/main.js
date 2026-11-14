@@ -3,6 +3,7 @@
 const { app, BrowserWindow, ipcMain, dialog, Notification, shell, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const { Store } = require('./store');
 const { convertToMarkdown } = require('./convert');
 const { checkForKbUpdates } = require('./updater');
@@ -203,7 +204,7 @@ async function buildLocalKb(dir, fixedId) {
     const titleMatch = raw.match(/^#\s+(.+)$/m);
     const name = path.basename(f).replace(/\.(md|markdown)$/i, '');
     documents.push({
-      id: 'note-' + Buffer.from(f).toString('base64url').slice(0, 40),
+      id: 'note-' + crypto.createHash('sha1').update(f).digest('hex').slice(0, 20),
       type: 'note',
       title: { ar: titleMatch ? titleMatch[1].trim() : name, en: name },
       issuer: { ar: path.basename(path.dirname(f)), en: path.basename(path.dirname(f)) },

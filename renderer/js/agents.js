@@ -263,6 +263,18 @@ const Agents = {
 
   skills() { return AI_SKILLS; },
 
+  allSkills() {
+    const builtin = AI_SKILLS.map(sk => ({
+      id: sk.id, icon: sk.icon, agent: sk.agent, model: '',
+      name: sk.label.en, instructions: sk.prompt.en
+    }));
+    const custom = ((typeof App !== 'undefined' && App.settings && App.settings.customSkills) || [])
+      .map(sk => ({ id: sk.id, icon: '✨', agent: sk.agent, model: sk.model || '', name: sk.name, instructions: sk.instructions || '' }));
+    return builtin.concat(custom);
+  },
+
+  skillById(id) { return this.allSkills().find(sk => sk.id === id) || null; },
+
   /* Copilot-style chat interface: ask anything, # for a KB/file, @ for context, / for commands */
   render() {
     const ws = document.getElementById('agentWorkspace');
@@ -372,18 +384,26 @@ const Agents = {
     if (!all && at < 0) { popup.classList.add('hidden'); return; }
     const q = all ? '' : v.slice(at + 1).trim().toLowerCase();
     const items = [];
-    KB.kbs.forEach(kb => {
-      const name = kb.name[I18n.lang] || kb.name.ar;
-      if (!q || name.toLowerCase().includes(q)) {
-        items.push({ type: 'kb', id: kb.id, label: `${kb.icon || '📚'} ${name}`, sub: I18n.t('ctxKb') });
-      }
-    });
-    KB.index.forEach(e => {
-      const name = e.doc.title[I18n.lang] || e.doc.title.ar || e.doc.title.en;
-      if (!q || name.toLowerCase().includes(q)) {
-        items.push({ type: 'doc', id: e.doc.id, label: `📄 ${name}`, sub: I18n.docTypeName(e.doc.type) });
-      }
-    });
+    if (trigger === '@') {
+      this.allSkills().forEach(sk => {
+        if (!q || sk.name.toLowerCase().includes(q)) {
+          items.push({ type: 'skill', id: sk.id, label: `✨ ${sk.name}`, sub: I18n.t('ctxSkill') });
+        }
+      });
+    } else {
+      KB.kbs.forEach(kb => {
+        const name = kb.name[I18n.lang] || kb.name.ar;
+        if (!q || name.toLowerCase().includes(q)) {
+          items.push({ type: 'kb', id: kb.id, label: `📚 ${name}`, sub: I18n.t('ctxKb') });
+        }
+      });
+      KB.index.forEach(e => {
+        const name = e.doc.title[I18n.lang] || e.doc.title.ar || e.doc.title.en;
+        if (!q || name.toLowerCase().includes(q)) {
+          items.push({ type: 'doc', id: e.doc.id, label: `📄 ${name}`, sub: I18n.docTypeName(e.doc.type) });
+        }
+      });
+    }
     popup.innerHTML = '';
     items.slice(0, 8).forEach(it => {
       const b = document.createElement('button');
@@ -473,6 +493,10 @@ const Agents = {
     log.appendChild(out);
     log.scrollTop = log.scrollHeight;
 
+    const skillChip = this.context.find(c => c.type === 'skill');
+    const skill = skillChip ? this.skillById(skillChip.id) : null;
+    if (skill) this.current = skill.agent;
+
     const scopeIds = this.contextScopeIds();
     const kbRes = Retrieval.extractiveAnswer(msg, { scopeDocIds: scopeIds, topK: 10 });
 
@@ -485,12 +509,14 @@ const Agents = {
       } catch (e) { /* connector offline: skip */ }
     }
 
-    const llm = this.activeLlm();
+    let llm = this.activeLlm();
+    if (skill && skill.model) llm = Object.assign({}, llm, { model: skill.model });
+    const fullMsg = skill && skill.instructions ? skill.instructions + '\n\n' + msg : msg;
     let result;
     if (llm.apiKey && llm.baseUrl) {
-      result = await this.llmRun(agent, { message: msg }, msg, kbRes, external);
+      result = await this.llmRun(agent, { message: fullMsg }, fullMsg, kbRes, external);
     } else {
-      result = this.extractiveRun(agent, { message: msg }, kbRes, external);
+      result = this.extractiveRun(agent, { message: fullMsg }, kbRes, external);
     }
 
     const sources = [...new Set((kbRes.citations || []).map(c => c.docTitle))];

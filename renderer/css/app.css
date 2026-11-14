@@ -761,3 +761,15 @@ body.chat-expanded #docProps { width: 100%; min-width: 0; flex: 1; max-width: no
   font-size: 13px; color: var(--muted); margin: 6px 0 2px;
   line-height: 1.7; border-inline-start: 2px solid var(--border); padding-inline-start: 10px;
 }
+
+/* ---------- v1.6.12: custom skill builder ---------- */
+.skill-builder {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  max-width: 860px; margin-bottom: 12px;
+}
+.skill-builder input, .skill-builder select {
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 8px;
+  padding: 9px 12px; outline: none; color: var(--text); font-size: 13px;
+  flex: 1 1 160px; min-width: 140px;
+}
+.skill-builder .ghost-btn { flex: none; }
