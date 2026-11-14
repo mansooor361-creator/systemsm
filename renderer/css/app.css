@@ -825,6 +825,9 @@ body.chat-expanded #docProps { width: 100%; min-width: 0; flex: 1; max-width: no
   font-size: 13px; color: var(--muted); margin: 6px 0 2px;
   line-height: 1.7; border-inline-start: 2px solid var(--border); padding-inline-start: 10px;
 }
+/* v1.6.24: monochrome highlight of matched words + article chip */
+mark.hl { background: var(--bg3); color: var(--text); font-weight: 600; padding: 0 2px; border-radius: 3px; }
+.chip.art { border: 1px solid var(--accent); color: var(--accent); font-size: 11px; padding: 1px 8px; border-radius: 999px; }
 
 /* ---------- v1.6.12: custom skill builder ---------- */
 .skill-builder {

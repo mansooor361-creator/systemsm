@@ -40,10 +40,24 @@ const KB = {
           tokenSet: new Set(tokens),
           tokenFreq: freq,
           titleNorm: this.tokenize((doc.title && (doc.title.ar || doc.title.en)) || '').join(' '),
-          titleTokens: this.tokenize((doc.title && (doc.title.ar || doc.title.en)) || '')
+          titleTokens: this.tokenize((doc.title && (doc.title.ar || doc.title.en)) || ''),
+          headTokens: this.tokenize(String(text).split(/\r?\n/).filter(l => /^#{1,6}\s/.test(l)).join('\n')),
+          articles: (doc.articles || []).map(a => {
+            const at = `${a.num || ''} ${(a.title && (a.title.ar || a.title.en)) || ''} ${a.text || ''}`;
+            const atokens = this.tokenize(at);
+            const afreq = new Map();
+            for (const t of atokens) afreq.set(t, (afreq.get(t) || 0) + 1);
+            return { num: a.num, tokens: atokens, tokenSet: new Set(atokens), tokenFreq: afreq };
+          })
         });
       });
     });
+    /* corpus statistics for BM25-style IDF ranking */
+    this.N = this.index.length;
+    this.avgLen = this.index.reduce((s2, e) => s2 + e.tokens.length, 0) / (this.N || 1);
+    const df = new Map();
+    this.index.forEach(e => { e.tokenSet.forEach(t => df.set(t, (df.get(t) || 0) + 1)); });
+    this.df = df;
   },
 
   docText(doc) {
@@ -57,20 +71,48 @@ const KB = {
     return parts.filter(Boolean).join('\n');
   },
 
+  /* v1.6.24: full Arabic normalization — diacritics, tatweel, alef/hamza
+     forms, final yaa/alef maqsura, taa marbuta, waw/yaa hamza forms. */
+  normChars(s) {
+    return String(s).toLowerCase()
+      .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
+      .replace(/[\u0623\u0625\u0622\u0671]/g, '\u0627')
+      .replace(/\u0649/g, '\u064A')
+      .replace(/\u0624/g, '\u0648')
+      .replace(/\u0626/g, '\u064A')
+      .replace(/\u0629/g, '\u0647');
+  },
+
   tokenize(text) {
-    const stop = new Set(['في','من','على','عن','إلى','الى','التي','الذي','هذا','هذه','ما','مع','أو','او','ثم','كل','بين','هو','هي','the','of','in','on','to','and','or','a','an','is','are','for','by','with']);
-    return String(text).toLowerCase()
-      .replace(/[\u064B-\u065F\u0670]/g, '')
+    if (!this.STOP) {
+      this.STOP = new Set(['في','من','على','عن','إلى','الى','التي','الذي','هذا','هذه','ما','مع','أو','او','ثم','كل','بين','هو','هي','the','of','in','on','to','and','or','a','an','is','are','for','by','with'].map(w => this.normChars(w)));
+    }
+    return this.normChars(text)
       .replace(/[^\u0600-\u06FF\u0041-\u007A\u0030-\u0039\u0660-\u0669]+/g, ' ')
       .split(/\s+/)
-      .filter(w => w.length > 1 && !stop.has(w))
-      .map(w => w.replace(/^(ال|وال|بال|فال|لل)/, ''))
+      .filter(w => w.length > 1 && !this.STOP.has(w))
+      .map(w => this.stripPrefix(w))
       .filter(w => w.length > 1);
   },
 
+  /* light Arabic prefix stemmer: definite article + attached
+     prepositions, then the conjunction waw (only when long enough) */
+  stripPrefix(w) {
+    w = w.replace(/^(\u0627\u0644|\u0648\u0627\u0644|\u0628\u0627\u0644|\u0641\u0627\u0644|\u0644\u0644)/, '');
+    if (w.length >= 4 && w.charAt(0) === '\u0648') w = w.slice(1);
+    return w;
+  },
+
+  /* exact=1, prefix=0.6 (replaces noisy bidirectional substring matching) */
+  tokMatch(q, t) {
+    if (q === t) return 1;
+    if (q.length >= 3 && t.length >= 3 && (t.startsWith(q) || q.startsWith(t))) return 0.6;
+    return 0;
+  },
+
   matchScore(queryTokens, docTokens, pre) {
-    const freq = pre && pre.tokenFreq;
-    const set = pre && pre.tokenSet;
+    const freq = pre && pre.tokenFreq && typeof pre.tokenFreq.get === 'function' ? pre.tokenFreq : null;
+    const set = pre && pre.tokenSet && typeof pre.tokenSet.has === 'function' ? pre.tokenSet : null;
     let exact = 0, partial = 0;
     for (const q of queryTokens) {
       let hit = 0;
@@ -78,13 +120,15 @@ const KB = {
         if (freq.get(q)) hit = 1;
         else if (q.length >= 3) {
           for (const t of set) {
-            if (t.includes(q) || q.includes(t)) { hit = 0.6; break; }
+            const h = this.tokMatch(q, t);
+            if (h) { hit = h; break; }
           }
         }
       } else {
         for (const t of docTokens) {
-          if (t === q) { hit = 1; break; }
-          if (q.length >= 3 && (t.includes(q) || q.includes(t))) hit = Math.max(hit, 0.6);
+          const h = this.tokMatch(q, t);
+          if (h === 1) { hit = 1; break; }
+          if (h) hit = Math.max(hit, h);
         }
       }
       if (hit === 1) exact++;
@@ -94,18 +138,67 @@ const KB = {
     return { exact, partial, ok, total: exact + partial };
   },
 
+  /* v1.6.24: BM25-style ranking with IDF so rare legal terms outweigh
+     common words; field boosts for title and markdown headings. */
+  idf(t) {
+    const df = (this.df && this.df.get(t)) || 0;
+    return Math.log(1 + (((this.N || 1) - df + 0.5) / (df + 0.5)));
+  },
+
+  bm25(qTokens, entry) {
+    const k1 = 1.2, b = 0.75;
+    const len = entry.tokens.length || 1;
+    const freq = entry.tokenFreq || null;
+    let s = 0, matched = 0;
+    if (freq && typeof freq.get === 'function') {
+      for (const q of qTokens) {
+        let tf = freq.get(q) || 0;
+        if (!tf && q.length >= 3) {
+          for (const t of freq.keys()) {
+            if (t.length >= 3 && (t.startsWith(q) || q.startsWith(t))) { tf = freq.get(t); break; }
+          }
+        }
+        if (!tf) continue;
+        matched++;
+        s += this.idf(q) * (tf * (k1 + 1)) / (tf + k1 * (1 - b + b * len / (this.avgLen || 1)));
+      }
+    }
+    return { score: s, matched };
+  },
+
+  headHits(qTokens, entry) {
+    const ht = entry.headTokens || [];
+    return qTokens.filter(q => ht.some(t => this.tokMatch(q, t) > 0)).length;
+  },
+
+  /* which article of the doc contains the match (for the result chip + jump) */
+  findArticle(entry, qTokens) {
+    if (!entry.articles || !entry.articles.length) return null;
+    let best = null;
+    for (const a of entry.articles) {
+      const m = this.matchScore(qTokens, a.tokens, a);
+      if (m.exact > 0) {
+        const sc = m.exact + m.partial * 0.3;
+        if (!best || sc > best.sc) best = { num: a.num, sc };
+      }
+    }
+    return best ? best.num : null;
+  },
+
   searchScore(entry, qTokens, phrase) {
     const titleNorm = entry.titleNorm != null ? entry.titleNorm
       : this.tokenize((entry.doc.title && (entry.doc.title.ar || entry.doc.title.en)) || '').join(' ');
     const titlePhrase = titleNorm.includes(phrase);
     const bodyPhrase = entry.text.includes(phrase);
-    const m = this.matchScore(qTokens, entry.tokens, entry);
+    const bm = this.bm25(qTokens, entry);
     const th = this.titleHits(qTokens, entry.doc, entry);
-    if (!m.ok && !titlePhrase && !bodyPhrase) return null;
-    let score = m.exact * 3 + m.partial * 0.5 + th * 2;
+    const hh = this.headHits(qTokens, entry);
+    if (!bm.matched && !titlePhrase && !bodyPhrase) return null;
+    const base = bm.score + th * 2 + hh * 1.2;
+    let score = base;
     if (titlePhrase) score += 100;
     if (bodyPhrase) score += 40;
-    return { m, score, strong: m.exact > 0 || titlePhrase || bodyPhrase };
+    return { m: { exact: bm.matched, partial: 0, ok: bm.matched > 0, total: bm.matched }, score, base, strong: bm.matched > 0 || titlePhrase || bodyPhrase };
   },
 
   titleHits(qTokens, doc, entry) {
@@ -114,9 +207,28 @@ const KB = {
   },
 
   normalizeWord(w) {
-    return String(w).toLowerCase()
-      .replace(/[\u064B-\u065F\u0670]/g, '')
-      .replace(/^(\u0627\u0644|\u0648\u0627\u0644|\u0628\u0627\u0644|\u0641\u0627\u0644|\u0644\u0644)/, '');
+    return this.stripPrefix(this.normChars(w));
+  },
+
+  escHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  },
+
+  /* v1.6.24: monochrome highlight of the matched words inside the excerpt */
+  highlightExcerpt(text, qTokens) {
+    const t = String(text || '');
+    if (!t || !qTokens || !qTokens.length) return this.escHtml(t);
+    const re = /[\u0600-\u06FF\u0041-\u007A\u0030-\u0039\u0660-\u0669]+/g;
+    let out = '', last = 0, m;
+    while ((m = re.exec(t)) !== null) {
+      out += this.escHtml(t.slice(last, m.index));
+      const w = this.normalizeWord(m[0]);
+      const hit = qTokens.some(q => this.tokMatch(q, w) > 0);
+      out += hit ? '<mark class="hl">' + this.escHtml(m[0]) + '</mark>' : this.escHtml(m[0]);
+      last = m.index + m[0].length;
+    }
+    out += this.escHtml(t.slice(last));
+    return out;
   },
 
   /* Excerpt that quotes the ACTUAL matched span: the full phrase when present,
@@ -141,7 +253,7 @@ const KB = {
       const matched = [];
       while (j < words.length && qi < q.length) {
         const w = words[j].norm;
-        if (w === q[qi] || (q[qi].length >= 3 && (w.includes(q[qi]) || q[qi].includes(w)))) {
+        if (this.tokMatch(q[qi], w) > 0) {
           matched.push(j); qi++; j++;
         } else if (stop.has(w)) {
           j++; // skip stopwords inside the phrase
@@ -177,17 +289,30 @@ const KB = {
     const qTokens = this.tokenize(query);
     if (!qTokens.length) return [];
     const phrase = qTokens.join(' ');
-    const strong = [], weak = [];
+    /* pass 1: score only (cheap); excerpts/articles built lazily in pass 2
+       for the survivors of the relative noise threshold */
+    const scored = [];
     for (const entry of this.index) {
       const r = this.searchScore(entry, qTokens, phrase);
-      if (!r) continue;
-      const excerpt = this.makeExcerpt(entry.raw, qTokens);
-      const hit = { doc: entry.doc, kbName: entry.kbName, score: r.score / Math.sqrt(entry.tokens.length || 1), excerpt, snippet: excerpt || this.snippetFor(entry.text, qTokens) };
-      (r.strong ? strong : weak).push(hit);
+      if (!r || r.score <= 0) continue;
+      scored.push({ entry, r });
     }
-    strong.sort((a, b) => b.score - a.score);
-    weak.sort((a, b) => b.score - a.score);
-    return (strong.length >= 5 ? strong : strong.concat(weak)).slice(0, limit);
+    scored.sort((a, b) => b.r.score - a.r.score);
+    const bestBase = scored.reduce((mx, x) => Math.max(mx, x.r.base || 0), 0);
+    const cut = bestBase * 0.3;
+    const hits = [];
+    for (const { entry, r } of scored) {
+      if ((r.base || 0) < cut && r.score <= bestBase + 100) continue;
+      const excerpt = this.makeExcerpt(entry.raw, qTokens);
+      hits.push({
+        doc: entry.doc, kbName: entry.kbName, score: r.score, base: r.base,
+        excerpt, snippet: excerpt || this.snippetFor(entry.text, qTokens),
+        excerptHtml: this.highlightExcerpt(excerpt, qTokens),
+        articleNum: this.findArticle(entry, qTokens)
+      });
+      if (hits.length >= limit) break;
+    }
+    return hits;
   },
 
   searchSemantic(query, limit = 40) {
@@ -214,7 +339,8 @@ const KB = {
       if (titleNorm.includes(phrase)) boost += 8;
       if (entry.text.includes(phrase)) boost += 3;
       const score = ((hits / qTokens.length) + boost) / Math.sqrt(entry.tokens.length || 1);
-      results.push({ doc: entry.doc, kbName: entry.kbName, score: score * 10, snippet: this.snippetFor(entry.text, qTokens) });
+      const excerpt = this.makeExcerpt(entry.raw, qTokens);
+      results.push({ doc: entry.doc, kbName: entry.kbName, score: score * 10, excerpt, snippet: excerpt || this.snippetFor(entry.text, qTokens), excerptHtml: this.highlightExcerpt(excerpt, qTokens), articleNum: this.findArticle(entry, qTokens) });
     }
     results.sort((a, b) => b.score - a.score);
     return results.slice(0, limit);

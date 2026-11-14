@@ -237,5 +237,45 @@ test('search still ranks exact title match first after optimization', () => {
   assert((r[0].doc.title.ar || r[0].doc.title.en || '').includes('نظام العمل'), 'top result is labor law');
 });
 
+console.log('\n\u2014 v1.6.24: search engine overhaul \u2014');
+test('Arabic normalization: hamza/alef forms, taa marbuta, alef maqsura, tatweel, diacritics', () => {
+  assert(KB.normChars('\u0627\u0644\u0623\u0639\u0645\u0627\u0644') === '\u0627\u0644\u0627\u0639\u0645\u0627\u0644', 'alef forms unified');
+  assert(KB.normChars('\u0645\u0643\u0627\u0641\u0623\u0629') === '\u0645\u0643\u0627\u0641\u0627\u0647', 'taa marbuta -> haa');
+  assert(KB.normChars('\u0634\u0626\u0648\u0646') === '\u0634\u064a\u0648\u0646', 'yaa hamza -> yaa');
+  assert(KB.normChars('\u0645\u0633\u0624\u0648\u0644') === '\u0645\u0633\u0648\u0648\u0644', 'waw hamza -> waw');
+  assert(KB.tokenize('\u0627\u0644\u0645\u0643\u0627\u0641\u0623\u0629')[0] === '\u0645\u0643\u0627\u0641\u0627\u0647', 'tokenize normalizes + strips al');
+  assert(KB.normalizeWord('\u0648\u0645\u0643\u0627\u0641\u0623\u0629') === '\u0645\u0643\u0627\u0641\u0627\u0647', 'conjunction waw stripped');
+});
+test('normalized search: diacriticless query finds diacritized text and vice versa', () => {
+  const r = KB.search('\u0645\u0643\u0627\u0641\u0627\u062a \u0646\u0647\u0627\u064a\u0629 \u0627\u0644\u062e\u062f\u0645\u0647');
+  assert(r.length >= 1, 'normalized query matches');
+  assert(r[0].doc.id === 'sa-labor-law' || r[0].doc.id === 'sa-ruling-labor-1', 'same top docs as diacritized query');
+});
+test('BM25: rare term outweighs repeated common term', () => {
+  const mini = { kbs: [{ id: 'k1', name: { ar: 'k', en: 'k' }, documents: [
+    { id: 'common', type: 'law', title: { ar: '\u0648\u062b\u064a\u0642\u0629', en: 'd1' }, body: Array(12).fill('\u0646\u0635 \u0627\u0644\u0646\u0638\u0627\u0645 \u0627\u0644\u0639\u0627\u0645').join(' ') },
+    { id: 'rare', type: 'law', title: { ar: '\u0648\u062b\u064a\u0642\u0629', en: 'd2' }, body: '\u0646\u0635 \u0642\u0635\u064a\u0631 \u064a\u0630\u0643\u0631 \u0627\u0644\u0645\u0631\u0627\u0641\u0639\u0627\u062a' }
+  ] }] };
+  KB.load(mini);
+  const r = KB.search('\u0627\u0644\u0645\u0631\u0627\u0641\u0639\u0627\u062a');
+  assert(r.length >= 1 && r[0].doc.id === 'rare', 'rare-term doc first');
+  KB.load(sample);
+});
+test('results carry articleNum of the matched article + highlighted excerpt', () => {
+  const r = KB.search('\u0645\u0643\u0627\u0641\u0623\u0629 \u0646\u0647\u0627\u064a\u0629 \u0627\u0644\u062e\u062f\u0645\u0629', 60);
+  assert(r.length >= 1, 'results exist');
+  const withArt = r.find(x => x.articleNum);
+  assert(withArt, 'at least one result carries articleNum');
+  const top = r.find(x => x.doc.id === 'sa-labor-law');
+  if (top) assert(top.articleNum === '74' || top.articleNum === '77' || top.articleNum === '81', 'labor law article detected, got ' + top.articleNum);
+  const hl = r.find(x => x.excerptHtml && x.excerptHtml.includes('<mark class="hl">'));
+  assert(hl, 'excerpt highlights matched words');
+});
+test('noise cut: results far below the best hit are dropped', () => {
+  const r = KB.search('\u0646\u0638\u0627\u0645 \u0627\u0644\u0639\u0645\u0644 \u0627\u0644\u0645\u0631\u0627\u0641\u0639\u0627\u062a \u0627\u0644\u0639\u0645\u0627\u0644\u064a\u0629', 200);
+  const best = r[0] ? r[0].score : 0;
+  assert(r.every(x => x.score >= best * 0.12), 'all results above relative threshold');
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

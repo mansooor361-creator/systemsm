@@ -1159,8 +1159,8 @@ const App = {
       const item = document.createElement('div');
       item.className = 'sr-item';
       item.innerHTML = `
-        <div class="sr-top"><div class="t">${esc(title)}</div><span class="chip type t-${doc.type}">${I18n.docTypeName(doc.type)}</span></div>
-        ${r.snippet ? `<div class="sr-snippet">${esc(r.snippet)}</div>` : ''}
+        <div class="sr-top"><div class="t">${esc(title)}</div><span class="chip type t-${doc.type}">${I18n.docTypeName(doc.type)}</span>${r.articleNum ? `<span class="chip art">${esc(I18n.t('articleChip'))} ${esc(r.articleNum)}</span>` : ''}</div>
+        ${r.excerptHtml ? `<div class="sr-snippet">${r.excerptHtml}</div>` : (r.snippet ? `<div class="sr-snippet">${esc(r.snippet)}</div>` : '')}
         <a class="sr-open" href="#">${I18n.t('viewDetails')} ←</a>
         <div class="sr-props">
           <div><span>${I18n.t('docType')}:</span> ${I18n.docTypeName(doc.type)}</div>
@@ -1169,7 +1169,7 @@ const App = {
           <div><span>${I18n.t('issueToolDate')}:</span> ${esc(doc.issueTool ? doc.issueTool.date : (doc.date || '—'))}</div>
           <div><span>${I18n.t('legislativeStatus')}:</span> ${I18n.t('status_' + (doc.status || 'in_force'))}</div>
         </div>`;
-      const open = () => { document.getElementById('globalSearch').value = ''; this.search(''); this.openDocument(doc.id); };
+      const open = () => { document.getElementById('globalSearch').value = ''; this.search(''); this.openDocument(doc.id); if (r.articleNum) setTimeout(() => this.scrollToArticle(r.articleNum), 80); };
       item.querySelector('.sr-open').onclick = (e) => { e.preventDefault(); open(); };
       item.onclick = (e) => { if (e.target.tagName !== 'A') open(); };
       box.appendChild(item);
