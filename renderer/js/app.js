@@ -209,7 +209,6 @@ const App = {
     KB.addDownloaded(downloaded);
     Retrieval.build();
 
-    document.getElementById('appVersion').textContent = 'v' + (await window.daaix.appVersion());
 
     this.bindTopbar();
     this.bindDrawer();
@@ -508,15 +507,19 @@ const App = {
       const name = kb.name[I18n.lang] || kb.name.ar || kb.id;
       const src = kb.source === 'local' ? I18n.t('kbSourceFolder') : I18n.t('kbSourceApi');
       const row = document.createElement('div');
-      row.className = 'settings-row';
+      row.className = 'set-card';
       row.innerHTML = `
-        <span class="sr-icon">${kb.icon || '\ud83d\udcda'}</span>
-        <div class="sr-main">
-          <div class="sr-name">${esc(name)} <span class="cat-chip src">${esc(src)}</span></div>
-          <div class="sr-desc">${(kb.documents || []).length} ${I18n.t('documentsPl')}</div>
+        <div class="sc-head">
+          <span class="sr-icon">${kb.icon || '\ud83d\udcda'}</span>
+          <div class="sr-main">
+            <div class="sr-name">${esc(name)} <span class="cat-chip src">${esc(src)}</span></div>
+            <div class="sr-desc">${(kb.documents || []).length} ${I18n.t('documentsPl')}</div>
+          </div>
         </div>
-        ${kb.sourcePath ? `<button class="ghost-btn kb-rescan">${I18n.t('refreshKb')}</button>` : ''}
-        <label class="switch"><input type="checkbox" ${this.kbIsOn(kb.id) ? 'checked' : ''} /><span class="sl"></span></label>`;
+        <div class="sc-foot">
+          ${kb.sourcePath ? `<button class="ghost-btn kb-rescan">${I18n.t('refreshKb')}</button>` : ''}
+          <label class="switch"><input type="checkbox" ${this.kbIsOn(kb.id) ? 'checked' : ''} /><span class="sl"></span></label>
+        </div>`;
       row.querySelector('input').onchange = async (e) => {
         this.settings.kbEnabled[kb.id] = e.target.checked;
         await window.daaix.settingsSet({ kbEnabled: this.settings.kbEnabled });
@@ -549,14 +552,18 @@ const App = {
       .filter(t => !q || t.label.toLowerCase().includes(q) || (t.desc || '').toLowerCase().includes(q))
       .forEach(t => {
         const row = document.createElement('div');
-        row.className = 'settings-row';
+        row.className = 'set-card';
         row.innerHTML = `
-          <span class="sr-icon">${t.icon}</span>
-          <div class="sr-main">
-            <div class="sr-name">${esc(t.label)} <span class="cat-chip ${t.cat}">${esc(I18n.t('cat_' + t.cat))}</span></div>
-            <div class="sr-desc">${esc(t.desc || '')}</div>
+          <div class="sc-head">
+            <span class="sr-icon">${t.icon}</span>
+            <div class="sr-main">
+              <div class="sr-name">${esc(t.label)} <span class="cat-chip ${t.cat}">${esc(I18n.t('cat_' + t.cat))}</span></div>
+              <div class="sr-desc">${esc(t.desc || '')}</div>
+            </div>
           </div>
-          <label class="switch"><input type="checkbox" ${this.toolIsOn(t.id) ? 'checked' : ''} /><span class="sl"></span></label>`;
+          <div class="sc-foot">
+            <label class="switch"><input type="checkbox" ${this.toolIsOn(t.id) ? 'checked' : ''} /><span class="sl"></span></label>
+          </div>`;
         row.querySelector('input').onchange = async (e) => {
           this.settings.toolEnabled[t.id] = e.target.checked;
           await window.daaix.settingsSet({ toolEnabled: this.settings.toolEnabled });
@@ -783,7 +790,8 @@ const App = {
 
     const skillList = document.getElementById('skillList');
     skillList.innerHTML = '';
-    Agents.skills().forEach(sk => {
+    const hiddenBuiltins = this.settings.hiddenBuiltinSkills || [];
+    Agents.skills().filter(sk => !hiddenBuiltins.includes(sk.id)).forEach(sk => {
       const label = sk.label.en;
       const desc = sk.desc.en || sk.desc.ar;
       const prompt = sk.prompt.en || sk.prompt.ar;
@@ -795,11 +803,29 @@ const App = {
           <div class="cmd-name">@ ${esc(label)}</div>
           <div class="cmd-desc">${esc(desc)}</div>
         </div>
-        <button class="ghost-btn cmd-run">${I18n.t('run')}</button>`;
+        <button class="ghost-btn cmd-run">${I18n.t('run')}</button>
+        <button class="ghost-btn skill-edit" title="${esc(I18n.t('editSkill'))}">\u270e</button>
+        <button class="ghost-btn skill-hide" title="${esc(I18n.t('hideSkill'))}">\u2715</button>`;
       row.querySelector('.cmd-run').onclick = () => {
         Agents.open(sk.agent);
         document.getElementById('agentInput').value = '@' + sk.label.en + ' ' + prompt;
         document.getElementById('agentInput').focus();
+      };
+      row.querySelector('.skill-edit').onclick = () => {
+        this._editingSkillId = null;
+        this.fillSkillBuilder({
+          name: sk.label.en,
+          agent: sk.agent,
+          model: '',
+          description: desc,
+          instructions: prompt
+        });
+        this.toast(I18n.t('editSkill') + ' \u2014 ' + I18n.t('skillUpdate'));
+      };
+      row.querySelector('.skill-hide').onclick = async () => {
+        this.settings.hiddenBuiltinSkills = (this.settings.hiddenBuiltinSkills || []).concat([sk.id]);
+        await window.daaix.settingsSet({ hiddenBuiltinSkills: this.settings.hiddenBuiltinSkills });
+        this.renderAiSettings();
       };
       skillList.appendChild(row);
     });
@@ -838,6 +864,19 @@ const App = {
     }
   },
 
+  fillSkillBuilder(sk) {
+    const wrap = document.getElementById('customSkillBuilder');
+    if (!wrap) return;
+    wrap.querySelector('#skillNameInput').value = sk.name || '';
+    if (sk.agent) wrap.querySelector('#skillAgentSelect').value = sk.agent;
+    wrap.querySelector('#skillModelInput').value = sk.model || '';
+    wrap.querySelector('#skillDescInput').value = sk.description || '';
+    wrap.querySelector('#skillInstrInput').value = sk.instructions || '';
+    wrap.querySelector('#skillAutoInput').value = sk.automation || '';
+    const btn = wrap.querySelector('#btnAddSkill');
+    if (btn) btn.textContent = this._editingSkillId ? I18n.t('skillUpdate') : I18n.t('addSkill');
+  },
+
   renderCustomSkillBuilder() {
     const wrap = document.getElementById('customSkillBuilder');
     if (!wrap) return;
@@ -856,16 +895,23 @@ const App = {
     wrap.querySelector('#btnAddSkill').onclick = async () => {
       const name = wrap.querySelector('#skillNameInput').value.trim();
       if (!name) { this.toast(I18n.t('skillName')); return; }
-      this.settings.customSkills = this.settings.customSkills || [];
-      this.settings.customSkills.push({
-        id: 'skill-' + Date.now(),
+      const vals = {
         name,
         agent: wrap.querySelector('#skillAgentSelect').value,
         model: wrap.querySelector('#skillModelInput').value.trim(),
         description: wrap.querySelector('#skillDescInput').value.trim(),
         instructions: wrap.querySelector('#skillInstrInput').value.trim(),
         automation: wrap.querySelector('#skillAutoInput').value.trim()
-      });
+      };
+      this.settings.customSkills = this.settings.customSkills || [];
+      if (this._editingSkillId) {
+        const i = this.settings.customSkills.findIndex(x => x.id === this._editingSkillId);
+        if (i >= 0) this.settings.customSkills[i] = Object.assign({ id: this._editingSkillId }, vals);
+        else this.settings.customSkills.push(Object.assign({ id: 'skill-' + Date.now() }, vals));
+        this._editingSkillId = null;
+      } else {
+        this.settings.customSkills.push(Object.assign({ id: 'skill-' + Date.now() }, vals));
+      }
       await window.daaix.settingsSet({ customSkills: this.settings.customSkills });
       this.renderAiSettings();
       this.toast(I18n.t('addSkill') + ' \u2713');
@@ -904,8 +950,14 @@ const App = {
           <div class="cmd-name">@ ${esc(sk.name)}</div>
           <div class="cmd-desc">${esc((agent && agent.label.en) || '')}${sk.model ? ' · ' + esc(sk.model) : ''}${sk.description ? ' · ' + esc(sk.description) : ''}</div>
         </div>
+        <button class="ghost-btn skill-edit" title="${esc(I18n.t('editSkill'))}">✎</button>
         <button class="ghost-btn skill-export" title="${esc(I18n.t('exportSkill'))}">⤵</button>
         <button class="ghost-btn skill-del">✕</button>`;
+      row.querySelector('.skill-edit').onclick = () => {
+        this._editingSkillId = sk.id;
+        this.fillSkillBuilder(sk);
+        this.toast(I18n.t('skillUpdate'));
+      };
       row.querySelector('.skill-export').onclick = async () => {
         const r = await window.daaix.skillExport(sk.name, Agents.skillToMarkdown(sk));
         if (r && r.ok) this.toast(I18n.t('skillExported') + ' ✓');

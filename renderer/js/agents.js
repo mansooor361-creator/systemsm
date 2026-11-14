@@ -400,7 +400,8 @@ const Agents = {
   skills() { return AI_SKILLS; },
 
   allSkills() {
-    const builtin = AI_SKILLS.map(sk => ({
+    const hidden = ((typeof App !== 'undefined' && App.settings && App.settings.hiddenBuiltinSkills) || []);
+    const builtin = AI_SKILLS.filter(sk => !hidden.includes(sk.id)).map(sk => ({
       id: sk.id, icon: sk.icon, agent: sk.agent, model: '',
       name: sk.label.en, instructions: sk.prompt.en
     }));

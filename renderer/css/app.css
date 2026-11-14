@@ -68,11 +68,6 @@ button { cursor: pointer; }
 .tb-btn.rail-btn { width: 36px; height: 36px; background: transparent; border: none; font-size: 18px; }
 .rail-btn:hover { background: var(--bg3); color: var(--text); }
 .rail-sep { width: 24px; height: 1px; background: var(--border); margin: 4px 0; flex: none; }
-.rail-mid { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 60px; }
-.rail-ver {
-  writing-mode: vertical-rl; text-orientation: mixed; direction: ltr;
-  font-size: 9px; color: var(--muted); letter-spacing: 1.5px; white-space: nowrap;
-}
 /* gear pinned at the rail bottom even when the rail scrolls */
 #btnDrawer { position: sticky; bottom: 0; background: var(--bg2); z-index: 3; flex: none; }
 /* home icon in the brand gold, classic and simple */
@@ -535,6 +530,17 @@ body.theme-dark .doc-body h4, body.theme-dark #docBody h5, body.theme-dark #docB
 }
 .tools-search:focus { border-color: var(--accent); }
 .settings-rows { display: flex; flex-direction: column; gap: 10px; }
+/* v1.6.23: tools & KB settings as a stacked card grid */
+.settings-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.set-card {
+  border: 1px solid var(--border); border-radius: 10px; background: var(--bg2);
+  padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; min-width: 0;
+}
+.sc-head { display: flex; gap: 10px; align-items: flex-start; min-width: 0; }
+.sc-foot {
+  display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+  border-top: 1px solid var(--border); padding-top: 8px; margin-top: auto;
+}
 .settings-row {
   display: flex; align-items: center; gap: 14px; padding: 12px 14px;
   background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;

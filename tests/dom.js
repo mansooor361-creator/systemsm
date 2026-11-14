@@ -436,7 +436,7 @@ function bootDom() {
     assert(!doc.getElementById('setPaneSettings').classList.contains('hidden'));
   });
   test('KB window: rows with toggles + source; disabling removes from top picker', async () => {
-    const rows = doc.querySelectorAll('#kbSettingsList .settings-row');
+    const rows = doc.querySelectorAll('#kbSettingsList .set-card');
     assert(rows.length === KB.kbs.length, 'one row per KB');
     assert(rows[0].querySelector('.cat-chip'), 'source chip on KB row');
     doc.getElementById('btnKbPicker').click();
@@ -462,11 +462,11 @@ function bootDom() {
   test('tools window: search filters; toggle off hides tool from menu + home', async () => {
     doc.getElementById('setToolSearch').value = 'واتساب';
     App.renderToolSettings();
-    let rows = doc.querySelectorAll('#toolSettingsList .settings-row');
+    let rows = doc.querySelectorAll('#toolSettingsList .set-card');
     assert(rows.length === 1, 'search filters tools');
     doc.getElementById('setToolSearch').value = '';
     App.renderToolSettings();
-    rows = doc.querySelectorAll('#toolSettingsList .settings-row');
+    rows = doc.querySelectorAll('#toolSettingsList .set-card');
     assert(rows.length === 10, 'all 10 tools listed');
     assert(rows[0].querySelector('.cat-chip'), 'category chip on tool row');
     const waRow = [...rows].find(r => r.textContent.includes('واتساب'));
@@ -1084,6 +1084,55 @@ function bootDom() {
     const notes = doc.getElementById('btnNotes');
     assert(notes.classList.contains('mono'), 'notes button monochrome');
     assert(notes.textContent.codePointAt(0) < 0x1F000, 'notes glyph is not a color emoji');
+  });
+
+  console.log('\n— v1.6.23: skill edit/hide + settings card grid —');
+  test('v1.6.23: no rotated version text in the right rail (removed)', () => {
+    assert(!doc.getElementById('appVersion'), 'appVersion removed from rail');
+    assert(!doc.querySelector('.rail-ver'), 'rail-ver element removed');
+  });
+  test('v1.6.23: builtin skill rows have run + edit + hide buttons', () => {
+    const rows = doc.querySelectorAll('#skillList .cmd-item');
+    assert(rows.length === 3, 'three builtin skills listed');
+    rows.forEach(r => {
+      assert(r.querySelector('.cmd-run'), 'run button');
+      assert(r.querySelector('.skill-edit'), 'edit button');
+      assert(r.querySelector('.skill-hide'), 'hide button');
+    });
+  });
+  test('v1.6.23: hiding a builtin skill removes it from list and @ trigger', async () => {
+    App.settings.hiddenBuiltinSkills = ['memo'];
+    App.renderAiSettings();
+    const rows = doc.querySelectorAll('#skillList .cmd-item');
+    assert(rows.length === 2, 'hidden skill removed from settings list');
+    assert(!Agents.allSkills().some(sk => sk.id === 'memo'), 'hidden skill removed from @ trigger');
+    App.settings.hiddenBuiltinSkills = [];
+    App.renderAiSettings();
+    assert(doc.querySelectorAll('#skillList .cmd-item').length === 3, 'restored');
+  });
+  test('v1.6.23: custom skill rows have edit button; edit loads builder and saves in place', async () => {
+    App.settings.customSkills = [{ id: 'skill-t1', name: 'TestSkill', agent: 'research', model: '', description: 'd', instructions: 'i', automation: '' }];
+    App.renderAiSettings();
+    const row = [...doc.querySelectorAll('#customSkillList .cmd-item')].find(r => r.textContent.includes('TestSkill'));
+    assert(row && row.querySelector('.skill-edit'), 'custom row has edit button');
+    row.querySelector('.skill-edit').click();
+    assert(App._editingSkillId === 'skill-t1', 'editing state set');
+    assert(doc.getElementById('skillNameInput').value === 'TestSkill', 'builder prefilled');
+    doc.getElementById('skillNameInput').value = 'TestSkill2';
+    doc.getElementById('btnAddSkill').click();
+    await new Promise(r => setTimeout(r, 20));
+    const names = App.settings.customSkills.map(sk => sk.name);
+    assert(names.includes('TestSkill2') && !names.includes('TestSkill'), 'edited in place, no duplicate');
+    assert(App._editingSkillId === null, 'editing state cleared');
+    App.settings.customSkills = [];
+    App.renderAiSettings();
+  });
+  test('v1.6.23: tools and KB settings render as stacked card grid', () => {
+    App.renderToolSettings();
+    App.renderKbSettings();
+    assert(doc.querySelectorAll('#toolSettingsList .set-card').length === 10, '10 tool cards');
+    assert(doc.querySelectorAll('#kbSettingsList .set-card').length === KB.kbs.length, 'one card per KB');
+    assert(doc.querySelector('#toolSettingsList .set-card .sc-foot .switch'), 'switch inside card footer');
   });
 
   await runAll();
