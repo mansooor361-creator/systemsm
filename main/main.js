@@ -191,6 +191,55 @@ ipcMain.handle('skills:export', async (_e, name, markdown) => {
   }
 });
 
+/* ---------- AI assistant projects: one folder per project ---------- */
+function projectsDir() {
+  const dir = path.join(app.getPath('userData'), 'projects');
+  fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+function safeProjectName(name) {
+  return String(name || 'project').replace(/[\\/:*?"<>|]/g, '-').slice(0, 80) || 'project';
+}
+ipcMain.handle('projects:save', (_e, name, projectMd, agentsMd) => {
+  try {
+    const dir = path.join(projectsDir(), safeProjectName(name));
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'project.md'), String(projectMd || ''), 'utf8');
+    fs.writeFileSync(path.join(dir, 'AGENTS.md'), String(agentsMd || ''), 'utf8');
+    return { ok: true, dir };
+  } catch (e) {
+    return { ok: false, error: String(e.message || e) };
+  }
+});
+ipcMain.handle('projects:list', () => {
+  try {
+    const dir = projectsDir();
+    return fs.readdirSync(dir, { withFileTypes: true })
+      .filter(d => d.isDirectory())
+      .map(d => ({ name: d.name, dir: path.join(dir, d.name) }));
+  } catch (e) {
+    return [];
+  }
+});
+ipcMain.handle('projects:load', (_e, name) => {
+  try {
+    const dir = path.join(projectsDir(), safeProjectName(name));
+    const read = f => { try { return fs.readFileSync(path.join(dir, f), 'utf8'); } catch (_) { return ''; } };
+    return { ok: true, projectMd: read('project.md'), agentsMd: read('AGENTS.md'), dir };
+  } catch (e) {
+    return { ok: false, error: String(e.message || e) };
+  }
+});
+ipcMain.handle('projects:delete', (_e, name) => {
+  try {
+    const dir = path.join(projectsDir(), safeProjectName(name));
+    fs.rmSync(dir, { recursive: true, force: true });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: String(e.message || e) };
+  }
+});
+
 ipcMain.handle('kb:saveDownloaded', (_e, kb) => {
   const dir = path.join(app.getPath('userData'), 'kb');
   fs.mkdirSync(dir, { recursive: true });

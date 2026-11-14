@@ -803,6 +803,39 @@ const App = {
       };
       skillList.appendChild(row);
     });
+
+    const memList = document.getElementById('memoryList');
+    if (memList) {
+      memList.innerHTML = '';
+      const mem = Agents.assistantMemory();
+      const sec = (title, arr, key) => {
+        if (!arr || !arr.length) return;
+        const h = document.createElement('div');
+        h.className = 'cmd-name';
+        h.style.padding = '8px 2px 2px';
+        h.textContent = title;
+        memList.appendChild(h);
+        arr.forEach(r => {
+          const row = document.createElement('div');
+          row.className = 'cmd-item';
+          row.innerHTML = `<div class="cmd-main"><div class="cmd-name">${esc(r.title || '')}</div><div class="cmd-desc">${esc(r.summary || r.text || '')}</div></div>`;
+          const del = document.createElement('button');
+          del.className = 'ghost-btn';
+          del.textContent = I18n.t('memDelete');
+          del.onclick = async () => {
+            const m = Agents.assistantMemory();
+            m[key] = (m[key] || []).filter(x => x !== r);
+            await window.daaix.settingsSet({ assistantMemory: m });
+            this.renderAiSettings();
+          };
+          row.appendChild(del);
+          memList.appendChild(row);
+        });
+      };
+      sec(I18n.t('memRecent'), mem.recentList, 'recentList');
+      sec(I18n.t('memSavedList'), mem.savedList, 'savedList');
+      if (!memList.children.length) memList.innerHTML = `<p class="hint">\u2014</p>`;
+    }
   },
 
   renderCustomSkillBuilder() {
@@ -1039,7 +1072,7 @@ const App = {
     if (feedHead) feedHead.classList.toggle('hidden', !!active);
     box.innerHTML = '';
     if (!active) return;
-    const all = this.searchMode === 'semantic' ? KB.searchSemantic(query, 200) : KB.search(query, 200);
+    const all = this.searchMode === 'semantic' ? KB.searchSemantic(query, 60) : KB.search(query, 60);
     const results = this.searchCat === 'all' ? all : all.filter(r => r.doc.type === this.searchCat);
 
     const kbName = this.currentKbId && KB.kbs.find(k => k.id === this.currentKbId)

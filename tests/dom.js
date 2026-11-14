@@ -1056,6 +1056,25 @@ function bootDom() {
     assert(/\d+/.test(stats.textContent), 'stats contain numbers');
     assert(stats.textContent.includes('·'), 'words · chars separated');
   });
+  test('v1.6.22: AI DaAIx full page — topbar with mode + project pickers, stop button, memory button', () => {
+    Agents.open('consultant');
+    assert(doc.getElementById('agentModeSelect'), 'mode picker present');
+    assert(doc.getElementById('agentProjectSelect'), 'project picker present');
+    assert(doc.getElementById('btnProjectNew') && doc.getElementById('btnProjectEdit') && doc.getElementById('btnProjectDelete'), 'project actions present');
+    assert(doc.getElementById('agentStop'), 'stop button present');
+    assert(doc.getElementById('agentStop').classList.contains('hidden'), 'stop hidden while idle');
+    assert(doc.getElementById('agentSend'), 'send button present');
+  });
+  test('v1.6.22: appendAnswer converts [^n] footnotes to clickable cites and merges Sources defs', () => {
+    const out = doc.createElement('div');
+    const md = 'نص الاستشهاد[^1] ثم[^2].\n\n#### Sources\n[^1]: نظام العمل\n[^2]: لائحة التنفيذ';
+    Agents.appendAnswer(out, md, [], [{ docId: 'sa-labor-law' }, { docId: 'sa-labor-law' }]);
+    assert(!out.textContent.includes('[^'), 'no raw footnote markers left');
+    assert(out.querySelectorAll('.cite').length === 2, 'two clickable cites');
+    const srcTitles = [...out.querySelectorAll('.src-title')].map(e => e.textContent);
+    assert(srcTitles.includes('نظام العمل') && srcTitles.includes('لائحة التنفيذ'), 'footnote defs merged into sources');
+    assert(!/####\s*Sources/i.test(out.textContent), 'Sources heading rendered as strip, not raw heading');
+  });
   test('quick commands list removed from AI settings; skills list present', () => {
     assert(!doc.getElementById('commandList'), 'commandList removed');
     assert(doc.getElementById('skillList'), 'skillList present');

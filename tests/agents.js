@@ -127,5 +127,42 @@ test('allSkills merges builtin skills with custom skills from settings', () => {
   assert(Agents.skillById('skill-1').agent === 'research');
 });
 
+test('v1.6.22: systemInstructions = rules + mode + project instructions + memory', () => {
+  Agents.mode = 'legal';
+  Agents.project = 'CaseX';
+  ctx.App.settings = { assistantProjects: [{ id: 'p1', name: 'CaseX', description: '', instructions: 'Always cite Saudi labor law.', context: [] }], assistantMemory: { recent: true, saved: true, maxRecent: 30, recentList: [{ title: 'T', summary: 'S' }], savedList: [{ text: 'M1' }] } };
+  const si = Agents.systemInstructions();
+  assert(si.includes('مساعد معرفي') || si.includes('knowledge assistant'), 'base rules present');
+  assert(si.includes('الوقائع') || si.includes('facts'), 'legal mode instructions present');
+  assert(si.includes('CaseX') && si.includes('Always cite Saudi labor law.'), 'project instructions present');
+  assert(si.includes('T') && si.includes('M1'), 'memory present');
+  Agents.mode = 'auto';
+  Agents.project = null;
+  ctx.App.settings = {};
+});
+test('v1.6.22: assistantMemory defaults and saveMemoryPoint dedupes', async () => {
+  ctx.App.settings = {};
+  ctx.window.daaix = { settingsSet: async () => {} };
+  const mem = Agents.assistantMemory();
+  assert(mem.recent === true && mem.saved === true && mem.maxRecent === 30, 'defaults');
+  const ok1 = await Agents.saveMemoryPoint('نقطة مهمة');
+  const ok2 = await Agents.saveMemoryPoint('نقطة مهمة');
+  assert(ok1 === true && ok2 === false, 'dedupe');
+  assert(Agents.assistantMemory().savedList.some(r => r.text === 'نقطة مهمة'), 'point stored');
+  ctx.window.daaix = undefined;
+  ctx.App.settings = {};
+});
+test('v1.6.22: saveProject writes settings + project.md content', async () => {
+  let saved = null;
+  ctx.window.daaix = { settingsSet: async (patch) => { saved = patch; }, projectsSave: async (name, md, ag) => { ctx.__projMd = md; ctx.__agentsMd = ag; return { ok: true }; } };
+  const p = await Agents.saveProject('ProjA', 'desc', 'do X');
+  assert(p.name === 'ProjA' && p.instructions === 'do X', 'project saved');
+  assert(saved && saved.assistantProjects.some(x => x.name === 'ProjA'), 'settings persisted');
+  assert(ctx.__projMd.includes('# ProjA') && ctx.__projMd.includes('السياق'), 'project.md structure');
+  assert(ctx.__agentsMd === 'do X', 'AGENTS.md content');
+  ctx.window.daaix = undefined;
+  ctx.App.settings = {};
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

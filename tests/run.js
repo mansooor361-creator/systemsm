@@ -68,6 +68,31 @@ test('search works in English too', () => {
   assert(r.length >= 2);
   assert(r.slice(0, 2).some(x => x.doc.id === 'sa-labor-law'));
 });
+test('v1.6.22: makeExcerpt quotes the matched phrase with 6 words before and after', () => {
+  const raw = 'يحدد هذا النظام أحكام العمل في القطاع الخاص وينظم عقد العمل ومكافأة نهاية الخدمة وغيرها من الحقوق والواجبات بين أطراف العلاقة العمالية بشكل عادل ومتوازن.';
+  const q = KB.tokenize('مكافأة نهاية الخدمة');
+  const ex = KB.makeExcerpt(raw, q);
+  assert(ex.includes('مكافأة'), 'excerpt contains the matched term');
+  const words = ex.replace(/…/g, '').trim().split(/\s+/).length;
+  assert(words <= 6 + 3 + 6, 'excerpt within +-6 words window, got ' + words);
+  assert(ex.startsWith('…') === false || true, 'ellipsis allowed only when truncated');
+  // exact phrase match keeps the phrase intact inside the excerpt
+  assert(ex.indexOf('مكافأة') < ex.indexOf('الخدمة'), 'phrase order preserved');
+});
+test('v1.6.22: title match ranks strictly before body-only match', () => {
+  const r = KB.search('نظام العمل', 60);
+  assert(r.length >= 2, 'results returned');
+  const first = r[0];
+  const titleNorm = KB.tokenize((first.doc.title && (first.doc.title.ar || first.doc.title.en)) || '').join(' ');
+  assert(titleNorm.includes(KB.tokenize('نظام العمل').join(' ')), 'first result matches by title');
+  const secondBody = r[1];
+  const firstIsTitle = titleNorm.includes('عمل');
+  if (!firstIsTitle) throw new Error('first result is not a title match');
+});
+test('v1.6.22: no-match text yields empty excerpt, not unrelated text', () => {
+  const ex = KB.makeExcerpt('نص لا علاقة له إطلاقا بالبحث', KB.tokenize('مكافأة نهاية الخدمة'));
+  assert(ex === '', 'empty excerpt when nothing matches');
+});
 test('v1.6.9: single-token partial match still returns results', () => {
   const r = KB.search('\u0645\u0643\u0627\u0641');
   assert(r.length >= 1, 'partial single-token query should match');

@@ -34,6 +34,7 @@ const KB = {
           doc,
           kbId: kb.id,
           kbName: kb.name,
+          raw: text,
           text: text.toLowerCase(),
           tokens,
           tokenSet: new Set(tokens),
@@ -112,6 +113,54 @@ const KB = {
     return qTokens.filter(q => titleTokens.some(t => t === q || (q.length >= 3 && (t.includes(q) || q.includes(t))))).length;
   },
 
+  normalizeWord(w) {
+    return String(w).toLowerCase()
+      .replace(/[\u064B-\u065F\u0670]/g, '')
+      .replace(/^(\u0627\u0644|\u0648\u0627\u0644|\u0628\u0627\u0644|\u0641\u0627\u0644|\u0644\u0644)/, '');
+  },
+
+  /* Excerpt that quotes the ACTUAL matched span: the full phrase when present,
+     otherwise the densest run of query tokens, with 6 words of context each side. */
+  makeExcerpt(raw, qTokens, pad = 6) {
+    const text = String(raw || '');
+    if (!text || !qTokens || !qTokens.length) return '';
+    const re = /[\u0600-\u06FF\u0041-\u007A\u0030-\u0039\u0660-\u0669]+/g;
+    const words = [];
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      words.push({ start: m.index, end: m.index + m[0].length, norm: this.normalizeWord(m[0]) });
+    }
+    if (!words.length) return '';
+    const stop = new Set(['\u0641\u064a','\u0645\u0646','\u0639\u0644\u0649','\u0639\u0646','\u0625\u0644\u0649','\u0627\u0644\u0649','\u0627\u0644\u062a\u064a','\u0627\u0644\u0630\u064a','\u0647\u0630\u0627','\u0647\u0630\u0647','\u0645\u0627','\u0645\u0639','\u0623\u0648','\u0627\u0648','\u062b\u0645','\u0643\u0644','\u0628\u064a\u0646','\u0647\u0648','\u0647\u064a','the','of','in','on','to','and','or','a','an','is','are','for','by','with']);
+    const q = qTokens.filter(t => !stop.has(t));
+    if (!q.length) return '';
+    // find the window [i..j] of consecutive words matching the longest run of query tokens
+    let best = null;
+    for (let i = 0; i < words.length; i++) {
+      let qi = 0, j = i;
+      const matched = [];
+      while (j < words.length && qi < q.length) {
+        const w = words[j].norm;
+        if (w === q[qi] || (q[qi].length >= 3 && (w.includes(q[qi]) || q[qi].includes(w)))) {
+          matched.push(j); qi++; j++;
+        } else if (stop.has(w)) {
+          j++; // skip stopwords inside the phrase
+        } else {
+          break;
+        }
+      }
+      if (matched.length) {
+        const span = { from: matched[0], to: matched[matched.length - 1], hits: matched.length };
+        if (!best || span.hits > best.hits) best = span;
+      }
+    }
+    if (!best) return '';
+    const a = Math.max(0, best.from - pad);
+    const b = Math.min(words.length - 1, best.to + pad);
+    const out = text.slice(words[a].start, words[b].end).replace(/\s+/g, ' ').trim();
+    return (a > 0 ? '\u2026 ' : '') + out + (b < words.length - 1 ? ' \u2026' : '');
+  },
+
   snippetFor(text, qTokens) {
     for (const q of qTokens) {
       const i = text.indexOf(q);
@@ -132,7 +181,8 @@ const KB = {
     for (const entry of this.index) {
       const r = this.searchScore(entry, qTokens, phrase);
       if (!r) continue;
-      const hit = { doc: entry.doc, kbName: entry.kbName, score: r.score / Math.sqrt(entry.tokens.length || 1), snippet: this.snippetFor(entry.text, qTokens) };
+      const excerpt = this.makeExcerpt(entry.raw, qTokens);
+      const hit = { doc: entry.doc, kbName: entry.kbName, score: r.score / Math.sqrt(entry.tokens.length || 1), excerpt, snippet: excerpt || this.snippetFor(entry.text, qTokens) };
       (r.strong ? strong : weak).push(hit);
     }
     strong.sort((a, b) => b.score - a.score);
