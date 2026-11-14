@@ -822,6 +822,59 @@ function bootDom() {
     inp.dispatchEvent(new window.Event('input', { bubbles: true }));
   });
 
+  console.log('\n— v1.6.10 chat input, expand & tab bar —');
+  test('doc chat input: placeholder reworded, small font, dark-mode visible colors', () => {
+    App.openDocument(KB.index[0].doc.id);
+    const ta = doc.getElementById('docChatInput');
+    assert(ta.placeholder.includes('وما يتعلق بها'), 'placeholder reworded');
+    const css = [...doc.styleSheets].flatMap(sh => { try { return [...sh.cssRules]; } catch (e) { return []; } });
+    const taRule = css.filter(r => r.selectorText && r.selectorText.includes('#rpaneChat textarea')).pop();
+    assert(taRule && taRule.style.fontSize === '13px', 'doc chat input font is smaller');
+    const bgRule = css.filter(r => r.selectorText === '.chat-input-row textarea').pop();
+    assert(bgRule && bgRule.style.background.includes('var(--bg3)'), 'chat inputs use theme background (visible typed text in dark mode)');
+    assert(bgRule && bgRule.style.color.includes('var(--text)'), 'chat inputs use theme text color');
+  });
+  test('chat expand covers the whole window; leaving chat tab or reopening doc reverts it', () => {
+    App.openDocument(KB.index[0].doc.id);
+    doc.getElementById('docChatExpand').click();
+    assert(doc.body.classList.contains('chat-expanded'), 'expanded');
+    assert(doc.defaultView && true, 'jsdom ok');
+    const css = [...doc.styleSheets].flatMap(sh => { try { return [...sh.cssRules]; } catch (e) { return []; } });
+    const tocHide = css.filter(r => r.selectorText && r.selectorText.includes('body.chat-expanded #docToc')).pop();
+    const centerHide = css.filter(r => r.selectorText && r.selectorText.includes('body.chat-expanded #docCenter')).pop();
+    const full = css.filter(r => r.selectorText === 'body.chat-expanded #docProps').pop();
+    assert(tocHide && tocHide.style.display === 'none', 'expanded: TOC hidden (full window)');
+    assert(centerHide && centerHide.style.display === 'none', 'expanded: center column hidden (full window)');
+    assert(full && full.style.width === '100%', 'expanded: chat column takes full width');
+    doc.querySelector('#rightTabs .rtab[data-tab="rulings"]').click();
+    assert(!doc.body.classList.contains('chat-expanded'), 'switching to another right tab reverts expansion');
+    assert(doc.getElementById('docChatExpand').textContent === '\u2922', 'expand icon restored');
+    doc.getElementById('docChatExpand').click();
+    assert(doc.body.classList.contains('chat-expanded'), 'expand again');
+    App.openDocument(KB.index[0].doc.id);
+    assert(!doc.body.classList.contains('chat-expanded'), 'reopening document resets expansion');
+  });
+  test('tab bar: prev/next navigation and + opens new window with doc menu', () => {
+    App.openDocument(KB.index[1].doc.id);
+    App.openDocument(KB.index[2].doc.id);
+    const bar = doc.getElementById('tabBar');
+    assert(bar.querySelector('.tab-nav-btn'), 'prev/next nav buttons present');
+    const activeBefore = App.activeTab;
+    bar.querySelectorAll('.tab-nav-btn')[0].click();
+    assert(App.activeTab !== activeBefore, 'prev button switches window');
+    bar.querySelectorAll('.tab-nav-btn')[1].click();
+    assert(App.activeTab === activeBefore, 'next button returns');
+    const before = App.tabs.length;
+    bar.querySelector('.tab-new-btn').click();
+    const menu = doc.getElementById('tabPlusMenu');
+    assert(menu && !menu.classList.contains('hidden'), '+ opens new-window menu');
+    const items = menu.querySelectorAll('.kb-menu-item');
+    assert(items.length > 0, 'menu lists documents');
+    items[0].click();
+    assert(App.tabs.length === before + 1, 'selecting a doc opens a NEW window even if already open');
+    assert(!doc.getElementById('tabPlusMenu').classList.contains('hidden') === false, 'menu closed after selection');
+  });
+
   test('linked folder KBs get a refresh-from-folder action', () => {
     const kb = KB.kbs[0];
     kb.sourcePath = '/tmp/kb';

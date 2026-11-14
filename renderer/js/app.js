@@ -240,7 +240,7 @@ const App = {
       document.getElementById('searchModeMenu').classList.toggle('hidden');
     };
     document.addEventListener('click', (e) => {
-      ['kbPickerMenu', 'searchModeMenu', 'docChatPlusPopup'].forEach(id => {
+      ['kbPickerMenu', 'searchModeMenu', 'docChatPlusPopup', 'tabPlusMenu'].forEach(id => {
         const menu = document.getElementById(id);
         if (menu && !menu.classList.contains('hidden') && !menu.contains(e.target)) {
           menu.classList.add('hidden');
@@ -1050,6 +1050,11 @@ const App = {
         document.querySelectorAll('#rightTabs .rtab').forEach(b => b.classList.toggle('active', b === btn));
         ['amend', 'rulings', 'relations', 'chat'].forEach(t =>
           document.getElementById('rpane' + t.charAt(0).toUpperCase() + t.slice(1)).classList.toggle('hidden', t !== btn.dataset.tab));
+        if (btn.dataset.tab !== 'chat' && document.body.classList.contains('chat-expanded')) {
+          document.body.classList.remove('chat-expanded');
+          const ex = document.getElementById('docChatExpand');
+          if (ex) ex.textContent = '\u2922';
+        }
       };
     });
     document.querySelectorAll('.sub-tabs .stab').forEach(btn => {
@@ -1179,9 +1184,11 @@ const App = {
     return I18n.t('settings');
   },
 
-  openTab(t) {
-    const existing = this.tabs.find(x => x.kind === t.kind && x.docId === t.docId && x.toolId === t.toolId);
-    if (existing) return this.activateTab(existing.id);
+  openTab(t, opts) {
+    if (!(opts && opts.forceNew)) {
+      const existing = this.tabs.find(x => x.kind === t.kind && x.docId === t.docId && x.toolId === t.toolId);
+      if (existing) return this.activateTab(existing.id);
+    }
     if (this.tabs.length >= 10) { this.toast(I18n.t('tabsMax')); return; }
     t.id = 'tab-' + (++this._tabSeq);
     this.tabs.push(t);
@@ -1215,6 +1222,15 @@ const App = {
     if (!bar) return;
     bar.classList.toggle('hidden', this.tabs.length <= 1);
     bar.innerHTML = '';
+    if (this.tabs.length > 1) {
+      const prev = document.createElement('button');
+      prev.className = 'tab-nav-btn'; prev.textContent = '\u2039'; prev.title = I18n.t('tabPrev');
+      prev.onclick = (e) => { e.stopPropagation(); this.stepTab(-1); };
+      const next = document.createElement('button');
+      next.className = 'tab-nav-btn'; next.textContent = '\u203a'; next.title = I18n.t('tabNext');
+      next.onclick = (e) => { e.stopPropagation(); this.stepTab(1); };
+      bar.appendChild(prev); bar.appendChild(next);
+    }
     this.tabs.forEach(t => {
       const el = document.createElement('div');
       el.className = 'app-tab' + (t.id === this.activeTab ? ' active' : '');
@@ -1232,10 +1248,55 @@ const App = {
       el.onclick = () => this.activateTab(t.id);
       bar.appendChild(el);
     });
+    const wrap = document.createElement('div');
+    wrap.className = 'tab-plus-wrap';
+    const plus = document.createElement('button');
+    plus.className = 'tab-new-btn'; plus.textContent = '+'; plus.title = I18n.t('tabNewWindow');
+    plus.onclick = (e) => {
+      e.stopPropagation();
+      this.renderTabPlusMenu();
+      document.getElementById('tabPlusMenu').classList.toggle('hidden');
+    };
+    wrap.appendChild(plus);
+    const menu = document.createElement('div');
+    menu.id = 'tabPlusMenu';
+    menu.className = 'kb-menu hidden';
+    wrap.appendChild(menu);
+    bar.appendChild(wrap);
   },
 
-  openDocument(id) {
-    this.openTab({ kind: 'doc', docId: id });
+  stepTab(dir) {
+    const i = this.tabs.findIndex(x => x.id === this.activeTab);
+    if (i < 0) return;
+    const n = this.tabs[(i + dir + this.tabs.length) % this.tabs.length];
+    this.activateTab(n.id);
+  },
+
+  renderTabPlusMenu() {
+    const menu = document.getElementById('tabPlusMenu');
+    if (!menu) return;
+    menu.innerHTML = '';
+    const title = document.createElement('div');
+    title.className = 'kb-picker-title';
+    title.textContent = I18n.t('tabNewWindow');
+    menu.appendChild(title);
+    KB.kbs.filter(kb => this.kbIsOn(kb.id)).forEach(kb => {
+      const head = document.createElement('div');
+      head.className = 'kb-picker-title';
+      head.textContent = `${kb.icon || '\ud83d\udcda'} ${kb.name[I18n.lang] || kb.name.ar}`;
+      menu.appendChild(head);
+      (kb.documents || []).forEach(d => {
+        const b = document.createElement('button');
+        b.className = 'kb-menu-item';
+        b.textContent = d.title[I18n.lang] || d.title.ar || d.title.en;
+        b.onclick = () => { menu.classList.add('hidden'); this.openDocument(d.id, true); };
+        menu.appendChild(b);
+      });
+    });
+  },
+
+  openDocument(id, forceNew) {
+    this.openTab({ kind: 'doc', docId: id }, forceNew ? { forceNew: true } : undefined);
   },
 
   renderDocument(id) {
@@ -1243,6 +1304,9 @@ const App = {
     if (!doc) return;
     this.currentDocId = id;
     this.editing = false;
+    document.body.classList.remove('chat-expanded');
+    const ex = document.getElementById('docChatExpand');
+    if (ex) ex.textContent = '\u2922';
     this.docChatScope = [];
     const chips = document.getElementById('docChatChips');
     if (chips) chips.innerHTML = '';

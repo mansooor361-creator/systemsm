@@ -727,3 +727,31 @@ body.theme-dark #docBody h5, body.theme-dark #docBody h6 { color: #e8cd82; }
 .kb-progress-track { height: 6px; background: var(--bg3); border-radius: 999px; overflow: hidden; }
 #kbProgressBarFill { height: 100%; width: 0; background: var(--accent); border-radius: 999px; transition: width .2s; }
 #kbProgressFile { font-size: 12px; }
+
+/* ---------- v1.6.10: tidy chat inputs, expand-to-window, tab bar controls ---------- */
+.chat-input-row textarea { background: var(--bg3); color: var(--text); }
+.chat-input-row textarea::placeholder { color: var(--muted); opacity: 1; }
+#rpaneChat .chat-input-row { padding: 10px 12px; align-items: flex-end; }
+#rpaneChat textarea { resize: none; font-size: 13px; min-height: 38px; max-height: 130px; padding: 8px 10px; border-radius: 8px; }
+#rpaneChat .chat-input-row .primary { width: 34px; height: 34px; font-size: 14px; padding: 0; flex: none; align-self: flex-end; }
+#rpaneChat .chat-input-row .chat-plus-btn { width: 26px; height: 26px; font-size: 14px; }
+
+body.chat-expanded #docToc,
+body.chat-expanded #btnTocToggle,
+body.chat-expanded #docCenter { display: none; }
+body.chat-expanded #docProps { width: 100%; min-width: 0; flex: 1; max-width: none; }
+
+#view-agents { display: flex; flex-direction: column; overflow: hidden; }
+#agentWorkspace { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.agent-log { flex: 1; min-height: 0; max-height: none; overflow-y: auto; }
+.agent-input-row { flex: none; }
+.agent-input-row textarea { background: var(--bg3); }
+
+.tab-nav-btn, .tab-new-btn {
+  background: transparent; border: 1px solid var(--border); color: var(--muted);
+  border-radius: 6px; width: 24px; height: 24px; font-size: 13px; line-height: 1;
+  flex: none; align-self: center; cursor: pointer; padding: 0;
+}
+.tab-nav-btn:hover, .tab-new-btn:hover { color: var(--text); border-color: var(--accent); }
+.tab-plus-wrap { position: relative; flex: none; align-self: center; margin-inline-start: 6px; }
+#tabPlusMenu { position: absolute; top: calc(100% + 6px); inset-inline-start: auto; inset-inline-end: 0; max-height: 60vh; overflow-y: auto; }
