@@ -236,8 +236,7 @@ const Agents = {
 
   open(id) {
     this.current = id || AGENTS[0].id;
-    App.showView('agents');
-    this.render();
+    App.openTab({ kind: 'agents' });
   },
 
   renderMenu() {
@@ -268,11 +267,6 @@ const Agents = {
   render() {
     const ws = document.getElementById('agentWorkspace');
     ws.innerHTML = '';
-
-    const head = document.createElement('div');
-    head.className = 'agent-head';
-    head.innerHTML = `<span class="ai-star mono">${ASSISTANT.icon}</span><span class="agent-name">${esc(I18n.t('aiAssistantName'))}</span>`;
-    ws.appendChild(head);
 
     const log = document.createElement('div');
     log.id = 'agentLog';
@@ -316,19 +310,15 @@ const Agents = {
     send.className = 'primary';
     send.id = 'agentSend';
     send.textContent = '↑';
-    row.appendChild(input);
-    row.appendChild(send);
-    ws.appendChild(row);
-
-    const plusRow = document.createElement('div');
-    plusRow.className = 'plus-row';
     const plus = document.createElement('button');
     plus.id = 'chatPlusBtn';
     plus.className = 'chat-plus-btn';
     plus.textContent = '+';
     plus.title = I18n.t('addContextPlus');
-    plusRow.appendChild(plus);
-    ws.appendChild(plusRow);
+    row.appendChild(input);
+    row.appendChild(plus);
+    row.appendChild(send);
+    ws.appendChild(row);
 
     input.addEventListener('input', () => {
       const v = input.value;
@@ -513,19 +503,20 @@ const Agents = {
     out.innerHTML = '';
     this.appendAnswer(out, result.markdown, sources);
     const actions = document.createElement('div');
-    actions.className = 'note-actions';
+    actions.className = 'answer-actions';
     const saveBtn = document.createElement('button');
-    saveBtn.className = 'primary';
-    saveBtn.textContent = '💾 ' + I18n.t('importToNotes');
+    saveBtn.className = 'act-icon mono';
+    saveBtn.title = I18n.t('importToNotes');
+    saveBtn.textContent = '\u2935';
     saveBtn.onclick = async () => {
       await window.daaix.notesSave({ id: 'agent-' + this.current + '-' + Date.now(), markdown: result.markdown });
       Notes.refresh();
       App.toast(I18n.t('save') + ' ✓');
     };
     const copyBtn = document.createElement('button');
-    copyBtn.className = 'copy-icon';
+    copyBtn.className = 'act-icon mono';
     copyBtn.title = I18n.t('copy');
-    copyBtn.textContent = '📋';
+    copyBtn.textContent = '\u2750';
     copyBtn.onclick = () => navigator.clipboard.writeText(result.markdown).then(() => App.toast(I18n.t('copied')));
     actions.appendChild(saveBtn);
     actions.appendChild(copyBtn);

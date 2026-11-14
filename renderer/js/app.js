@@ -233,18 +233,14 @@ const App = {
   bindTopbar() {
     const modeBtn = document.getElementById('btnSearchMode');
     if (modeBtn) modeBtn.textContent = this.searchMode === 'text' ? '\ud83d\udd0d' : '\u2728';
-    document.getElementById('btnRailHome').onclick = () => this.showView('home');
+    document.getElementById('btnRailHome').onclick = () => this.activateTab('home');
     document.getElementById('btnSearchMode').onclick = (e) => {
       e.stopPropagation();
       this.renderSearchModeMenu();
       document.getElementById('searchModeMenu').classList.toggle('hidden');
     };
-    document.getElementById('btnSearchExpand').onclick = () => {
-      const expanded = document.body.classList.toggle('search-expanded');
-      document.getElementById('btnSearchExpand').textContent = expanded ? '\u2923' : '\u2922';
-    };
     document.addEventListener('click', (e) => {
-      ['kbPickerMenu', 'searchModeMenu'].forEach(id => {
+      ['kbPickerMenu', 'searchModeMenu', 'docChatPlusPopup'].forEach(id => {
         const menu = document.getElementById(id);
         if (menu && !menu.classList.contains('hidden') && !menu.contains(e.target)) {
           menu.classList.add('hidden');
@@ -257,8 +253,8 @@ const App = {
     };
     document.getElementById('btnDrawer').onclick = () => this.openDrawer();
     document.getElementById('btnAgents').onclick = () => Agents.open(Agents.current);
-    document.getElementById('btnTools').onclick = () => Tools.open(Tools.active || 'consultant');
-    document.getElementById('btnNotes').onclick = () => { this.showView('notes'); Notes.refresh(); };
+    document.getElementById('btnTools').onclick = () => Tools.open(Tools.active || 'converter');
+    document.getElementById('btnNotes').onclick = () => this.openTab({ kind: 'notes' });
     document.getElementById('siteLink').onclick = (e) => {
       e.preventDefault();
       window.daaix.openExternal('https://smartk-ai.com/');
@@ -285,7 +281,7 @@ const App = {
     };
     document.getElementById('btnFullSettings').onclick = () => {
       this.closeDrawer();
-      this.showView('settings');
+      this.openTab({ kind: 'settings' });
       this.fillSettings();
     };
   },
@@ -389,7 +385,7 @@ const App = {
       menu.classList.add('hidden');
       this.currentKbId = null;
       this.currentCat = 'all';
-      this.showView('home');
+      this.activateTab('home');
     };
     menu.appendChild(all);
     KB.kbs.filter(kb => this.kbIsOn(kb.id)).forEach(kb => {
@@ -400,7 +396,7 @@ const App = {
         menu.classList.add('hidden');
         this.currentKbId = kb.id;
         this.currentCat = 'all';
-        this.showView('home');
+        this.activateTab('home');
         this.toast(`${kb.icon || '\ud83d\udcda'} ${kb.name[I18n.lang] || kb.name.ar}`);
       };
       menu.appendChild(b);
@@ -663,7 +659,7 @@ const App = {
     if (!agentList) return;
     agentList.innerHTML = '';
     Agents.list().forEach(a => {
-      const name = a.label[I18n.lang] || a.label.ar;
+      const name = a.label.en || a.label.ar;
       const desc = a.desc[I18n.lang] || a.desc.ar;
       const row = document.createElement('div');
       row.className = 'settings-row';
@@ -877,7 +873,7 @@ const App = {
     const feedTitle = document.getElementById('feedTitle');
     const toolsTitle = document.getElementById('homeToolsTitle');
     const toolCards = document.getElementById('homeToolCards');
-    this.showView('home');
+    this.activateTab('home');
     const active = q && q.trim().length >= 2;
     feed.classList.toggle('hidden', !!active);
     feedTitle.classList.toggle('hidden', !!active);
@@ -967,6 +963,11 @@ const App = {
       document.getElementById('btnTocToggle').textContent = hidden ? '❯' : '❮';
     };
     document.getElementById('docChatSend').onclick = () => this.sendDocChat();
+    document.getElementById('docChatPlus').onclick = () => {
+      const pop = document.getElementById('docChatPlusPopup');
+      if (pop.classList.contains('hidden')) this.renderDocChatPlus(pop);
+      else pop.classList.add('hidden');
+    };
     document.getElementById('docChatInput').addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.sendDocChat(); }
     });
@@ -982,7 +983,15 @@ const App = {
     qEl.className = 'chat-q';
     qEl.textContent = q;
     log.appendChild(qEl);
-    const res = await Chat.answer(q, { scopeDocIds: Retrieval.scopeDocIds(this.currentDocId, 1) });
+    const ids = Retrieval.scopeDocIds(this.currentDocId, 1) || new Set();
+    (this.docChatScope || []).forEach(c => {
+      if (c.type === 'doc') ids.add(c.id);
+      else {
+        const kb = KB.kbs.find(k => k.id === c.id);
+        (kb.documents || []).forEach(d => ids.add(d.id));
+      }
+    });
+    const res = await Chat.answer(q, { scopeDocIds: ids });
     const aEl = document.createElement('div');
     aEl.className = 'chat-a';
     if (!res.passages || !res.passages.length) {
@@ -1005,11 +1014,136 @@ const App = {
     log.scrollTop = log.scrollHeight;
   },
 
+  renderDocChatPlus(popup) {
+    popup.innerHTML = '';
+    const add = (item) => {
+      const b = document.createElement('button');
+      b.className = 'ctx-item';
+      b.innerHTML = `<span>${esc(item.label)}</span><span class="ctx-sub">${esc(item.sub)}</span>`;
+      b.onmousedown = (e) => {
+        e.preventDefault();
+        if (!this.docChatScope.some(c => c.type === item.type && c.id === item.id)) this.docChatScope.push(item);
+        popup.classList.add('hidden');
+        this.renderDocChatChips();
+      };
+      popup.appendChild(b);
+    };
+    KB.kbs.forEach(kb => {
+      const name = kb.name[I18n.lang] || kb.name.ar;
+      add({ type: 'kb', id: kb.id, label: `${kb.icon || '📚'} ${name}`, sub: I18n.t('ctxKb') });
+    });
+    KB.index.forEach(e => {
+      const name = e.doc.title[I18n.lang] || e.doc.title.ar || e.doc.title.en;
+      add({ type: 'doc', id: e.doc.id, label: `📄 ${name}`, sub: I18n.docTypeName(e.doc.type) });
+    });
+    popup.classList.toggle('hidden', !KB.kbs.length && !KB.index.length);
+  },
+
+  renderDocChatChips() {
+    const chips = document.getElementById('docChatChips');
+    if (!chips) return;
+    chips.innerHTML = '';
+    (this.docChatScope || []).forEach((c, i) => {
+      const chip = document.createElement('span');
+      chip.className = 'ctx-chip';
+      chip.textContent = c.label;
+      const x = document.createElement('button');
+      x.className = 'ctx-chip-x';
+      x.textContent = '\u00d7';
+      x.onclick = () => { this.docChatScope.splice(i, 1); this.renderDocChatChips(); };
+      chip.appendChild(x);
+      chips.appendChild(chip);
+    });
+  },
+
+  /* ---------- browser-style tabs ---------- */
+  tabs: [{ id: 'home', kind: 'home' }],
+  activeTab: 'home',
+  _tabSeq: 0,
+  docChatScope: [],
+
+  tabLabel(t) {
+    if (t.kind === 'home') return I18n.t('home');
+    if (t.kind === 'doc') {
+      const d = KB.get(t.docId);
+      return d ? (d.title[I18n.lang] || d.title.ar || d.title.en) : '\u2014';
+    }
+    if (t.kind === 'agents') return I18n.t('aiAssistantName');
+    if (t.kind === 'tools') {
+      const tl = Tools.list().find(x => x.id === t.toolId);
+      return tl ? tl.label : I18n.t('tools');
+    }
+    if (t.kind === 'notes') return I18n.t('notes');
+    return I18n.t('settings');
+  },
+
+  openTab(t) {
+    const existing = this.tabs.find(x => x.kind === t.kind && x.docId === t.docId && x.toolId === t.toolId);
+    if (existing) return this.activateTab(existing.id);
+    if (this.tabs.length >= 10) { this.toast(I18n.t('tabsMax')); return; }
+    t.id = 'tab-' + (++this._tabSeq);
+    this.tabs.push(t);
+    this.activateTab(t.id);
+  },
+
+  closeTab(id) {
+    if (id === 'home') return;
+    const idx = this.tabs.findIndex(x => x.id === id);
+    if (idx < 0) return;
+    this.tabs.splice(idx, 1);
+    if (this.activeTab === id) this.activateTab(this.tabs[Math.min(idx, this.tabs.length - 1)].id);
+    else this.renderTabBar();
+  },
+
+  activateTab(id) {
+    const t = this.tabs.find(x => x.id === id);
+    if (!t) return;
+    this.activeTab = id;
+    this.renderTabBar();
+    if (t.kind === 'home') this.showView('home');
+    else if (t.kind === 'doc') this.renderDocument(t.docId);
+    else if (t.kind === 'agents') { this.showView('agents'); Agents.render(); }
+    else if (t.kind === 'tools') { this.showView('tools'); Tools.active = t.toolId; Tools.renderMenu(); Tools.render(t.toolId); }
+    else if (t.kind === 'notes') { this.showView('notes'); Notes.refresh(); }
+    else if (t.kind === 'settings') this.showView('settings');
+  },
+
+  renderTabBar() {
+    const bar = document.getElementById('tabBar');
+    if (!bar) return;
+    bar.classList.toggle('hidden', this.tabs.length <= 1);
+    bar.innerHTML = '';
+    this.tabs.forEach(t => {
+      const el = document.createElement('div');
+      el.className = 'app-tab' + (t.id === this.activeTab ? ' active' : '');
+      const span = document.createElement('span');
+      span.className = 'tab-title';
+      span.textContent = this.tabLabel(t);
+      el.appendChild(span);
+      if (t.id !== 'home') {
+        const x = document.createElement('button');
+        x.className = 'tab-close';
+        x.textContent = '\u00d7';
+        x.onclick = (e) => { e.stopPropagation(); this.closeTab(t.id); };
+        el.appendChild(x);
+      }
+      el.onclick = () => this.activateTab(t.id);
+      bar.appendChild(el);
+    });
+  },
+
   openDocument(id) {
+    this.openTab({ kind: 'doc', docId: id });
+  },
+
+  renderDocument(id) {
     const doc = KB.get(id);
     if (!doc) return;
     this.currentDocId = id;
     this.editing = false;
+    this.docChatScope = [];
+    const chips = document.getElementById('docChatChips');
+    if (chips) chips.innerHTML = '';
     this.showView('doc');
 
     const title = doc.title[I18n.lang] || doc.title.ar || doc.title.en;

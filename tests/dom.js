@@ -102,7 +102,8 @@ function bootDom() {
     assert(!doc.getElementById('btnKbMenu'), 'folder icon removed from topbar');
     assert(doc.querySelector('#topbar .brand #btnKbPicker svg'), 'classic monochrome DB cylinder picker button before search');
     assert(doc.querySelectorAll('#btnKbPicker').length === 1, 'single KB picker button (books icon removed)');
-    assert(doc.getElementById('btnSearchMode') && doc.getElementById('btnSearchExpand') && doc.getElementById('searchModeMenu'), 'search mode dropdown button + expand button');
+    assert(doc.getElementById('btnSearchMode') && doc.getElementById('searchModeMenu'), 'search mode dropdown button present');
+    assert(!doc.getElementById('btnSearchExpand'), 'search expand button removed (v1.6.7)');
   });
   test('rail view buttons always visible (settings toggles removed in v1.6.2); drawer gear visible', () => {
     ['btnAgents', 'btnTools', 'btnNotes'].forEach(id =>
@@ -223,9 +224,7 @@ function bootDom() {
   test('agents view is a single AI DaAIx chat: no chips menu, log, input, classic arrow', async () => {
     Agents.open('consultant');
     assert(!doc.getElementById('agentsMenu'), 'agents chips menu removed from page');
-    const name = doc.querySelector('#agentWorkspace .agent-head .agent-name');
-    assert(name && name.textContent.includes('AI DaAIx'), 'assistant named AI DaAIx');
-    assert(doc.querySelector('#agentWorkspace .agent-head .ai-star'), 'white mono AI star icon');
+    assert(!doc.querySelector('#agentWorkspace .agent-head'), 'no AI DaAIx title header (v1.6.7)');
     assert(doc.getElementById('agentLog'), 'chat log exists');
     assert(doc.getElementById('agentInput'), 'chat input exists');
     assert(doc.getElementById('agentInput').placeholder.includes('@'), 'placeholder mentions @ context');
@@ -240,8 +239,10 @@ function bootDom() {
     const src = last.querySelector('.chat-sources');
     assert(src && src.querySelectorAll('.src-title').length >= 1, 'sources shown at top as document titles');
     assert(!last.querySelector('.chat-q'), 'no agent-label header inside answer');
-    const copyBtn = last.querySelector('.copy-icon');
-    assert(copyBtn && copyBtn.textContent.trim() === '📋', 'copy button is icon-only, no text');
+    const acts = last.querySelectorAll('.answer-actions .act-icon');
+    assert(acts.length === 2, 'exactly two icon actions: copy + import-to-notes');
+    const copyBtn = [...acts].find(b => b.textContent.trim() === '\u2750');
+    assert(copyBtn && copyBtn.title, 'copy button is the classic two-squares glyph, no text');
     assert(!copyBtn.classList.contains('primary'), 'copy button not brown/primary');
   });
   test('/ commands popup fills input', () => {
@@ -269,7 +270,7 @@ function bootDom() {
   });
   test('contract tool: generates structure + analyzes clauses', () => {
     Tools.open('contract');
-    assert(doc.querySelectorAll('#toolsMenu .tool-chip').length === 11, '11 tools now');
+    assert(doc.querySelectorAll('#toolsMenu .tool-chip').length === 10, '10 tools now (consultant removed)');
     doc.getElementById('ctGen').click();
     const gen = doc.getElementById('ctOut').textContent;
     assert(gen.includes('أبجدية العقود'), 'contract alphabet in generated structure');
@@ -349,7 +350,7 @@ function bootDom() {
   test('enabled tools appear as monochrome icons in the rail; click opens the tool', () => {
     App.renderToolRail();
     const btns = doc.querySelectorAll('#toolRail .tool-rail-btn');
-    assert(btns.length === 11, 'all enabled tools in rail');
+    assert(btns.length === 10, 'all enabled tools in rail');
     assert(btns[0].title.length > 2, 'tooltip shows tool name');
     btns[3].click();
     assert(!doc.getElementById('view-tools').classList.contains('hidden'), 'tool opens from rail');
@@ -433,23 +434,23 @@ function bootDom() {
     doc.getElementById('setToolSearch').value = '';
     App.renderToolSettings();
     rows = doc.querySelectorAll('#toolSettingsList .settings-row');
-    assert(rows.length === 11, 'all 11 tools listed');
+    assert(rows.length === 10, 'all 10 tools listed');
     assert(rows[0].querySelector('.cat-chip'), 'category chip on tool row');
     const waRow = [...rows].find(r => r.textContent.includes('واتساب'));
     assert(waRow, 'whatsapp tool row found');
     waRow.querySelector('input').click();
     await new Promise(r => setTimeout(r, 50));
     const chips = [...doc.querySelectorAll('#toolsMenu .tool-chip')];
-    assert(chips.length === 10, 'disabled tool removed from tools menu');
+    assert(chips.length === 9, 'disabled tool removed from tools menu');
     assert(!chips.some(c => c.textContent.includes('واتساب')), 'whatsapp chip hidden');
     assert(!doc.getElementById('homeToolCards').textContent.includes('واتساب'), 'disabled tool hidden from home');
     waRow.querySelector('input').click();
     await new Promise(r => setTimeout(r, 50));
-    assert(doc.querySelectorAll('#toolsMenu .tool-chip').length === 11, 're-enabled');
+    assert(doc.querySelectorAll('#toolsMenu .tool-chip').length === 10, 're-enabled');
   });
   test('enabled tools appear as home cards', () => {
     App.renderHomeToolCards();
-    assert(doc.querySelectorAll('#homeToolCards .quick-card').length === 11, 'all enabled tools on home');
+    assert(doc.querySelectorAll('#homeToolCards .quick-card').length === 10, 'all enabled tools on home');
     assert(!doc.getElementById('homeToolsTitle').classList.contains('hidden'), 'home tools title visible');
   });
 
@@ -504,12 +505,16 @@ function bootDom() {
     App.setSearchMode('text');
     assert(App.searchMode === 'text');
   });
-  test('search expand button toggles full-width search', () => {
-    const btn = doc.getElementById('btnSearchExpand');
-    btn.click();
-    assert(doc.body.classList.contains('search-expanded'), 'body.search-expanded on');
-    btn.click();
-    assert(!doc.body.classList.contains('search-expanded'), 'body.search-expanded off');
+  test('v1.6.7 cleanup: no search expand button, no agents title, consultant tool deleted', () => {
+    assert(!doc.getElementById('btnSearchExpand'), 'expand button absent');
+    assert(!doc.querySelector('#agentWorkspace .agent-head'), 'no AI DaAIx header above the chat');
+    assert(!Tools.list().some(t => t.id === 'consultant'), 'consultant tool removed from tools');
+  });
+  test('v1.6.7: dark theme document paper follows the dark palette', () => {
+    const fs = require('fs');
+    const css = fs.readFileSync('renderer/css/app.css', 'utf-8');
+    assert(css.includes('body.theme-dark { --paper: #161d2e;'), 'dark paper variable override');
+    assert(css.includes('body.theme-dark .doc-paper .co-note'), 'dark callout overrides');
   });
   test('category chip filters results by document type', () => {
     App.showView('home');
@@ -714,6 +719,46 @@ function bootDom() {
     const after = Usage.remaining().find(r => r.id === 'daily').used;
     assert(after === before + 1, 'usage bumped after send');
     assert(doc.getElementById('usageMeter').textContent.includes('يومي'), 'daily stage shown in meter');
+  });
+
+  console.log('\n— v1.6.7 browser-style tabs —');
+  test('tabs: opening documents creates titled tabs, switch and close like a browser', () => {
+    App.tabs = [{ id: 'home', kind: 'home' }];
+    App.activeTab = 'home';
+    App.renderTabBar();
+    const first = KB.index[0].doc.id;
+    const second = KB.index[1].doc.id;
+    App.openDocument(first);
+    App.openDocument(second);
+    const bar = doc.getElementById('tabBar');
+    assert(!bar.classList.contains('hidden'), 'tab bar visible with open windows');
+    const tabs = bar.querySelectorAll('.app-tab');
+    assert(tabs.length === 3, 'home + two document tabs');
+    assert(tabs[0].querySelector('.tab-title').textContent.length > 0, 'home tab titled');
+    const I18nG = window.eval('I18n');
+    const t2 = KB.get(second);
+    const t2Title = t2.title[I18nG.lang] || t2.title.ar || t2.title.en;
+    assert([...bar.querySelectorAll('.app-tab .tab-title')].some(el => el.textContent === t2Title), 'doc tab titled with document title');
+    assert(doc.getElementById('view-doc').classList.contains('hidden') === false, 'second doc active');
+    tabs[0].click();
+    assert(!doc.getElementById('view-home').classList.contains('hidden'), 'switching to home tab shows home');
+    const closeBtns = bar.querySelectorAll('.app-tab .tab-close');
+    closeBtns[closeBtns.length - 1].click();
+    assert(bar.querySelectorAll('.app-tab').length === 2, 'tab closed');
+  });
+  test('tabs: agents and tools open as named windows; reopening same doc reuses its tab', () => {
+    Agents.open('consultant');
+    const bar = doc.getElementById('tabBar');
+    const titles = [...bar.querySelectorAll('.app-tab .tab-title')].map(el => el.textContent);
+    assert(titles.includes('AI DaAIx'), 'agents window titled AI DaAIx');
+    Tools.open('converter');
+    const titles2 = [...bar.querySelectorAll('.app-tab .tab-title')].map(el => el.textContent);
+    assert(titles2.some(t => t.includes(Tools.list().find(x => x.id === 'converter').label)), 'tools window titled with tool name');
+    const before = bar.querySelectorAll('.app-tab').length;
+    App.openDocument(KB.index[0].doc.id);
+    App.openDocument(KB.index[0].doc.id);
+    assert(bar.querySelectorAll('.app-tab').length === before, 'reopening the same document reuses its tab');
+    assert(App.tabs.length <= 10, 'tab cap of 10 respected');
   });
 
   await runAll();

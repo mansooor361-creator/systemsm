@@ -5,7 +5,6 @@ const Tools = {
 
   list() {
     return [
-      { id: 'consultant', icon: '⚖️', label: I18n.t('toolConsultant'), cat: 'ai', desc: I18n.t('descConsultant') },
       { id: 'converter', icon: '🔄', label: I18n.t('toolConverter'), cat: 'free', desc: I18n.t('descConverter') },
       { id: 'costs', icon: '🧾', label: I18n.t('toolCosts'), cat: 'legal', desc: I18n.t('descCosts') },
       { id: 'labor', icon: '👷', label: I18n.t('toolLabor'), cat: 'legal', desc: I18n.t('descLabor') },
@@ -27,16 +26,13 @@ const Tools = {
       const chip = document.createElement('div');
       chip.className = 'tool-chip' + (this.active === t.id ? ' active' : '');
       chip.textContent = `${t.icon} ${t.label}`;
-      chip.onclick = () => { this.active = t.id; this.renderMenu(); this.render(t.id); };
+      chip.onclick = () => App.openTab({ kind: 'tools', toolId: t.id });
       menu.appendChild(chip);
     });
   },
 
   open(id) {
-    this.active = id;
-    App.showView('tools');
-    this.renderMenu();
-    this.render(id);
+    App.openTab({ kind: 'tools', toolId: id });
   },
 
   render(id) {
@@ -50,43 +46,6 @@ const Tools = {
     const div = document.createElement('div');
     div.innerHTML = html;
     return div.firstElementChild;
-  },
-
-  /* ============ 1. Digital Legal Advisor ============ */
-  render_consultant(panel) {
-    const box = this.el(`
-      <div>
-        <h2>⚖️ ${I18n.t('toolConsultant')}</h2>
-        <div class="form-grid" style="grid-template-columns:1fr">
-          <label>${I18n.t('consultantQuestion')}
-            <textarea id="tcQ" rows="3" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px;outline:none"></textarea>
-          </label>
-        </div>
-        <button class="primary" id="tcAsk">${I18n.t('calculate')}</button>
-        <div id="tcOut"></div>
-      </div>`);
-    panel.appendChild(box);
-    box.querySelector('#tcAsk').onclick = async () => {
-      const q = box.querySelector('#tcQ').value.trim();
-      if (!q) return;
-      const out = box.querySelector('#tcOut');
-      out.innerHTML = `<div class="result-card">${I18n.t('loading')}</div>`;
-      const res = await Chat.answer(q, { scope: 'all' });
-      out.innerHTML = '';
-      const card = this.el(`<div class="result-card"></div>`);
-      card.appendChild(renderMarkdown(res.answer));
-      if (res.passages && res.passages.length) {
-        const cites = this.el(`<div class="result-note">${I18n.t('chatCitations')}: </div>`);
-        res.passages.forEach((p, i) => {
-          const a = this.el(`<a href="#" class="cite">${p.docTitle}${p.articleNum ? ' (' + p.articleNum + ')' : ''}</a>`);
-          a.onclick = (e) => { e.preventDefault(); App.openDocument(p.docId); };
-          cites.appendChild(a);
-          if (i < res.passages.length - 1) cites.appendChild(document.createTextNode(' · '));
-        });
-        card.appendChild(cites);
-      }
-      out.appendChild(card);
-    };
   },
 
   /* ============ 2. Markdown Converter ============ */

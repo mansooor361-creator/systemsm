@@ -14,10 +14,11 @@
     </div>
     <input id="globalSearch" type="search" data-i18n-ph="search" autocomplete="off" />
     <button id="btnSearchMode" class="tb-btn mono" data-i18n-title="searchModeTitle">✦</button>
-    <button id="btnSearchExpand" class="tb-btn mono" data-i18n-title="searchExpandTitle">⤢</button>
     <div id="searchModeMenu" class="kb-menu search-mode-menu hidden"></div>
     <div id="kbPickerMenu" class="kb-menu kb-picker hidden"></div>
   </header>
+
+  <div id="tabBar" class="tab-bar hidden"></div>
 
   <div id="layout">
     <nav id="rail">
@@ -106,7 +107,12 @@
               <button id="docChatExpand" class="tb-btn mono" data-i18n-title="docChatExpand">⤢</button>
             </div>
             <div id="docChatLog" class="chat-log doc-chat-log"></div>
-            <div class="chat-input-row">
+            <div class="agent-ctx doc-chat-ctx">
+              <div class="ctx-chips" id="docChatChips"></div>
+              <div id="docChatPlusPopup" class="ctx-popup hidden"></div>
+            </div>
+            <div class="chat-input-row doc-chat-input-row">
+              <button id="docChatPlus" class="chat-plus-btn" data-i18n-title="addContextPlus">+</button>
               <textarea id="docChatInput" rows="2" data-i18n-ph="chatPlaceholder"></textarea>
               <button id="docChatSend" class="primary">↑</button>
             </div>
@@ -116,9 +122,6 @@
 
       <!-- Agents -->
       <section id="view-agents" class="view hidden">
-        <div class="agents-head">
-          <h2 class="ai-assistant-title"><span class="ai-star mono">✨</span><span data-i18n="aiAssistantName"></span></h2>
-        </div>
         <div id="agentWorkspace" class="agent-workspace"></div>
       </section>
 

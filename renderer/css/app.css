@@ -120,8 +120,6 @@ button { cursor: pointer; }
 .sr-count { font-size: 13px; color: var(--muted); }
 .search-mode-menu { top: 52px; inset-inline-start: auto; inset-inline-end: 118px; }
 .active-mode { color: var(--accent); font-weight: 700; }
-body.search-expanded #globalSearch { flex: 1; max-width: none; }
-body.search-expanded .search-results { max-width: none; }
 .sr-item {
   background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
   padding: 14px 18px; margin-bottom: 10px; cursor: pointer;
@@ -665,3 +663,47 @@ body.chat-expanded #docProps { width: 55%; min-width: 340px; }
 .feed-head { display: flex; align-items: center; gap: 10px; max-width: 1100px; }
 .updates-feed.feed-list { display: flex; flex-direction: column; }
 .updates-feed.feed-list .feed-item { flex-direction: row; align-items: center; width: 100%; }
+
+/* ---------- v1.6.7: theme-aware document paper ---------- */
+body.theme-dark { --paper: #161d2e; --paper-text: #e6edf7; --paper-muted: #93a1b8; }
+body.theme-dark .doc-paper .co-note { background: rgba(95,180,217,.12); }
+body.theme-dark .doc-paper .co-info { background: rgba(199,146,234,.12); }
+body.theme-dark .doc-paper .co-tip { background: rgba(126,201,143,.12); }
+body.theme-dark .doc-paper .co-warning { background: rgba(240,163,94,.14); }
+body.theme-dark .doc-paper .co-caution { background: rgba(239,125,125,.12); }
+body.theme-dark .doc-paper .co-example { background: rgba(212,169,78,.12); }
+body.theme-dark .doc-paper .co-quote { background: var(--bg3); }
+body.theme-dark .article-card { background: var(--bg3); border-color: var(--border); }
+body.theme-dark .article-card .anum { color: #e8cd82; }
+body.theme-dark #docBody h5, body.theme-dark #docBody h6 { color: #e8cd82; }
+
+/* ---------- v1.6.7: browser-style tabs ---------- */
+.tab-bar {
+  display: flex; align-items: flex-end; gap: 2px; padding: 6px 10px 0;
+  background: var(--bg2); border-bottom: 1px solid var(--border);
+  overflow-x: auto; flex: none;
+}
+.app-tab {
+  display: flex; align-items: center; gap: 8px; padding: 7px 12px;
+  font-size: 13px; color: var(--muted); background: transparent;
+  border: 1px solid transparent; border-bottom: none; border-radius: 8px 8px 0 0;
+  cursor: pointer; max-width: 220px; white-space: nowrap; flex: none;
+}
+.app-tab:hover { color: var(--text); }
+.app-tab.active { background: var(--bg); color: var(--text); border-color: var(--border); }
+.tab-title { overflow: hidden; text-overflow: ellipsis; }
+.tab-close { background: transparent; border: none; color: var(--muted); font-size: 14px; padding: 0 2px; line-height: 1; }
+.tab-close:hover { color: var(--danger); }
+
+/* ---------- v1.6.7: classic icon-only answer actions ---------- */
+.answer-actions { display: flex; align-items: center; gap: 4px; margin: 8px 0 4px; }
+.act-icon {
+  background: transparent; border: none; color: var(--muted);
+  font-size: 14px; padding: 2px 5px; line-height: 1;
+}
+.act-icon:hover { color: var(--text); }
+
+/* ---------- v1.6.7: plus button inside chat input rows ---------- */
+.agent-input-row .chat-plus-btn, .doc-chat-input-row .chat-plus-btn { align-self: flex-end; margin-bottom: 4px; }
+.ctx-chip-x { background: transparent; border: none; color: var(--muted); font-size: 12px; padding: 0 0 0 4px; line-height: 1; }
+.ctx-chip-x:hover { color: var(--danger); }
