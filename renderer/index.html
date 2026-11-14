@@ -25,7 +25,7 @@
       <button id="btnRailHome" class="rail-btn rail-home" data-i18n-title="home">⌂</button>
       <div id="toolRail" class="tool-rail"></div>
       <div class="rail-sep"></div>
-      <button id="btnAgents" class="tb-btn rail-btn" data-i18n-title="agents">🤖</button>
+      <button id="btnAgents" class="tb-btn rail-btn mono" data-i18n-title="agents">✨</button>
       <button id="btnChat" class="tb-btn rail-btn" data-i18n-title="chat">💬</button>
       <button id="btnGraph" class="tb-btn rail-btn" data-i18n-title="graph">🕸️</button>
       <button id="btnTools" class="tb-btn rail-btn" data-i18n-title="tools">🧰</button>
@@ -124,17 +124,15 @@
         <div id="chatLog" class="chat-log"></div>
         <div class="chat-input-row">
           <textarea id="chatInput" rows="2" data-i18n-ph="chatPlaceholder"></textarea>
-          <button id="chatSend" class="primary">➤</button>
+          <button id="chatSend" class="primary">↑</button>
         </div>
       </section>
 
       <!-- Agents -->
       <section id="view-agents" class="view hidden">
         <div class="agents-head">
-          <h2 data-i18n="agentsTitle"></h2>
-          <span class="badge grounded" data-i18n="chatGrounded"></span>
+          <h2 class="ai-assistant-title"><span class="ai-star mono">✨</span><span data-i18n="aiAssistantName"></span></h2>
         </div>
-        <div id="agentsMenu" class="agents-menu"></div>
         <div id="agentWorkspace" class="agent-workspace"></div>
       </section>
 
@@ -222,6 +220,9 @@
         </div>
         <div id="setPaneAi" class="set-pane hidden">
           <p class="hint" data-i18n="aiPaneHint"></p>
+          <div class="wide sep" data-i18n="providersTitle"></div>
+          <p class="hint wide" data-i18n="providerHint"></p>
+          <div id="providerList" class="settings-rows"></div>
           <div class="wide sep" data-i18n="llmApi"></div>
           <div class="settings-grid">
             <label><span data-i18n="baseUrl"></span><input id="setLlmUrl" type="url" placeholder="https://api.openai.com/v1" /></label>

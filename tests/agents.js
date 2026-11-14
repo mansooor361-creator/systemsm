@@ -68,7 +68,7 @@ test('answer is plain + citations + disclaimer, no empty-section placeholders', 
   assert(!md.includes('\u0644\u0627 \u062a\u0648\u062c\u062f \u0646\u0635\u0648\u0635 \u0645\u0648\u062b\u0642\u0629 \u0641\u064a \u0642\u0627\u0639\u062f\u0629 \u0627\u0644\u0645\u0639\u0631\u0641\u0629 \u0644\u0647\u0630\u0627 \u0627\u0644\u0642\u0633\u0645 \u0628\u0639\u062f'), 'no section placeholders');
   assert(md.includes('\u0627\u0644\u0645\u0627\u062f\u0629') || md.includes('\u0646\u0638\u0627\u0645'), 'KB passages embedded verbatim');
   assert(md.includes('\u0631\u0627\u062c\u0639\u0647\u0627') || md.includes('review'), 'disclaimer present');
-  assert(/\[\d+\]/.test(md), 'numbered citations');
+  assert(!/\[\d+\]/.test(md), 'no numbered citation blocks \u2014 sources are document titles at top');
 });
 test('empty KB gives one refusal line (warning callout), nothing invented', () => {
   const agent = Agents.get('contracts');

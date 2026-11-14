@@ -646,7 +646,9 @@ const App = {
           apiKey: document.getElementById('setLlmKey').value.trim(),
           model: document.getElementById('setLlmModel').value.trim()
         },
-        connectors: this.readConnectors()
+        connectors: this.readConnectors(),
+        providers: this.readProviders(),
+        activeProvider: (document.querySelector('input[name=activeProvider]:checked') || {}).value || ''
       };
       this.settings = await window.daaix.settingsSet(patch);
       window.daaixSettings = this.settings;
@@ -658,7 +660,52 @@ const App = {
     return (this.settings.agentsEnabled || {})[id] !== false;
   },
 
+  renderProviderList() {
+    const list = document.getElementById('providerList');
+    if (!list) return;
+    if (!this.settings.providers || !this.settings.providers.length) {
+      this.settings.providers = AI_PROVIDERS.map(p => ({
+        id: p.id, name: p.name, baseUrl: p.baseUrl || '', model: p.model || '', apiKey: '', enabled: true
+      }));
+    }
+    const active = this.settings.activeProvider || '';
+    list.innerHTML = '';
+    this.settings.providers.forEach((p) => {
+      const name = p.name[I18n.lang] || p.name.ar;
+      const row = document.createElement('div');
+      row.className = 'settings-row provider-row';
+      row.innerHTML = `
+        <label class="check-item prov-active" title="${esc(I18n.t('activeProvider'))}"><input type="radio" name="activeProvider" value="${esc(p.id)}" ${active === p.id ? 'checked' : ''} /></label>
+        <div class="sr-main">
+          <div class="sr-name">${esc(name)}</div>
+          <input type="url" data-p="baseUrl" placeholder="https://api.example.com/v1" value="${esc(p.baseUrl || '')}" />
+          <input type="password" data-p="apiKey" placeholder="${esc(I18n.t('apiKey'))}" value="${esc(p.apiKey || '')}" autocomplete="off" />
+          <input type="text" data-p="model" placeholder="${esc(I18n.t('model'))}" value="${esc(p.model || '')}" />
+        </div>
+        <label class="switch"><input type="checkbox" data-p="enabled" ${p.enabled !== false ? 'checked' : ''} /><span class="sl"></span></label>`;
+      list.appendChild(row);
+    });
+  },
+
+  readProviders() {
+    const list = document.getElementById('providerList');
+    if (!list || !this.settings.providers) return this.settings.providers || [];
+    const rows = [...list.querySelectorAll('.provider-row')];
+    return this.settings.providers.map((p, idx) => {
+      const row = rows[idx];
+      if (!row) return p;
+      return {
+        ...p,
+        baseUrl: row.querySelector('[data-p=baseUrl]').value.trim(),
+        apiKey: row.querySelector('[data-p=apiKey]').value.trim(),
+        model: row.querySelector('[data-p=model]').value.trim(),
+        enabled: row.querySelector('[data-p=enabled]').checked
+      };
+    });
+  },
+
   renderAiSettings() {
+    this.renderProviderList();
     const agentList = document.getElementById('agentSettingsList');
     if (!agentList) return;
     agentList.innerHTML = '';
@@ -738,6 +785,7 @@ const App = {
     document.getElementById('setLlmUrl').value = llm.baseUrl || '';
     document.getElementById('setLlmKey').value = llm.apiKey || '';
     document.getElementById('setLlmModel').value = llm.model || '';
+    this.renderProviderList();
     this.renderConnectors();
   },
 

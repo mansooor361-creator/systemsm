@@ -600,3 +600,40 @@ html[dir="ltr"] .switch input:checked + .sl::before { transform: translateX(18px
 .agent-log { min-height: 260px; max-height: 46vh; }
 .agent-desc { color: var(--muted); font-size: 14px; margin-bottom: 10px; }
 #agentInput { flex: 1; resize: vertical; }
+
+/* v1.6.4 — single AI DaAIx assistant, providers, usage quota, classic input */
+.agent-workspace { max-width: none; width: 100%; }
+.agent-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.agent-head .ai-star, .ai-assistant-title .ai-star { font-size: 20px; }
+.agent-head .agent-name { font-weight: 700; font-size: 18px; }
+.ai-assistant-title { display: flex; align-items: center; gap: 10px; }
+.agent-input-row textarea { flex: 1; }
+.usage-meter {
+  display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px;
+  font-size: 11px; color: var(--muted); margin: 2px 0 4px;
+}
+.usage-stage.exhausted { color: var(--danger); }
+.plus-row { display: flex; margin: 4px 0 10px; }
+.chat-plus-btn {
+  width: 22px; height: 22px; line-height: 1; border-radius: 50%;
+  border: 1px solid var(--border); background: var(--bg2); color: var(--muted);
+  cursor: pointer; font-size: 14px; padding: 0;
+}
+.chat-plus-btn:hover { border-color: var(--accent); color: var(--text); }
+.copy-icon {
+  background: transparent; border: 1px solid var(--border); color: var(--muted);
+  border-radius: 6px; cursor: pointer; font-size: 13px; padding: 4px 8px;
+}
+.copy-icon:hover { border-color: var(--accent); color: var(--text); }
+.chat-sources {
+  font-size: 12px; color: var(--muted); margin-bottom: 8px;
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+}
+.chat-sources .src-label { font-weight: 600; }
+.chat-sources .src-title { border: 1px solid var(--border); border-radius: 6px; padding: 1px 8px; }
+.provider-row { display: flex; align-items: flex-start; gap: 12px; }
+.provider-row .sr-main { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.provider-row input[type=url], .provider-row input[type=password], .provider-row input[type=text] {
+  width: 100%; max-width: 420px; padding: 6px 10px; font-size: 13px;
+}
+.prov-active { display: flex; align-items: center; margin-top: 4px; }

@@ -211,20 +211,30 @@ function bootDom() {
     assert(el.querySelector('.callout.co-tip'));
   });
 
-  console.log('\n— Agents (Copilot-style chat) —');
-  test('agents view is a chat: menu, log, input; consultant answers grounded', async () => {
+  console.log('\n— Agents (single AI DaAIx assistant, Copilot-style chat) —');
+  test('agents view is a single AI DaAIx chat: no chips menu, log, input, classic arrow', async () => {
     Agents.open('consultant');
-    assert(doc.querySelectorAll('#agentsMenu .tool-chip').length === 6);
+    assert(!doc.getElementById('agentsMenu'), 'agents chips menu removed from page');
+    const name = doc.querySelector('#agentWorkspace .agent-head .agent-name');
+    assert(name && name.textContent.includes('AI DaAIx'), 'assistant named AI DaAIx');
+    assert(doc.querySelector('#agentWorkspace .agent-head .ai-star'), 'white mono AI star icon');
     assert(doc.getElementById('agentLog'), 'chat log exists');
     assert(doc.getElementById('agentInput'), 'chat input exists');
     assert(doc.getElementById('agentInput').placeholder.includes('@'), 'placeholder mentions @ context');
+    assert(doc.getElementById('agentSend').textContent === '↑', 'classic simple arrow send button');
     doc.getElementById('agentInput').value = 'ما أحكام مكافأة نهاية الخدمة عند الفصل؟';
     await Agents.send();
-    const answers = [...doc.querySelectorAll('#agentLog .chat-a .doc-body')];
-    assert(answers.length >= 1, 'agent answered in chat');
-    const md = answers[answers.length - 1].textContent;
-    assert(!md.includes('لا توجد نصوص موثقة في قاعدة المعرفة لهذا القسم بعد'), 'no empty section placeholders');
+    const answers = [...doc.querySelectorAll('#agentLog .chat-a')];
+    const last = answers[answers.length - 1];
+    assert(last.querySelector('.doc-body'), 'agent answered in chat');
+    const md = last.textContent;
     assert(md.includes('المادة') || md.includes('نظام'), 'grounded KB passages in answer');
+    const src = last.querySelector('.chat-sources');
+    assert(src && src.querySelectorAll('.src-title').length >= 1, 'sources shown at top as document titles');
+    assert(!last.querySelector('.chat-q'), 'no agent-label header inside answer');
+    const copyBtn = last.querySelector('.copy-icon');
+    assert(copyBtn && copyBtn.textContent.trim() === '📋', 'copy button is icon-only, no text');
+    assert(!copyBtn.classList.contains('primary'), 'copy button not brown/primary');
   });
   test('/ commands popup fills input', () => {
     const input = doc.getElementById('agentInput');
@@ -544,15 +554,11 @@ function bootDom() {
     assert(doc.querySelectorAll('#skillList .settings-row').length >= 5, 'skills listed');
     assert(!doc.querySelector('#setPaneSettings #setLlmUrl'), 'LLM fields removed from main settings pane');
   });
-  test('disabling an agent hides it from the agents menu', () => {
+  test('agent toggles gate internal routing (Agents.visible)', () => {
     App.settings.agentsEnabled = { memo: false };
-    Agents.renderMenu();
-    const chips = [...doc.querySelectorAll('#agentsMenu .tool-chip')];
-    assert(chips.length === 5, 'disabled agent hidden from menu');
-    assert(!chips.some(c => c.textContent.includes('\u0645\u0630\u0643\u0631\u0627\u062a')), 'memo agent not listed');
+    assert(Agents.visible().length === 5, 'disabled agent excluded from routing');
     App.settings.agentsEnabled = {};
-    Agents.renderMenu();
-    assert(doc.querySelectorAll('#agentsMenu .tool-chip').length === 6, 're-enabled');
+    assert(Agents.visible().length === 6, 're-enabled');
   });
   test('command run button opens agents with prompt prefilled', () => {
     App.showView('settings');
@@ -610,6 +616,54 @@ function bootDom() {
     assert(doc.querySelector('#docHeader h1').textContent.includes('Labor Law'));
     assert(doc.querySelector('#docHeader .doc-info').textContent.includes('In Force (Amended)'));
     await App.setLang('ar');
+  });
+
+  console.log('\n— v1.6.4: providers, # trigger, + context button, usage quota —');
+  test('AI providers section renders 5 provider rows and persists via save', async () => {
+    App.showView('settings');
+    App.fillSettings();
+    doc.querySelector('#setTabs [data-set=ai]').click();
+    const rows = doc.querySelectorAll('#providerList .provider-row');
+    assert(rows.length === 5, 'five provider presets (OpenAI, Claude, DeepSeek, Gemini, Custom)');
+    const row = rows[0];
+    row.querySelector('[data-p=apiKey]').value = 'sk-test-123';
+    row.querySelector('[data-p=enabled]').checked = true;
+    row.querySelector('input[name=activeProvider]').checked = true;
+    await App.saveSettingsForm();
+    const provs = App.settings.providers;
+    assert(provs.length === 5 && provs[0].apiKey === 'sk-test-123', 'provider key persisted');
+    assert(App.settings.activeProvider === 'openai', 'active provider persisted');
+  });
+  test('# trigger shows KB/doc autocomplete and adds a scoped chip', () => {
+    Agents.open('consultant');
+    const input = doc.getElementById('agentInput');
+    input.value = '#عمل';
+    input.dispatchEvent(new window.Event('input', { bubbles: true }));
+    const popup = doc.getElementById('ctxPopup');
+    assert(!popup.classList.contains('hidden'), '# popup visible');
+    popup.querySelector('.ctx-item').dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true }));
+    assert(doc.querySelectorAll('#ctxChips .ctx-chip').length === 1, 'chip added from # trigger');
+  });
+  test('+ button opens context menu and adds a KB chip', () => {
+    const plus = doc.getElementById('chatPlusBtn');
+    assert(plus, '+ button below input');
+    plus.click();
+    const popup = doc.getElementById('plusPopup');
+    assert(!popup.classList.contains('hidden'), 'plus menu visible');
+    popup.querySelector('.ctx-item').dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true }));
+    assert(doc.querySelectorAll('#ctxChips .ctx-chip').length >= 1, 'chip added via + button');
+  });
+  test('usage quota meter shows 4 stages and increments after send', async () => {
+    const Usage = window.eval('Usage');
+    const meter = doc.getElementById('usageMeter');
+    assert(meter.querySelectorAll('.usage-stage').length === 4, 'hourly/daily/weekly/monthly stages');
+    const before = Usage.remaining().find(r => r.id === 'daily').used;
+    const input = doc.getElementById('agentInput');
+    input.value = 'ما أحكام مكافأة نهاية الخدمة؟';
+    await Agents.send();
+    const after = Usage.remaining().find(r => r.id === 'daily').used;
+    assert(after === before + 1, 'usage bumped after send');
+    assert(doc.getElementById('usageMeter').textContent.includes('يومي'), 'daily stage shown in meter');
   });
 
   await runAll();

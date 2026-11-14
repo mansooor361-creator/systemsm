@@ -151,6 +151,74 @@ const AI_SKILLS = [
   { id: 'governance', icon: '\ud83c\udfdb\ufe0f', agent: 'governance', label: { ar: '\u0627\u0644\u062d\u0648\u0643\u0645\u0629 \u0648\u0627\u0644\u0645\u062e\u0627\u0637\u0631', en: 'Governance & risk' }, desc: { ar: '\u0628\u0646\u0627\u0621 \u0625\u0637\u0627\u0631\u0627\u062a \u0627\u0644\u062d\u0648\u0643\u0645\u0629 \u0648\u0625\u062f\u0627\u0631\u0629 \u0627\u0644\u0645\u062e\u0627\u0637\u0631 \u0644\u0644\u062c\u0647\u0627\u062a \u0648\u0627\u0644\u0634\u0631\u0643\u0627\u062a.', en: 'Governance frameworks and risk management for entities.' }, prompt: { ar: '\u0627\u0628\u0646 \u0625\u0637\u0627\u0631\u0627\u064b \u0644\u0644\u062d\u0648\u0643\u0645\u0629 \u0648\u0625\u062f\u0627\u0631\u0629 \u0627\u0644\u0645\u062e\u0627\u0637\u0631 \u0648\u0641\u0642 \u0627\u0644\u0623\u0646\u0638\u0645\u0629 \u0627\u0644\u0645\u0631\u062a\u0628\u0637\u0629.', en: 'Build a governance and risk framework per related laws.' } }
 ];
 
+const AI_PROVIDERS = [
+  { id: 'openai', name: { ar: 'أوبن أي', en: 'OpenAI' }, baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o-mini' },
+  { id: 'claude', name: { ar: 'كلاود', en: 'Claude' }, baseUrl: 'https://api.anthropic.com/v1', model: 'claude-sonnet-4' },
+  { id: 'deepseek', name: { ar: 'ديب سيك', en: 'DeepSeek' }, baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-chat' },
+  { id: 'gemini', name: { ar: 'جيميناي', en: 'Gemini' }, baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', model: 'gemini-2.0-flash' },
+  { id: 'custom', name: { ar: 'مخصص', en: 'Custom' }, baseUrl: '', model: '' }
+];
+
+const ASSISTANT = { id: 'daaix', icon: '✨', name: { ar: 'AI DaAIx', en: 'AI DaAIx' } };
+
+const Usage = {
+  KEY: 'daaix-usage',
+  stages: [
+    { id: 'hourly', ms: 3600e3 },
+    { id: 'daily', ms: 86400e3 },
+    { id: 'weekly', ms: 7 * 86400e3 },
+    { id: 'monthly', ms: 30 * 86400e3 }
+  ],
+
+  limits() {
+    const u = (typeof App !== 'undefined' && App.settings && App.settings.usage) || {};
+    return { hourly: u.hourly || 100, daily: u.daily || 500, weekly: u.weekly || 2000, monthly: u.monthly || 5000 };
+  },
+
+  read() {
+    try { return JSON.parse(localStorage.getItem(this.KEY)) || {}; } catch (e) { return {}; }
+  },
+
+  write(d) {
+    try { localStorage.setItem(this.KEY, JSON.stringify(d)); } catch (e) { /* storage unavailable */ }
+  },
+
+  bump() {
+    const now = Date.now();
+    const d = this.read();
+    this.stages.forEach(st => {
+      const cur = d[st.id];
+      if (!cur || !cur.resetAt || cur.resetAt <= now) d[st.id] = { count: 0, resetAt: now + st.ms };
+      d[st.id].count += 1;
+    });
+    this.write(d);
+    this.renderMeter();
+  },
+
+  remaining() {
+    const now = Date.now();
+    const d = this.read();
+    const lim = this.limits();
+    return this.stages.map(st => {
+      const cur = d[st.id];
+      const used = cur && cur.resetAt > now ? cur.count : 0;
+      return { id: st.id, used, limit: lim[st.id], left: Math.max(0, lim[st.id] - used) };
+    });
+  },
+
+  renderMeter() {
+    const meter = document.getElementById('usageMeter');
+    if (!meter) return;
+    meter.innerHTML = '';
+    this.remaining().forEach(r => {
+      const span = document.createElement('span');
+      span.className = 'usage-stage' + (r.left ? '' : ' exhausted');
+      span.textContent = I18n.t('usage_' + r.id) + ': ' + r.left + '/' + r.limit;
+      meter.appendChild(span);
+    });
+  }
+};
+
 const Agents = {
   current: null,
   sessions: {},
@@ -169,13 +237,12 @@ const Agents = {
   open(id) {
     this.current = id || AGENTS[0].id;
     App.showView('agents');
-    this.renderMenu();
     this.render();
   },
 
   renderMenu() {
     const menu = document.getElementById('agentsMenu');
-    menu.innerHTML = '';
+    if (!menu) return;
     this.visible().forEach(a => {
       const chip = document.createElement('div');
       chip.className = 'tool-chip' + (this.current === a.id ? ' active' : '');
@@ -185,19 +252,26 @@ const Agents = {
     });
   },
 
+  activeLlm() {
+    const s = (typeof window !== 'undefined' && window.daaixSettings) || {};
+    const provs = s.providers || [];
+    const act = provs.find(p => p.id === s.activeProvider && p.enabled !== false && p.apiKey && p.baseUrl);
+    if (act) return { baseUrl: act.baseUrl, apiKey: act.apiKey, model: act.model };
+    return s.llm || {};
+  },
+
   commands() { return AI_COMMANDS; },
 
   skills() { return AI_SKILLS; },
 
-  /* Copilot-style chat interface: ask anything, @ for context, / for commands */
+  /* Copilot-style chat interface: ask anything, # for a KB/file, @ for context, / for commands */
   render() {
-    const agent = this.get(this.current);
     const ws = document.getElementById('agentWorkspace');
     ws.innerHTML = '';
 
     const head = document.createElement('div');
-    head.className = 'agent-desc';
-    head.textContent = agent.desc[I18n.lang] || agent.desc.ar;
+    head.className = 'agent-head';
+    head.innerHTML = `<span class="ai-star mono">${ASSISTANT.icon}</span><span class="agent-name">${esc(I18n.t('aiAssistantName'))}</span>`;
     ws.appendChild(head);
 
     const log = document.createElement('div');
@@ -219,11 +293,21 @@ const Agents = {
     cmdPopup.id = 'cmdPopup';
     cmdPopup.className = 'ctx-popup hidden';
     ctxWrap.appendChild(cmdPopup);
+    const plusPopup = document.createElement('div');
+    plusPopup.id = 'plusPopup';
+    plusPopup.className = 'ctx-popup hidden';
+    ctxWrap.appendChild(plusPopup);
     ws.appendChild(ctxWrap);
     this.renderCtxChips(chips);
 
+    const meter = document.createElement('div');
+    meter.id = 'usageMeter';
+    meter.className = 'usage-meter';
+    ws.appendChild(meter);
+    Usage.renderMeter();
+
     const row = document.createElement('div');
-    row.className = 'chat-input-row';
+    row.className = 'chat-input-row agent-input-row';
     const input = document.createElement('textarea');
     input.id = 'agentInput';
     input.rows = 2;
@@ -231,28 +315,45 @@ const Agents = {
     const send = document.createElement('button');
     send.className = 'primary';
     send.id = 'agentSend';
-    send.textContent = '➤';
+    send.textContent = '↑';
     row.appendChild(input);
     row.appendChild(send);
     ws.appendChild(row);
+
+    const plusRow = document.createElement('div');
+    plusRow.className = 'plus-row';
+    const plus = document.createElement('button');
+    plus.id = 'chatPlusBtn';
+    plus.className = 'chat-plus-btn';
+    plus.textContent = '+';
+    plus.title = I18n.t('addContextPlus');
+    plusRow.appendChild(plus);
+    ws.appendChild(plusRow);
 
     input.addEventListener('input', () => {
       const v = input.value;
       if (v.startsWith('/')) {
         popup.classList.add('hidden');
+        plusPopup.classList.add('hidden');
         this.renderCmdPopup(input, cmdPopup);
       } else {
         cmdPopup.classList.add('hidden');
-        this.renderCtxPopup(input, popup, chips);
+        const trig = v.lastIndexOf('#') > v.lastIndexOf('@') ? '#' : '@';
+        this.renderCtxPopup(input, popup, chips, trig);
       }
     });
     input.addEventListener('blur', () => {
-      setTimeout(() => { popup.classList.add('hidden'); cmdPopup.classList.add('hidden'); }, 200);
+      setTimeout(() => { popup.classList.add('hidden'); cmdPopup.classList.add('hidden'); plusPopup.classList.add('hidden'); }, 200);
     });
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.send(); }
     });
     send.onclick = () => this.send();
+
+    plus.onclick = () => {
+      if (plusPopup.classList.contains('hidden')) this.renderCtxPopup(input, plusPopup, chips, '', true);
+      else plusPopup.classList.add('hidden');
+    };
 
     this.restoreLog(log);
   },
@@ -275,11 +376,11 @@ const Agents = {
     popup.classList.remove('hidden');
   },
 
-  renderCtxPopup(input, popup, chips) {
+  renderCtxPopup(input, popup, chips, trigger = '@', all = false) {
     const v = input.value;
-    const at = v.lastIndexOf('@');
-    if (at < 0) { popup.classList.add('hidden'); return; }
-    const q = v.slice(at + 1).trim().toLowerCase();
+    const at = all ? -1 : v.lastIndexOf(trigger);
+    if (!all && at < 0) { popup.classList.add('hidden'); return; }
+    const q = all ? '' : v.slice(at + 1).trim().toLowerCase();
     const items = [];
     KB.kbs.forEach(kb => {
       const name = kb.name[I18n.lang] || kb.name.ar;
@@ -301,7 +402,7 @@ const Agents = {
       b.onmousedown = (e) => {
         e.preventDefault();
         this.context.push({ type: it.type, id: it.id, label: it.label, sub: it.sub });
-        input.value = (v.slice(0, at) + v.slice(at + 1)).replace(/@s*$/, '').trim();
+        input.value = (v.slice(0, at) + v.slice(at + 1)).replace(/[@#]\s*$/, '').trim();
         popup.classList.add('hidden');
         this.renderCtxChips(chips);
       };
@@ -345,10 +446,22 @@ const Agents = {
       log.appendChild(qEl);
       const aEl = document.createElement('div');
       aEl.className = 'chat-a';
-      aEl.appendChild(renderMarkdown(entry.md));
+      this.appendAnswer(aEl, entry.md, entry.sources || []);
       log.appendChild(aEl);
     });
     log.scrollTop = log.scrollHeight;
+  },
+
+  appendAnswer(out, markdown, sources) {
+    const unique = [...new Set(sources || [])];
+    if (unique.length) {
+      const src = document.createElement('div');
+      src.className = 'chat-sources';
+      src.innerHTML = `<span class="src-label">${esc(I18n.t('sourcesBased'))}</span>` +
+        unique.map(t => `<span class="src-title">${esc(t)}</span>`).join('');
+      out.appendChild(src);
+    }
+    out.appendChild(renderMarkdown(markdown));
   },
 
   async send() {
@@ -358,11 +471,10 @@ const Agents = {
     input.value = '';
     const log = document.getElementById('agentLog');
     const agent = this.get(this.current);
-    const label = agent.label[I18n.lang] || agent.label.ar;
 
     const qEl = document.createElement('div');
     qEl.className = 'chat-q';
-    qEl.textContent = `${agent.icon} ${label} — ${msg}`;
+    qEl.textContent = msg;
     log.appendChild(qEl);
 
     const out = document.createElement('div');
@@ -371,35 +483,35 @@ const Agents = {
     log.appendChild(out);
     log.scrollTop = log.scrollHeight;
 
-    const brief = `${label}: ${msg}`;
     const scopeIds = this.contextScopeIds();
-    const kbRes = Retrieval.extractiveAnswer(brief, { scopeDocIds: scopeIds, topK: 10 });
+    const kbRes = Retrieval.extractiveAnswer(msg, { scopeDocIds: scopeIds, topK: 10 });
 
     let external = [];
     const connectors = ((window.daaixSettings || {}).connectors || []).filter(c => c.enabled !== false && c.url);
     for (const c of connectors) {
       try {
-        const res = await window.daaix.netPost(c.url, c.apiKey || '', { query: brief });
+        const res = await window.daaix.netPost(c.url, c.apiKey || '', { query: msg });
         if (res && res.answer) external.push({ name: c.name || c.url, answer: String(res.answer) });
       } catch (e) { /* connector offline: skip */ }
     }
 
-    const llm = (window.daaixSettings || {}).llm || {};
+    const llm = this.activeLlm();
     let result;
     if (llm.apiKey && llm.baseUrl) {
-      result = await this.llmRun(agent, { message: msg }, brief, kbRes, external);
+      result = await this.llmRun(agent, { message: msg }, msg, kbRes, external);
     } else {
       result = this.extractiveRun(agent, { message: msg }, kbRes, external);
     }
 
+    const sources = [...new Set((kbRes.citations || []).map(c => c.docTitle))];
     this.logs[this.current] = this.logs[this.current] || [];
-    this.logs[this.current].push({ q: qEl.textContent, md: result.markdown });
+    this.logs[this.current].push({ q: msg, md: result.markdown, sources });
     this.sessions[this.current] = this.sessions[this.current] || [];
-    this.sessions[this.current].push({ role: 'user', content: brief });
+    this.sessions[this.current].push({ role: 'user', content: msg });
     this.sessions[this.current].push({ role: 'agent', content: result.markdown });
 
     out.innerHTML = '';
-    out.appendChild(renderMarkdown(result.markdown));
+    this.appendAnswer(out, result.markdown, sources);
     const actions = document.createElement('div');
     actions.className = 'note-actions';
     const saveBtn = document.createElement('button');
@@ -411,12 +523,14 @@ const Agents = {
       App.toast(I18n.t('save') + ' ✓');
     };
     const copyBtn = document.createElement('button');
-    copyBtn.className = 'primary';
-    copyBtn.textContent = '📋 ' + I18n.t('copy');
+    copyBtn.className = 'copy-icon';
+    copyBtn.title = I18n.t('copy');
+    copyBtn.textContent = '📋';
     copyBtn.onclick = () => navigator.clipboard.writeText(result.markdown).then(() => App.toast(I18n.t('copied')));
     actions.appendChild(saveBtn);
     actions.appendChild(copyBtn);
     out.appendChild(actions);
+    Usage.bump();
     log.scrollTop = log.scrollHeight;
   },
 
@@ -431,10 +545,10 @@ const Agents = {
     }
 
     const lines = [];
-    if (kbRes.answer && kbRes.answer !== I18n.t('chatNoAnswer')) {
-      lines.push(kbRes.answer);
+    (kbRes.passages || []).forEach(p => {
+      lines.push(`> ${p.text}`);
       lines.push('');
-    }
+    });
     if (external.length) {
       lines.push(`**${I18n.t('externalSources')}**`);
       lines.push('');
@@ -446,8 +560,6 @@ const Agents = {
     }
     lines.push('---');
     lines.push(`*${I18n.t('agentDisclaimer')}*`);
-    lines.push('');
-    lines.push(`${I18n.t('chatCitations')}: ${(kbRes.citations || []).map((c, i) => `[${i + 1}] ${c.docTitle}${c.articleNum ? ' (' + c.articleNum + ')' : ''}`).join(' · ') || '—'}`);
 
     return { markdown: lines.join('\n'), citations: kbRes.citations, mode: 'extractive' };
   },
