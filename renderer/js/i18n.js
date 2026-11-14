@@ -146,6 +146,7 @@ const I18N = {
     descContract: 'إعداد العقود وفق أبجدية البنود وتحليل الصياغات الخطرة.',
     searchTextTitle: 'بحث نصي', searchSemanticTitle: 'بحث دلالي',
     searchTextTab: 'بحث بالكلمات', searchSemanticTab: 'بحث دلالي',
+    noResults: 'لا توجد نتائج مطابقة — جرّب كلمات أخرى',
     resultsCount: 'نتيجة', viewDetails: 'عرض التفاصيل', docNumber: 'رقم الوثيقة', searchModeTitle: 'طريقة البحث', searchExpandTitle: 'توسيع البحث', originalPdfNote: 'أصل الوثيقة — ملف Acrobat الرسمي (PDF) للعرض فقط، بدون نص ولا تعديل.', noOriginalPdf: 'لا يوجد ملف PDF أصلي مرفق لهذه الوثيقة حالياً.', openOfficialSource: 'فتح المصدر الرسمي'
   },
   en: {
@@ -293,6 +294,7 @@ const I18N = {
     descContract: 'Draft contracts per the clause alphabet and analyze risky wordings.',
     searchTextTitle: 'Text search', searchSemanticTitle: 'Semantic search',
     searchTextTab: 'Keyword search', searchSemanticTab: 'Semantic search',
+    noResults: 'No matching results — try other keywords',
     resultsCount: 'results', viewDetails: 'View details', docNumber: 'Document No.', searchModeTitle: 'Search mode', searchExpandTitle: 'Expand search', originalPdfNote: 'Original document — official Acrobat (PDF) file for display only, no text, no editing.', noOriginalPdf: 'No original PDF file is attached for this document yet.', openOfficialSource: 'Open official source'
   }
 };

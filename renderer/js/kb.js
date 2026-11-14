@@ -69,7 +69,8 @@ const KB = {
       if (hit === 1) exact++;
       else if (hit) partial++;
     }
-    return { exact, partial, ok: exact > 0 || partial >= 2, total: exact + partial };
+    const ok = exact > 0 || partial >= 2 || (queryTokens.length === 1 && partial > 0);
+    return { exact, partial, ok, total: exact + partial };
   },
 
   search(query, limit = 40) {

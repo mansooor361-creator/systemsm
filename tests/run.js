@@ -68,6 +68,10 @@ test('search works in English too', () => {
   assert(r.length >= 2);
   assert(r.slice(0, 2).some(x => x.doc.id === 'sa-labor-law'));
 });
+test('v1.6.9: single-token partial match still returns results', () => {
+  const r = KB.search('\u0645\u0643\u0627\u0641');
+  assert(r.length >= 1, 'partial single-token query should match');
+});
 
 console.log('\n— Grounded retrieval —');
 test('builds passages from articles, versions and relations', () => {

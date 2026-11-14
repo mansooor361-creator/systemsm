@@ -788,6 +788,40 @@ function bootDom() {
     await new Promise(r => setTimeout(r, 1100));
     assert(bar.classList.contains('hidden'), 'bar hides after completion');
   });
+  console.log('\n— v1.6.9 search fixes —');
+  test('feed-head with view toggle hides during search and returns after clearing', () => {
+    const inp = doc.getElementById('globalSearch');
+    inp.value = 'نظام العمل';
+    inp.dispatchEvent(new window.Event('input', { bubbles: true }));
+    assert(doc.querySelectorAll('#searchResults .sr-item').length > 0, 'results render');
+    assert(doc.getElementById('feedHead').classList.contains('hidden'), 'feed head hidden during search');
+    assert(doc.getElementById('updatesFeed').classList.contains('hidden'), 'feed hidden during search');
+    inp.value = '';
+    inp.dispatchEvent(new window.Event('input', { bubbles: true }));
+    assert(!doc.getElementById('feedHead').classList.contains('hidden'), 'feed head visible again after clearing');
+  });
+  test('category filter resets when a NEW query is typed; kept for chip clicks', () => {
+    const inp = doc.getElementById('globalSearch');
+    inp.value = 'نظام العمل';
+    inp.dispatchEvent(new window.Event('input', { bubbles: true }));
+    App.searchCat = 'ruling';
+    App.search('نظام العمل');
+    assert(App.searchCat === 'ruling', 'same query keeps selected category');
+    inp.value = 'اتفاقية';
+    inp.dispatchEvent(new window.Event('input', { bubbles: true }));
+    assert(App.searchCat === 'all', 'new query resets category to all');
+    assert(doc.querySelectorAll('#searchResults .sr-item').length > 0, 'results after reset are not filtered');
+  });
+  test('empty results show a clear no-results hint', () => {
+    const inp = doc.getElementById('globalSearch');
+    inp.value = 'zzzzqqq';
+    inp.dispatchEvent(new window.Event('input', { bubbles: true }));
+    const hint = doc.querySelector('#searchResults .hint');
+    assert(hint && hint.textContent.trim().length > 2, 'no-results hint shown');
+    inp.value = '';
+    inp.dispatchEvent(new window.Event('input', { bubbles: true }));
+  });
+
   test('linked folder KBs get a refresh-from-folder action', () => {
     const kb = KB.kbs[0];
     kb.sourcePath = '/tmp/kb';
