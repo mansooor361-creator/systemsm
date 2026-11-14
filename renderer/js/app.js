@@ -550,7 +550,7 @@ const App = {
       const b = document.createElement('button');
       b.className = 'rail-btn tool-rail-btn mono';
       b.title = t.label;
-      b.textContent = t.icon;
+      b.textContent = t.glyph || t.icon;
       b.onclick = () => Tools.open(t.id);
       wrap.appendChild(b);
     });

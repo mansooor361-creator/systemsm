@@ -260,11 +260,20 @@ function bootDom() {
   });
 
   console.log('\n— Tools —');
-  test('bulk folder conversion reports results', async () => {
+  test('converter: bulk-folder block removed; single-file picker remains (v1.6.13)', () => {
     Tools.open('converter');
-    doc.getElementById('cvFolder').click();
-    await new Promise(r => setTimeout(r, 100));
-    assert(doc.getElementById('cvOut').textContent.includes('3'));
+    assert(!doc.getElementById('cvFolder'), 'bulk folder button removed from converter');
+    assert(!doc.getElementById('cvUpload'), 'upload checkbox removed from converter');
+    assert(doc.getElementById('cvPick'), 'single-file picker remains');
+    assert(doc.getElementById('cvOut'), 'output area remains');
+  });
+  test('enabled tools appear in the side rail with classic monochrome glyphs (v1.6.13)', () => {
+    App.showView('home');
+    const railBtns = [...doc.querySelectorAll('#toolRail .tool-rail-btn')];
+    assert(railBtns.length === 10, 'all enabled tools in rail, got ' + railBtns.length);
+    assert(railBtns.every(b => b.classList.contains('mono')), 'rail tool icons are monochrome');
+    assert(railBtns.every(b => b.title && b.title.length > 1), 'hover title shows tool name');
+    assert(railBtns.every(b => b.textContent.codePointAt(0) < 0x1F000), 'classic glyphs, no color emoji');
   });
   test('labor calculator renders result card', () => {
     Tools.open('labor');

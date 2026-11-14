@@ -5,16 +5,16 @@ const Tools = {
 
   list() {
     return [
-      { id: 'converter', icon: '🔄', label: I18n.t('toolConverter'), cat: 'free', desc: I18n.t('descConverter') },
-      { id: 'costs', icon: '🧾', label: I18n.t('toolCosts'), cat: 'legal', desc: I18n.t('descCosts') },
-      { id: 'labor', icon: '👷', label: I18n.t('toolLabor'), cat: 'legal', desc: I18n.t('descLabor') },
-      { id: 'laborConsultant', icon: '🧑‍⚖️', label: I18n.t('toolLaborConsultant'), cat: 'legal', desc: I18n.t('descLaborConsultant') },
-      { id: 'competition', icon: '🏆', label: I18n.t('toolCompetition'), cat: 'legal', desc: I18n.t('descCompetition') },
-      { id: 'offers', icon: '📊', label: I18n.t('toolOffers'), cat: 'legal', desc: I18n.t('descOffers') },
-      { id: 'building', icon: '🏗️', label: I18n.t('toolBuilding'), cat: 'legal', desc: I18n.t('descBuilding') },
-      { id: 'contract', icon: '📝', label: I18n.t('toolContract'), cat: 'legal', desc: I18n.t('descContract') },
-      { id: 'socialMonitor', icon: '📡', label: I18n.t('toolSocial'), cat: 'ai', desc: I18n.t('socialDesc') },
-      { id: 'whatsapp', icon: '💬', label: I18n.t('toolWhatsapp'), cat: 'ai', desc: I18n.t('waDesc') }
+      { id: 'converter', icon: '🔄', glyph: '\u21c4', label: I18n.t('toolConverter'), cat: 'free', desc: I18n.t('descConverter') },
+      { id: 'costs', icon: '🧾', glyph: '\u2211', label: I18n.t('toolCosts'), cat: 'legal', desc: I18n.t('descCosts') },
+      { id: 'labor', icon: '👷', glyph: '\u2692\ufe0e', label: I18n.t('toolLabor'), cat: 'legal', desc: I18n.t('descLabor') },
+      { id: 'laborConsultant', icon: '🧑‍⚖️', glyph: '\u2695\ufe0e', label: I18n.t('toolLaborConsultant'), cat: 'legal', desc: I18n.t('descLaborConsultant') },
+      { id: 'competition', icon: '🏆', glyph: '\u2694\ufe0e', label: I18n.t('toolCompetition'), cat: 'legal', desc: I18n.t('descCompetition') },
+      { id: 'offers', icon: '📊', glyph: '\u25a4', label: I18n.t('toolOffers'), cat: 'legal', desc: I18n.t('descOffers') },
+      { id: 'building', icon: '🏗️', glyph: '\u2302', label: I18n.t('toolBuilding'), cat: 'legal', desc: I18n.t('descBuilding') },
+      { id: 'contract', icon: '📝', glyph: '\u00a7', label: I18n.t('toolContract'), cat: 'legal', desc: I18n.t('descContract') },
+      { id: 'socialMonitor', icon: '📡', glyph: '\u25c9', label: I18n.t('toolSocial'), cat: 'ai', desc: I18n.t('socialDesc') },
+      { id: 'whatsapp', icon: '💬', glyph: '\u2706\ufe0e', label: I18n.t('toolWhatsapp'), cat: 'ai', desc: I18n.t('waDesc') }
     ];
   },
 
@@ -55,31 +55,9 @@ const Tools = {
         <h2>🔄 ${I18n.t('toolConverter')}</h2>
         <p class="hint" style="margin-bottom:14px">${I18n.t('pickFile')}</p>
         <button class="primary" id="cvPick">📂 ${I18n.t('pickFile')}</button>
-        <div class="result-card" style="margin-top:18px">
-          <h3 style="margin-bottom:10px">📦 ${I18n.t('bulkConvert')}</h3>
-          <label class="check-item"><input type="checkbox" id="cvUpload" /> <span>${I18n.t('uploadToServer')}</span></label>
-          <p class="hint" style="margin:6px 0 12px">${I18n.t('connectorHint')}</p>
-          <button class="primary" id="cvFolder">📁 ${I18n.t('bulkConvert')}</button>
-        </div>
         <div id="cvOut"></div>
       </div>`);
     panel.appendChild(box);
-    box.querySelector('#cvFolder').onclick = async () => {
-      const upload = box.querySelector('#cvUpload').checked;
-      const connector = ((window.daaixSettings || {}).connectors || []).find(c => c.enabled !== false && c.url);
-      if (upload && !connector) { App.toast(I18n.t('addConnector')); return; }
-      const out = box.querySelector('#cvOut');
-      out.innerHTML = `<div class="result-card">${I18n.t('loading')}</div>`;
-      const res = await window.daaix.convertFolder(upload && connector ? { uploadUrl: connector.url, uploadKey: connector.apiKey || '' } : {});
-      out.innerHTML = '';
-      if (!res || !res.ok) { out.innerHTML = `<div class="result-card" style="color:var(--danger)">${(res && res.error) || '—'}</div>`; return; }
-      const card = this.el(`<div class="result-card">
-        <div class="big">✅ ${I18n.t('convertedCount')}: ${res.converted} ${I18n.t('files')}</div>
-        ${res.uploaded ? `<div class="result-line"><span>${I18n.t('uploadToServer')}</span><span>${res.uploaded}</span></div>` : ''}
-        ${res.failed && res.failed.length ? `<div class="result-note" style="color:var(--danger)">${I18n.t('failed')}: ${res.failed.map(f => esc(f.file) + ' — ' + esc(f.error)).join(' · ')}</div>` : ''}
-      </div>`);
-      out.appendChild(card);
-    };
     box.querySelector('#cvPick').onclick = async () => {
       const file = await window.daaix.pickFile('Documents', ['pdf', 'docx', 'txt', 'md', 'html', 'htm']);
       if (!file) return;
