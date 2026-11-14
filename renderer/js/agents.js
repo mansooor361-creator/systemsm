@@ -481,7 +481,7 @@ const Agents = {
     log.scrollTop = log.scrollHeight;
   },
 
-  appendAnswer(out, markdown, sources) {
+  appendAnswer(out, markdown, sources, citations) {
     const unique = [...new Set(sources || [])];
     if (unique.length) {
       const src = document.createElement('div');
@@ -491,6 +491,19 @@ const Agents = {
       out.appendChild(src);
     }
     out.appendChild(renderMarkdown(markdown));
+    this.wireCites(out, citations);
+  },
+
+  wireCites(out, citations) {
+    if (!citations || !citations.length) return;
+    out.querySelectorAll('.cite').forEach(el => {
+      const n = parseInt(el.getAttribute('data-cite'), 10);
+      const c = citations[n - 1];
+      if (!c || !c.docId) return;
+      el.classList.add('cite-link');
+      el.title = (c.docTitle || '') + (c.articleNum ? ' \u2014 ' + c.articleNum : '');
+      el.onclick = () => App.navInTab({ kind: 'doc', docId: c.docId, article: c.articleNum || null });
+    });
   },
 
   async send() {
@@ -546,7 +559,7 @@ const Agents = {
     this.sessions[this.current].push({ role: 'agent', content: result.markdown });
 
     out.innerHTML = '';
-    this.appendAnswer(out, result.markdown, sources);
+    this.appendAnswer(out, result.markdown, sources, result.citations);
     const actions = document.createElement('div');
     actions.className = 'answer-actions';
     const saveBtn = document.createElement('button');

@@ -26,12 +26,20 @@ const KB = {
         doc.kbId = kb.id;
         while (this.byId.has(doc.id)) doc.id = doc.id + '-x' + di;
         this.byId.set(doc.id, doc);
+        const text = this.docText(doc);
+        const tokens = this.tokenize(text);
+        const freq = new Map();
+        for (const t of tokens) freq.set(t, (freq.get(t) || 0) + 1);
         this.index.push({
           doc,
           kbId: kb.id,
           kbName: kb.name,
-          text: this.docText(doc).toLowerCase(),
-          tokens: this.tokenize(this.docText(doc))
+          text: text.toLowerCase(),
+          tokens,
+          tokenSet: new Set(tokens),
+          tokenFreq: freq,
+          titleNorm: this.tokenize((doc.title && (doc.title.ar || doc.title.en)) || '').join(' '),
+          titleTokens: this.tokenize((doc.title && (doc.title.ar || doc.title.en)) || '')
         });
       });
     });
@@ -59,13 +67,24 @@ const KB = {
       .filter(w => w.length > 1);
   },
 
-  matchScore(queryTokens, docTokens) {
+  matchScore(queryTokens, docTokens, pre) {
+    const freq = pre && pre.tokenFreq;
+    const set = pre && pre.tokenSet;
     let exact = 0, partial = 0;
     for (const q of queryTokens) {
       let hit = 0;
-      for (const t of docTokens) {
-        if (t === q) { hit = 1; break; }
-        if (q.length >= 3 && (t.includes(q) || q.includes(t))) hit = Math.max(hit, 0.6);
+      if (freq && set) {
+        if (freq.get(q)) hit = 1;
+        else if (q.length >= 3) {
+          for (const t of set) {
+            if (t.includes(q) || q.includes(t)) { hit = 0.6; break; }
+          }
+        }
+      } else {
+        for (const t of docTokens) {
+          if (t === q) { hit = 1; break; }
+          if (q.length >= 3 && (t.includes(q) || q.includes(t))) hit = Math.max(hit, 0.6);
+        }
       }
       if (hit === 1) exact++;
       else if (hit) partial++;
@@ -75,11 +94,12 @@ const KB = {
   },
 
   searchScore(entry, qTokens, phrase) {
-    const titleNorm = this.tokenize((entry.doc.title && (entry.doc.title.ar || entry.doc.title.en)) || '').join(' ');
+    const titleNorm = entry.titleNorm != null ? entry.titleNorm
+      : this.tokenize((entry.doc.title && (entry.doc.title.ar || entry.doc.title.en)) || '').join(' ');
     const titlePhrase = titleNorm.includes(phrase);
     const bodyPhrase = entry.text.includes(phrase);
-    const m = this.matchScore(qTokens, entry.tokens);
-    const th = this.titleHits(qTokens, entry.doc);
+    const m = this.matchScore(qTokens, entry.tokens, entry);
+    const th = this.titleHits(qTokens, entry.doc, entry);
     if (!m.ok && !titlePhrase && !bodyPhrase) return null;
     let score = m.exact * 3 + m.partial * 0.5 + th * 2;
     if (titlePhrase) score += 100;
@@ -87,8 +107,8 @@ const KB = {
     return { m, score, strong: m.exact > 0 || titlePhrase || bodyPhrase };
   },
 
-  titleHits(qTokens, doc) {
-    const titleTokens = this.tokenize((doc.title && (doc.title.ar || doc.title.en)) || '');
+  titleHits(qTokens, doc, entry) {
+    const titleTokens = (entry && entry.titleTokens) || this.tokenize((doc.title && (doc.title.ar || doc.title.en)) || '');
     return qTokens.filter(q => titleTokens.some(t => t === q || (q.length >= 3 && (t.includes(q) || q.includes(t))))).length;
   },
 
@@ -125,7 +145,7 @@ const KB = {
     if (!qTokens.length) return [];
     const results = [];
     for (const entry of this.index) {
-      const set = new Set(entry.tokens);
+      const set = entry.tokenSet || new Set(entry.tokens);
       let hits = 0;
       for (const q of qTokens) {
         if (set.has(q)) { hits += 1; continue; }
@@ -138,8 +158,9 @@ const KB = {
       }
       if (hits <= 0) continue;
       const phrase = qTokens.join(' ');
-      const titleNorm = this.tokenize((entry.doc.title && (entry.doc.title.ar || entry.doc.title.en)) || '').join(' ');
-      let boost = this.titleHits(qTokens, entry.doc) * 0.5;
+      const titleNorm = entry.titleNorm != null ? entry.titleNorm
+        : this.tokenize((entry.doc.title && (entry.doc.title.ar || entry.doc.title.en)) || '').join(' ');
+      let boost = this.titleHits(qTokens, entry.doc, entry) * 0.5;
       if (titleNorm.includes(phrase)) boost += 8;
       if (entry.text.includes(phrase)) boost += 3;
       const score = ((hits / qTokens.length) + boost) / Math.sqrt(entry.tokens.length || 1);

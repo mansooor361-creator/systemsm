@@ -491,6 +491,7 @@ function bootDom() {
     const input = doc.getElementById('globalSearch');
     input.value = 'العمل';
     input.dispatchEvent(new window.Event('input', { bubbles: true }));
+    clearTimeout(App._searchTimer); App.search(input.value);
     const items = doc.querySelectorAll('#searchResults .sr-item');
     assert(items.length >= 3, 'results visible under search');
     assert(doc.getElementById('updatesFeed').classList.contains('hidden'), 'feed hidden while searching');
@@ -507,6 +508,7 @@ function bootDom() {
     assert(props.includes('ساري'), 'legislative status in result');
     input.value = '';
     input.dispatchEvent(new window.Event('input', { bubbles: true }));
+    clearTimeout(App._searchTimer); App.search('');
     assert(!doc.getElementById('updatesFeed').classList.contains('hidden'), 'feed restored on clear');
   });
   test('semantic search mode returns ranked results', () => {
@@ -514,6 +516,7 @@ function bootDom() {
     const input = doc.getElementById('globalSearch');
     input.value = 'مكافأة نهاية الخدمة';
     input.dispatchEvent(new window.Event('input', { bubbles: true }));
+    clearTimeout(App._searchTimer); App.search(input.value);
     const items = doc.querySelectorAll('#searchResults .sr-item');
     assert(items.length >= 1, 'semantic results shown');
     assert(App.searchMode === 'semantic', 'semantic mode active');
@@ -829,22 +832,26 @@ function bootDom() {
     const inp = doc.getElementById('globalSearch');
     inp.value = 'نظام العمل';
     inp.dispatchEvent(new window.Event('input', { bubbles: true }));
+    clearTimeout(App._searchTimer); App.search(inp.value);
     assert(doc.querySelectorAll('#searchResults .sr-item').length > 0, 'results render');
     assert(doc.getElementById('feedHead').classList.contains('hidden'), 'feed head hidden during search');
     assert(doc.getElementById('updatesFeed').classList.contains('hidden'), 'feed hidden during search');
     inp.value = '';
     inp.dispatchEvent(new window.Event('input', { bubbles: true }));
+    clearTimeout(App._searchTimer); App.search('');
     assert(!doc.getElementById('feedHead').classList.contains('hidden'), 'feed head visible again after clearing');
   });
   test('category filter resets when a NEW query is typed; kept for chip clicks', () => {
     const inp = doc.getElementById('globalSearch');
     inp.value = 'نظام العمل';
     inp.dispatchEvent(new window.Event('input', { bubbles: true }));
+    clearTimeout(App._searchTimer); App.search(inp.value);
     App.searchCat = 'ruling';
     App.search('نظام العمل');
     assert(App.searchCat === 'ruling', 'same query keeps selected category');
     inp.value = 'اتفاقية';
     inp.dispatchEvent(new window.Event('input', { bubbles: true }));
+    clearTimeout(App._searchTimer); App.search(inp.value);
     assert(App.searchCat === 'all', 'new query resets category to all');
     assert(doc.querySelectorAll('#searchResults .sr-item').length > 0, 'results after reset are not filtered');
   });
@@ -852,10 +859,12 @@ function bootDom() {
     const inp = doc.getElementById('globalSearch');
     inp.value = 'zzzzqqq';
     inp.dispatchEvent(new window.Event('input', { bubbles: true }));
+    clearTimeout(App._searchTimer); App.search(inp.value);
     const hint = doc.querySelector('#searchResults .hint');
     assert(hint && hint.textContent.trim().length > 2, 'no-results hint shown');
     inp.value = '';
     inp.dispatchEvent(new window.Event('input', { bubbles: true }));
+    clearTimeout(App._searchTimer); App.search('');
   });
 
   console.log('\n— v1.6.11 search relevance —');
@@ -863,11 +872,13 @@ function bootDom() {
     const inp = doc.getElementById('globalSearch');
     inp.value = 'مكافأة نهاية الخدمة';
     inp.dispatchEvent(new window.Event('input', { bubbles: true }));
+    clearTimeout(App._searchTimer); App.search(inp.value);
     const snips = [...doc.querySelectorAll('#searchResults .sr-snippet')];
     assert(snips.length > 0, 'snippets rendered');
     assert(snips.some(x => x.textContent.includes('مكاف')), 'snippet contains the searched term');
     inp.value = '';
     inp.dispatchEvent(new window.Event('input', { bubbles: true }));
+    clearTimeout(App._searchTimer); App.search('');
   });
 
   console.log('\n— v1.6.10 chat input, expand & tab bar —');
@@ -960,6 +971,29 @@ function bootDom() {
     assert(/Review case docs/.test(row.textContent), 'description shown');
     assert(row.querySelector('.skill-export'), 'export button present');
     App.settings.customSkills = [];
+  });
+
+  console.log('\n— v1.6.16: monochrome callouts, clickable citations, fast search —');
+  test('renderMarkdown cite spans carry data-cite for linking', () => {
+    const md = window.eval('renderMarkdown')('نص يستشهد بـ [1] و [2].');
+    const cites = md.querySelectorAll('.cite[data-cite]');
+    assert(cites.length === 2, 'two cite spans with data-cite');
+    assert(cites[0].getAttribute('data-cite') === '1', 'data-cite value');
+  });
+  test('Agents.wireCites turns [n] into links that open the cited document', () => {
+    const out = doc.createElement('div');
+    out.appendChild(window.eval('renderMarkdown')('الجواب الموثق [1].'));
+    Agents.wireCites(out, [{ docId: 'sa-labor-law', docTitle: 'نظام العمل', articleNum: 'المادة 74' }]);
+    const el = out.querySelector('.cite');
+    assert(el.classList.contains('cite-link'), 'cite wired');
+    assert(el.title.includes('نظام العمل'), 'title shows source');
+  });
+  test('callout icons are monochrome glyphs (no color emoji)', () => {
+    const md = window.eval('renderMarkdown')('> [!WARNING]\n> لا توجد إجابة موثقة.');
+    const co = md.querySelector('.co-warning');
+    assert(co, 'warning callout rendered');
+    const icon = co.querySelector('.co-title').textContent.codePointAt(0);
+    assert(icon < 0x1F000, 'icon is text-presentation glyph, not color emoji');
   });
 
   await runAll();

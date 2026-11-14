@@ -190,5 +190,27 @@ test('html tables/lists convert', () => {
   assert(md.includes('# عنوان') && md.includes('- بند') && md.includes('**مهمة**'));
 });
 
+console.log('\n— v1.6.16 fast search (precomputed index) —');
+test('index entries carry precomputed tokenSet/tokenFreq/titleNorm/titleTokens', () => {
+  const e = KB.index[0];
+  assert(e.tokenSet && typeof e.tokenSet.has === 'function' && e.tokenSet.size > 0, 'tokenSet precomputed');
+  assert(e.tokenFreq && typeof e.tokenFreq.get === 'function' && e.tokenFreq.size > 0, 'tokenFreq precomputed');
+  assert(typeof e.titleNorm === 'string' && Array.isArray(e.titleTokens), 'title precomputed');
+  assert(e.tokenSet.size <= e.tokens.length, 'set is deduped');
+});
+test('matchScore with precomputed entry equals slow path', () => {
+  const e = KB.index[0];
+  const q = KB.tokenize(e.text.slice(0, 40));
+  if (!q.length) return;
+  const fast = KB.matchScore(q, e.tokens, e);
+  const slow = KB.matchScore(q, e.tokens);
+  assert(fast.exact === slow.exact && fast.partial === slow.partial && fast.ok === slow.ok, 'same scoring');
+});
+test('search still ranks exact title match first after optimization', () => {
+  const r = KB.search('نظام العمل', 10);
+  assert(r.length > 0, 'results exist');
+  assert((r[0].doc.title.ar || r[0].doc.title.en || '').includes('نظام العمل'), 'top result is labor law');
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

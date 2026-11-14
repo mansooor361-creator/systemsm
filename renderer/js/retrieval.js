@@ -58,7 +58,12 @@ const Retrieval = {
         });
       });
     });
-    this.passages.forEach(p => { p.tokens = KB.tokenize(p.text); });
+    this.passages.forEach(p => {
+      p.tokens = KB.tokenize(p.text);
+      p.tokenSet = new Set(p.tokens);
+      p.tokenFreq = new Map();
+      for (const t of p.tokens) p.tokenFreq.set(t, (p.tokenFreq.get(t) || 0) + 1);
+    });
   },
 
   retrieve(query, opts = {}) {
@@ -69,7 +74,7 @@ const Retrieval = {
 
     for (const p of this.passages) {
       if (scopeIds && !scopeIds.has(p.docId)) continue;
-      const m = KB.matchScore(qTokens, p.tokens);
+      const m = KB.matchScore(qTokens, p.tokens, p);
       if (!m.ok) continue;
       let score = m.total;
       if (p.kind === 'article') score *= 1.25;

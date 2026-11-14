@@ -6,13 +6,13 @@ function esc(s) {
 }
 
 const CALLOUTS = {
-  note: { cls: 'co-note', icon: '📝' },
-  info: { cls: 'co-info', icon: 'ℹ️' },
-  tip: { cls: 'co-tip', icon: '💡' },
-  warning: { cls: 'co-warning', icon: '⚠️' },
-  caution: { cls: 'co-caution', icon: '🚫' },
-  danger: { cls: 'co-caution', icon: '🚨' },
-  example: { cls: 'co-example', icon: '📄' },
+  note: { cls: 'co-note', icon: '✎' },
+  info: { cls: 'co-info', icon: 'ℹ︎' },
+  tip: { cls: 'co-tip', icon: '✦' },
+  warning: { cls: 'co-warning', icon: '⚠︎' },
+  caution: { cls: 'co-caution', icon: '✕' },
+  danger: { cls: 'co-caution', icon: '✕' },
+  example: { cls: 'co-example', icon: '▤' },
   quote: { cls: 'co-quote', icon: '❝' }
 };
 
@@ -25,7 +25,7 @@ function renderMarkdown(md) {
   const inline = (s) => esc(s)
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/\[(\d+)\]/g, '<span class="cite">[$1]</span>')
+    .replace(/\[(\d+)\]/g, '<span class="cite" data-cite="$1">[$1]</span>')
     .replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, '<a href="$2" data-ext="1">$1</a>');
 
   const flushPara = () => {
@@ -259,7 +259,9 @@ const App = {
       window.daaix.openExternal('https://smartk-ai.com/');
     };
     document.getElementById('globalSearch').addEventListener('input', (e) => {
-      this.search(e.target.value);
+      clearTimeout(this._searchTimer);
+      const v = e.target.value;
+      this._searchTimer = setTimeout(() => this.search(v), 160);
     });
   },
 
@@ -1019,7 +1021,7 @@ const App = {
     const feedHead = document.getElementById('feedHead');
     const query = (q || '').trim();
     if (query !== this._lastQuery) { this.searchCat = 'all'; this._lastQuery = query; }
-    this.activateTab('home');
+    if (this.activeTab !== 'home') this.activateTab('home');
     const active = query.length >= 2;
     feed.classList.toggle('hidden', !!active);
     if (feedHead) feedHead.classList.toggle('hidden', !!active);
@@ -1146,6 +1148,7 @@ const App = {
       aEl.appendChild(renderMarkdown(`> [!WARNING]\n> ${res.answer}`));
     } else {
       aEl.appendChild(renderMarkdown(res.answer));
+      Agents.wireCites(aEl, res.passages);
     }
     if (res.passages && res.passages.length) {
       const cites = document.createElement('div');
@@ -1276,6 +1279,23 @@ const App = {
     t.kind = view.kind; t.docId = view.docId; t.toolId = view.toolId;
     this.renderTabBar();
     this.renderView(t);
+    if (view.kind === 'doc' && view.article) this.scrollToArticle(view.article);
+  },
+
+  scrollToArticle(articleNum) {
+    const bodyEl = document.getElementById('docBody');
+    if (!bodyEl || !articleNum) return;
+    const target = String(articleNum);
+    const cards = [...bodyEl.querySelectorAll('.article-card')];
+    const card = cards.find(c => {
+      const n = c.querySelector('.anum');
+      return n && n.textContent.trim().startsWith(target);
+    }) || cards.find(c => (c.textContent || '').includes(target));
+    if (card) {
+      card.classList.add('article-flash');
+      card.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      setTimeout(() => card.classList.remove('article-flash'), 1600);
+    }
   },
 
   renderTabBar() {
