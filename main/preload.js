@@ -18,6 +18,8 @@ contextBridge.exposeInMainWorld('daaix', {
   importFolder: () => ipcRenderer.invoke('fs:importFolder'),
   rescanFolder: (dir, kbId) => ipcRenderer.invoke('fs:rescanFolder', dir, kbId),
   convertFolder: (opts) => ipcRenderer.invoke('fs:convertFolder', opts),
+  skillImport: () => ipcRenderer.invoke('skills:import'),
+  skillExport: (name, markdown) => ipcRenderer.invoke('skills:export', name, markdown),
   appVersion: () => ipcRenderer.invoke('app:version'),
   openExternal: (url) => ipcRenderer.invoke('app:openExternal', url),
   onUpdateAvailable: (cb) => ipcRenderer.on('kb:update-available', (_e, data) => cb(data)),

@@ -941,6 +941,27 @@ function bootDom() {
     assert(!doc.querySelector('#kbSettingsList .kb-rescan'), 'no refresh button on non-linked KB');
   });
 
+  console.log('\n— v1.6.15 Agent Skills (SKILL.md) UI —');
+  test('skill builder has description field + import button (v1.6.15)', () => {
+    App.showView('settings');
+    App.fillSettings();
+    doc.querySelector('#setTabs [data-set=ai]').click();
+    const b = doc.getElementById('customSkillBuilder');
+    assert(b, 'builder present');
+    assert(doc.getElementById('skillDescInput'), 'description input present');
+    assert(doc.getElementById('btnImportSkill'), 'import SKILL.md button present');
+  });
+  test('custom skill rows show description and export button (v1.6.15)', () => {
+    App.settings.customSkills = [{ id: 'skill-9', name: 'CaseReview', agent: 'memo', model: '', description: 'Review case docs', instructions: 'Review it.' }];
+    App.renderAiSettings();
+    const rows = [...doc.querySelectorAll('#customSkillList .cmd-item')];
+    const row = rows.find(r => /CaseReview/.test(r.textContent));
+    assert(row, 'custom skill row rendered');
+    assert(/Review case docs/.test(row.textContent), 'description shown');
+    assert(row.querySelector('.skill-export'), 'export button present');
+    App.settings.customSkills = [];
+  });
+
   await runAll();
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);

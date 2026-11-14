@@ -269,11 +269,30 @@ const Agents = {
       name: sk.label.en, instructions: sk.prompt.en
     }));
     const custom = ((typeof App !== 'undefined' && App.settings && App.settings.customSkills) || [])
-      .map(sk => ({ id: sk.id, icon: '✨', agent: sk.agent, model: sk.model || '', name: sk.name, instructions: sk.instructions || '' }));
+      .map(sk => ({ id: sk.id, icon: '\u2728', agent: sk.agent, model: sk.model || '', name: sk.name, description: sk.description || '', instructions: sk.instructions || '' }));
     return builtin.concat(custom);
   },
 
   skillById(id) { return this.allSkills().find(sk => sk.id === id) || null; },
+
+  skillToMarkdown(sk) {
+    return ['---', 'name: ' + (sk.name || ''), 'description: ' + (sk.description || ''), '---', '', sk.instructions || ''].join('\n');
+  },
+
+  skillFromMarkdown(md) {
+    const text = String(md || '');
+    const m = text.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
+    const meta = {};
+    let body = text;
+    if (m) {
+      m[1].split(/\r?\n/).forEach(l => {
+        const i = l.indexOf(':');
+        if (i > 0) meta[l.slice(0, i).trim()] = l.slice(i + 1).trim();
+      });
+      body = m[2];
+    }
+    return { name: meta.name || '', description: meta.description || '', instructions: body.trim() };
+  },
 
   /* Copilot-style chat interface: ask anything, # for a KB/file, @ for context, / for commands */
   render() {

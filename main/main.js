@@ -128,6 +128,37 @@ ipcMain.handle('notes:delete', (_e, id) => {
   return { ok: true };
 });
 
+ipcMain.handle('skills:import', async () => {
+  try {
+    const win = BrowserWindow.getFocusedWindow() || mainWindow;
+    const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+      properties: ['openFile'],
+      filters: [{ name: 'SKILL.md', extensions: ['md', 'markdown', 'txt'] }]
+    });
+    if (canceled || !filePaths.length) return { ok: false };
+    const p = filePaths[0];
+    return { ok: true, name: path.basename(p, path.extname(p)), markdown: fs.readFileSync(p, 'utf8') };
+  } catch (e) {
+    return { ok: false, error: String(e.message || e) };
+  }
+});
+
+ipcMain.handle('skills:export', async (_e, name, markdown) => {
+  try {
+    const win = BrowserWindow.getFocusedWindow() || mainWindow;
+    const safe = String(name || 'skill').replace(/[\\/:*?"<>|]/g, '-');
+    const { canceled, filePath } = await dialog.showSaveDialog(win, {
+      defaultPath: safe + '-SKILL.md',
+      filters: [{ name: 'SKILL.md', extensions: ['md'] }]
+    });
+    if (canceled || !filePath) return { ok: false };
+    fs.writeFileSync(filePath, String(markdown || ''), 'utf8');
+    return { ok: true, file: filePath };
+  } catch (e) {
+    return { ok: false, error: String(e.message || e) };
+  }
+});
+
 ipcMain.handle('kb:saveDownloaded', (_e, kb) => {
   const dir = path.join(app.getPath('userData'), 'kb');
   fs.mkdirSync(dir, { recursive: true });

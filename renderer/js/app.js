@@ -802,8 +802,10 @@ const App = {
         <input id="skillNameInput" type="text" placeholder="${esc(I18n.t('skillName'))}" />
         <select id="skillAgentSelect">${agentOpts}</select>
         <input id="skillModelInput" type="text" list="modelPresets" placeholder="${esc(I18n.t('skillModel'))}" />
+        <input id="skillDescInput" type="text" placeholder="${esc(I18n.t('skillDescription'))}" />
         <input id="skillInstrInput" type="text" placeholder="${esc(I18n.t('skillInstructions'))}" />
         <button id="btnAddSkill" class="ghost-btn">${I18n.t('addSkill')}</button>
+        <button id="btnImportSkill" class="ghost-btn">${I18n.t('importSkill')}</button>
       </div>`;
     wrap.querySelector('#btnAddSkill').onclick = async () => {
       const name = wrap.querySelector('#skillNameInput').value.trim();
@@ -814,11 +816,30 @@ const App = {
         name,
         agent: wrap.querySelector('#skillAgentSelect').value,
         model: wrap.querySelector('#skillModelInput').value.trim(),
+        description: wrap.querySelector('#skillDescInput').value.trim(),
         instructions: wrap.querySelector('#skillInstrInput').value.trim()
       });
       await window.daaix.settingsSet({ customSkills: this.settings.customSkills });
       this.renderAiSettings();
       this.toast(I18n.t('addSkill') + ' \u2713');
+    };
+    wrap.querySelector('#btnImportSkill').onclick = async () => {
+      const res = await window.daaix.skillImport();
+      if (!res || !res.ok) return;
+      const sk = Agents.skillFromMarkdown(res.markdown);
+      if (!sk.name) { this.toast(I18n.t('skillBadFile')); return; }
+      this.settings.customSkills = this.settings.customSkills || [];
+      this.settings.customSkills.push({
+        id: 'skill-' + Date.now(),
+        name: sk.name,
+        agent: wrap.querySelector('#skillAgentSelect').value,
+        model: wrap.querySelector('#skillModelInput').value.trim(),
+        description: sk.description,
+        instructions: sk.instructions
+      });
+      await window.daaix.settingsSet({ customSkills: this.settings.customSkills });
+      this.renderAiSettings();
+      this.toast(I18n.t('skillImported') + ' \u2713');
     };
   },
 
@@ -834,9 +855,14 @@ const App = {
         <span class="cmd-icon">✨</span>
         <div class="cmd-main">
           <div class="cmd-name">@ ${esc(sk.name)}</div>
-          <div class="cmd-desc">${esc((agent && agent.label.en) || '')}${sk.model ? ' · ' + esc(sk.model) : ''}</div>
+          <div class="cmd-desc">${esc((agent && agent.label.en) || '')}${sk.model ? ' · ' + esc(sk.model) : ''}${sk.description ? ' · ' + esc(sk.description) : ''}</div>
         </div>
+        <button class="ghost-btn skill-export" title="${esc(I18n.t('exportSkill'))}">⤵</button>
         <button class="ghost-btn skill-del">✕</button>`;
+      row.querySelector('.skill-export').onclick = async () => {
+        const r = await window.daaix.skillExport(sk.name, Agents.skillToMarkdown(sk));
+        if (r && r.ok) this.toast(I18n.t('skillExported') + ' ✓');
+      };
       row.querySelector('.skill-del').onclick = async () => {
         this.settings.customSkills = (this.settings.customSkills || []).filter(x => x.id !== sk.id);
         await window.daaix.settingsSet({ customSkills: this.settings.customSkills });

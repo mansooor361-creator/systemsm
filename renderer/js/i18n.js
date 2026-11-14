@@ -122,6 +122,8 @@ const I18N = {
     providersTitle: 'مزوّدو الذكاء (حساب + مفتاح API)', providerHint: 'سجّل حسابك لدى المزوّد، خذ مفتاح API واربطه، ثم اختر المزوّد النشط لتشغيل المعالجة على قاعدة معرفة محددة.', activeProvider: 'المزوّد النشط',
     usageTitle: 'حد الاستخدام', usage_hourly: 'كل ساعة', usage_daily: 'يومي', usage_weekly: 'أسبوعي', usage_monthly: 'شهري',
     addContextPlus: 'إضافة قاعدة معرفة أو ملف', sourcesBased: 'عناوين الوثائق المبنية على الإجابة',
+    skillDescription: 'وصف المهارة', importSkill: 'استيراد SKILL.md', exportSkill: 'تصدير SKILL.md', skillImported: 'تم استيراد المهارة', skillExported: 'تم تصدير المهارة', skillBadFile: 'ملف المهارة غير صالح (بدون اسم)',
+    skillDescription: 'Description', importSkill: 'Import SKILL.md', exportSkill: 'Export SKILL.md', skillImported: 'Skill imported', skillExported: 'Skill exported', skillBadFile: 'Invalid skill file (no name)',
     customSkillsTitle: 'المهارات المخصصة (@ داخل AI DaAIx)', skillName: 'اسم المهارة (إنجليزي)', skillAgent: 'الوكيل', skillModel: 'النموذج', skillInstructions: 'تعليمات المهارة (اختياري)', addSkill: '+ إضافة مهارة', ctxSkill: 'مهارة',
     customSkillsTitle: 'Custom skills (@ inside AI DaAIx)', skillName: 'Skill name (English)', skillAgent: 'Agent', skillModel: 'Model', skillInstructions: 'Skill instructions (optional)', addSkill: '+ Add skill', ctxSkill: 'Skill',
     tabPrev: 'تراجع (نفس النافذة)', tabNext: 'تقدّم (نفس النافذة)', tabNewWindow: 'فتح نافذة جديدة',

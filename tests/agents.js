@@ -93,5 +93,29 @@ test('LLM prompt is strict and template-free; refusal sentence provided', () => 
   assert(src.includes('no rigid section templates'), 'concise-answer instruction');
 });
 
+console.log('\n\u2014 Agent Skills (SKILL.md spec) \u2014');
+test('skillToMarkdown/skillFromMarkdown round-trip (frontmatter name + description + body)', () => {
+  const sk = { name: 'CaseEvaluation', description: 'Evaluate case documents against a KB', instructions: 'Analyze the case, cite articles, list risks.' };
+  const md = Agents.skillToMarkdown(sk);
+  assert(md.startsWith('---\nname: CaseEvaluation\ndescription: Evaluate case documents against a KB\n---\n'), md);
+  const back = Agents.skillFromMarkdown(md);
+  assert(back.name === 'CaseEvaluation', back.name);
+  assert(back.description === sk.description);
+  assert(back.instructions === sk.instructions);
+});
+test('skillFromMarkdown tolerates CRLF and files without frontmatter', () => {
+  const withCrlf = Agents.skillFromMarkdown('---\r\nname: Demo\r\ndescription: D\r\n---\r\nBody line one.\r\nBody two.');
+  assert(withCrlf.name === 'Demo' && withCrlf.description === 'D' && withCrlf.instructions.includes('Body two.'));
+  const plain = Agents.skillFromMarkdown('# Just instructions\nDo X');
+  assert(plain.name === '' && plain.instructions.includes('Do X'));
+});
+test('allSkills merges builtin skills with custom skills from settings', () => {
+  ctx.App.settings = { customSkills: [{ id: 'skill-1', name: 'CaseEvaluation', agent: 'research', model: 'gpt-4o-mini', description: 'Eval case docs', instructions: 'Do the study.' }] };
+  const all = Agents.allSkills();
+  assert(all.some(sk => sk.id === 'skill-1' && sk.name === 'CaseEvaluation' && sk.model === 'gpt-4o-mini'), 'custom skill present');
+  assert(all.some(sk => sk.id && sk.instructions), 'builtin skills still present');
+  assert(Agents.skillById('skill-1').agent === 'research');
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);
