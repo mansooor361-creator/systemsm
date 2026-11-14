@@ -303,5 +303,21 @@
   <script src="js/agents.js"></script>
   <script src="js/tools.js"></script>
   <script src="js/app.js"></script>
+<script>
+(function () {
+  function show(msg) {
+    var el = document.getElementById('bootError');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'bootError';
+      el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#1b1b1b;color:#e8e8e8;font:12px/1.6 Consolas,monospace;padding:10px 14px;white-space:pre-wrap;direction:ltr;text-align:left;border-bottom:1px solid #444;';
+      (document.body || document.documentElement).appendChild(el);
+    }
+    el.textContent += (el.textContent ? '\n' : '') + msg;
+  }
+  window.addEventListener('error', function (e) { show('ERROR: ' + (e.message || (e.error && e.error.stack) || 'unknown') + (e.filename ? '\n  at ' + e.filename + ':' + e.lineno : '')); });
+  window.addEventListener('unhandledrejection', function (e) { show('REJECTION: ' + ((e.reason && (e.reason.stack || e.reason.message)) || String(e.reason))); });
+})();
+</script>
 </body>
 </html>

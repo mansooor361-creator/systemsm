@@ -10,6 +10,20 @@ const { checkForKbUpdates } = require('./updater');
 
 app.setName('DaAIx');
 
+process.on('uncaughtException', (err) => {
+  try {
+    fs.appendFileSync(path.join(app.getPath('userData'), 'daaix-error.log'),
+      new Date().toISOString() + ' MAIN: ' + ((err && err.stack) || String(err)) + '\n');
+  } catch (_) {}
+  try { dialog.showErrorBox('DaAIx', String((err && err.message) || err)); } catch (_) {}
+});
+process.on('unhandledRejection', (err) => {
+  try {
+    fs.appendFileSync(path.join(app.getPath('userData'), 'daaix-error.log'),
+      new Date().toISOString() + ' MAIN(rejection): ' + ((err && err.stack) || String(err)) + '\n');
+  } catch (_) {}
+});
+
 const store = new Store();
 let mainWindow = null;
 
@@ -50,17 +64,35 @@ function saveBounds() {
 
 Menu.setApplicationMenu(null);
 
-app.whenReady().then(() => {
-  createWindow();
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+    }
   });
-  scheduleUpdateCheck();
-});
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
-});
+  app.whenReady().then(() => {
+    createWindow();
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    });
+    scheduleUpdateCheck();
+  }).catch((err) => {
+    try {
+      fs.appendFileSync(path.join(app.getPath('userData'), 'daaix-error.log'),
+        new Date().toISOString() + ' WHENREADY: ' + ((err && err.stack) || String(err)) + '\n');
+    } catch (_) {}
+    try { dialog.showErrorBox('DaAIx', String((err && err.message) || err)); } catch (_) {}
+  });
+
+  app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') app.quit();
+  });
+}
 
 function scheduleUpdateCheck() {
   const interval = store.get('updateIntervalMinutes', 60) * 60 * 1000;
