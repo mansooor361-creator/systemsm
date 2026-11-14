@@ -690,14 +690,14 @@ const App = {
       const label = c.label[I18n.lang] || c.label.ar;
       const prompt = c.prompt[I18n.lang] || c.prompt.ar;
       const row = document.createElement('div');
-      row.className = 'settings-row';
+      row.className = 'cmd-item';
       row.innerHTML = `
-        <span class="sr-icon">${c.icon}</span>
-        <div class="sr-main">
-          <div class="sr-name">/ ${esc(label)}</div>
-          <div class="sr-desc">${esc(prompt)}</div>
+        <span class="cmd-icon">${c.icon}</span>
+        <div class="cmd-main">
+          <div class="cmd-name"><span class="cmd-slash">/</span> ${esc(label)}</div>
+          <div class="cmd-desc">${esc(prompt)}</div>
         </div>
-        <button class="primary cmd-run">${I18n.t('run')}</button>`;
+        <button class="ghost-btn cmd-run">${I18n.t('run')}</button>`;
       row.querySelector('.cmd-run').onclick = () => {
         Agents.open('consultant');
         document.getElementById('agentInput').value = prompt;
@@ -713,14 +713,14 @@ const App = {
       const desc = sk.desc[I18n.lang] || sk.desc.ar;
       const prompt = sk.prompt[I18n.lang] || sk.prompt.ar;
       const row = document.createElement('div');
-      row.className = 'settings-row';
+      row.className = 'cmd-item';
       row.innerHTML = `
-        <span class="sr-icon">${sk.icon}</span>
-        <div class="sr-main">
-          <div class="sr-name">${esc(label)}</div>
-          <div class="sr-desc">${esc(desc)}</div>
+        <span class="cmd-icon">${sk.icon}</span>
+        <div class="cmd-main">
+          <div class="cmd-name">${esc(label)}</div>
+          <div class="cmd-desc">${esc(desc)}</div>
         </div>
-        <button class="primary cmd-run">${I18n.t('run')}</button>`;
+        <button class="ghost-btn cmd-run">${I18n.t('run')}</button>`;
       row.querySelector('.cmd-run').onclick = () => {
         Agents.open(sk.agent);
         document.getElementById('agentInput').value = prompt;

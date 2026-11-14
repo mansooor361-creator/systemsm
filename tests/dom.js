@@ -558,8 +558,8 @@ function bootDom() {
     assert(doc.getElementById('setLlmUrl') && doc.getElementById('setLlmKey') && doc.getElementById('setLlmModel'), 'LLM fields moved to AI pane');
     assert(doc.getElementById('modelPresets'), 'model presets datalist');
     assert(doc.querySelectorAll('#agentSettingsList .settings-row').length === 6, 'six agents with toggles');
-    assert(doc.querySelectorAll('#commandList .settings-row').length >= 5, 'quick commands listed');
-    assert(doc.querySelectorAll('#skillList .settings-row').length >= 5, 'skills listed');
+    assert(doc.querySelectorAll('#commandList .cmd-item').length >= 5, 'quick commands listed');
+    assert(doc.querySelectorAll('#skillList .cmd-item').length >= 5, 'skills listed');
     assert(!doc.querySelector('#setPaneSettings #setLlmUrl'), 'LLM fields removed from main settings pane');
   });
   test('agent toggles gate internal routing (Agents.visible)', () => {
