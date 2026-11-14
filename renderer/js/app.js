@@ -12,7 +12,7 @@ const CALLOUTS = {
   warning: { cls: 'co-warning', icon: '⚠︎' },
   caution: { cls: 'co-caution', icon: '✕' },
   danger: { cls: 'co-caution', icon: '✕' },
-  example: { cls: 'co-example', icon: '▤' },
+  example: { cls: 'co-example', icon: '§' },
   quote: { cls: 'co-quote', icon: '❝' }
 };
 
@@ -634,8 +634,6 @@ const App = {
       b.title = I18n.t(this.tocCollapsed ? 'tocExpandAll' : 'tocCollapseAll');
       this.buildToc();
     };
-    document.getElementById('btnSplitDoc').onclick = (e) => this.toggleSplit(e);
-    document.getElementById('btnSplitClose').onclick = () => { this.splitDocId = null; this.renderDocument(this.currentDocId); };
     document.getElementById('btnSaveEdits').onclick = () => this.saveEdits();
     document.getElementById('btnDiscardEdits').onclick = () => this.discardEdits();
 
@@ -783,28 +781,6 @@ const App = {
     this.renderCustomSkillBuilder();
     this.renderCustomSkillList();
 
-    const cmdList = document.getElementById('commandList');
-    cmdList.innerHTML = '';
-    Agents.commands().forEach(c => {
-      const label = c.label[I18n.lang] || c.label.ar;
-      const prompt = c.prompt[I18n.lang] || c.prompt.ar;
-      const row = document.createElement('div');
-      row.className = 'cmd-item';
-      row.innerHTML = `
-        <span class="cmd-icon">${c.icon}</span>
-        <div class="cmd-main">
-          <div class="cmd-name"><span class="cmd-slash">/</span> ${esc(label)}</div>
-          <div class="cmd-desc">${esc(prompt)}</div>
-        </div>
-        <button class="ghost-btn cmd-run">${I18n.t('run')}</button>`;
-      row.querySelector('.cmd-run').onclick = () => {
-        Agents.open('consultant');
-        document.getElementById('agentInput').value = prompt;
-        document.getElementById('agentInput').focus();
-      };
-      cmdList.appendChild(row);
-    });
-
     const skillList = document.getElementById('skillList');
     skillList.innerHTML = '';
     Agents.skills().forEach(sk => {
@@ -840,6 +816,7 @@ const App = {
         <input id="skillModelInput" type="text" list="modelPresets" placeholder="${esc(I18n.t('skillModel'))}" />
         <input id="skillDescInput" type="text" placeholder="${esc(I18n.t('skillDescription'))}" />
         <input id="skillInstrInput" type="text" placeholder="${esc(I18n.t('skillInstructions'))}" />
+        <input id="skillAutoInput" type="text" placeholder="${esc(I18n.t('skillAutomation'))}" />
         <button id="btnAddSkill" class="ghost-btn">${I18n.t('addSkill')}</button>
         <button id="btnImportSkill" class="ghost-btn">${I18n.t('importSkill')}</button>
       </div>`;
@@ -853,7 +830,8 @@ const App = {
         agent: wrap.querySelector('#skillAgentSelect').value,
         model: wrap.querySelector('#skillModelInput').value.trim(),
         description: wrap.querySelector('#skillDescInput').value.trim(),
-        instructions: wrap.querySelector('#skillInstrInput').value.trim()
+        instructions: wrap.querySelector('#skillInstrInput').value.trim(),
+        automation: wrap.querySelector('#skillAutoInput').value.trim()
       });
       await window.daaix.settingsSet({ customSkills: this.settings.customSkills });
       this.renderAiSettings();
@@ -1150,6 +1128,9 @@ const App = {
     document.getElementById('docChatInput').addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.sendDocChat(); }
     });
+    document.getElementById('docChatInput').addEventListener('input', (e) => {
+      document.getElementById('docChatSend').classList.toggle('ready', !!e.target.value.trim());
+    });
   },
 
   async sendDocChat() {
@@ -1407,8 +1388,18 @@ const App = {
     document.getElementById('docChatLog').innerHTML = '';
 
     this.buildToc();
-    this.renderSplitPane();
+    this.updateDocStats();
     document.getElementById('editBanner').classList.add('hidden');
+  },
+
+  updateDocStats() {
+    const el = document.getElementById('docStats');
+    if (!el) return;
+    const bodyEl = document.getElementById('docBody');
+    const txt = bodyEl ? (bodyEl.innerText || bodyEl.textContent || '').trim() : '';
+    const words = txt ? txt.split(/\s+/).length : 0;
+    const chars = txt.replace(/\s+/g, '').length;
+    el.textContent = words + ' ' + I18n.t('wordsCount') + ' \u00b7 ' + chars + ' ' + I18n.t('charsCount');
   },
 
   fillDocContent(bodyEl, doc) {
@@ -1604,59 +1595,7 @@ const App = {
     });
   },
 
-  splitDocId: null,
   tocCollapsed: false,
-
-  toggleSplit(e) {
-    if (this.splitDocId) { this.splitDocId = null; this.renderDocument(this.currentDocId); return; }
-    const btn = e && e.currentTarget ? e.currentTarget : document.getElementById('btnSplitDoc');
-    let pop = document.getElementById('splitPicker');
-    if (!pop) {
-      pop = document.createElement('div');
-      pop.id = 'splitPicker';
-      pop.className = 'kb-menu';
-      document.body.appendChild(pop);
-    }
-    if (!pop.classList.contains('hidden')) { pop.classList.add('hidden'); return; }
-    pop.innerHTML = '';
-    const title = document.createElement('div');
-    title.className = 'kb-picker-title';
-    title.textContent = I18n.t('splitPick');
-    pop.appendChild(title);
-    KB.kbs.filter(kb => this.kbIsOn(kb.id)).forEach(kb => {
-      (kb.documents || []).forEach(d => {
-        if (d.id === this.currentDocId) return;
-        const b = document.createElement('button');
-        b.className = 'kb-menu-item';
-        b.textContent = d.title[I18n.lang] || d.title.ar || d.title.en;
-        b.onclick = () => {
-          pop.classList.add('hidden');
-          this.splitDocId = d.id;
-          this.renderDocument(this.currentDocId);
-        };
-        pop.appendChild(b);
-      });
-    });
-    const r = btn.getBoundingClientRect();
-    pop.style.position = 'fixed';
-    pop.style.top = (r.bottom + 6) + 'px';
-    pop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 300)) + 'px';
-    pop.classList.remove('hidden');
-  },
-
-  renderSplitPane() {
-    const split = document.getElementById('docSplit');
-    if (!split) return;
-    const doc = this.splitDocId ? KB.get(this.splitDocId) : null;
-    const on = !!doc && this.splitDocId !== this.currentDocId;
-    split.classList.toggle('hidden', !on);
-    document.getElementById('docCenter').classList.toggle('split-on', on);
-    if (!on) return;
-    document.getElementById('splitTitle').textContent = doc.title[I18n.lang] || doc.title.ar || doc.title.en;
-    const body = document.getElementById('splitBody');
-    body.innerHTML = '';
-    this.fillDocContent(body, doc);
-  },
 
   buildToc() {
     const toc = document.getElementById('tocItems');

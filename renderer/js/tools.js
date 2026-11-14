@@ -337,7 +337,7 @@ const Tools = {
         <label style="display:block;margin-bottom:8px">${I18n.t('contractAnalyze')}
           <textarea id="ctText" rows="6" placeholder="${I18n.t('contractPaste')}" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px;outline:none"></textarea>
         </label>
-        <button id="ctCheck" class="primary">🔍 ${I18n.t('contractCheck')}</button>
+        <button id="ctCheck" class="primary">⌕ ${I18n.t('contractCheck')}</button>
         <div id="ctOut"></div>
       </div>`);
     panel.appendChild(box);

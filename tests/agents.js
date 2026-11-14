@@ -109,6 +109,16 @@ test('skillFromMarkdown tolerates CRLF and files without frontmatter', () => {
   const plain = Agents.skillFromMarkdown('# Just instructions\nDo X');
   assert(plain.name === '' && plain.instructions.includes('Do X'));
 });
+test('builtin skills are exactly the 3 prompt-based skills (x-search, memo, writing)', () => {
+  const ids = Agents.skills().map(sk => sk.id);
+  assert(ids.length === 3, 'exactly 3 builtin skills, got: ' + ids.join(','));
+  ['x-search', 'memo', 'writing'].forEach(id => assert(ids.includes(id), id + ' present'));
+  assert(!ids.includes('doc-analysis') && !ids.includes('governance'), 'old builtin skills removed');
+  const xs = Agents.skills().find(sk => sk.id === 'x-search');
+  assert(xs.icon === '\u2315', 'monochrome lens glyph');
+  assert(xs.label.en === 'Search on X' && xs.label.ar.includes('X'), 'bilingual labels');
+});
+
 test('allSkills merges builtin skills with custom skills from settings', () => {
   ctx.App.settings = { customSkills: [{ id: 'skill-1', name: 'CaseEvaluation', agent: 'research', model: 'gpt-4o-mini', description: 'Eval case docs', instructions: 'Do the study.' }] };
   const all = Agents.allSkills();

@@ -380,13 +380,13 @@ function bootDom() {
     Agents.open('consultant');
     const input = doc.getElementById('agentInput');
     assert(input, 'chat input exists');
-    input.value = '@doc';
+    input.value = '@';
     input.dispatchEvent(new window.Event('input', { bubbles: true }));
     let popup = doc.getElementById('ctxPopup');
     assert(!popup.classList.contains('hidden'), 'popup visible for @');
     const skillItems = [...popup.querySelectorAll('.ctx-item')];
     assert(skillItems.length > 0, 'skill suggestions for @');
-    assert(skillItems.some(b => /Document/.test(b.textContent)), 'builtin skills listed in English');
+    assert(skillItems.some(b => /Memo|Search|Letter/.test(b.textContent)), 'builtin skills listed in English');
     input.value = '#عمال';
     input.dispatchEvent(new window.Event('input', { bubbles: true }));
     popup = doc.getElementById('ctxPopup');
@@ -599,9 +599,11 @@ function bootDom() {
     const agentList = doc.getElementById('agentSettingsList');
     assert(!agentList || agentList.classList.contains('hidden') || agentList.children.length === 0, 'agents list removed (v1.6.12)');
     assert(doc.getElementById('customSkillBuilder') && doc.getElementById('skillNameInput') && doc.getElementById('skillAgentSelect') && doc.getElementById('skillModelInput') && doc.getElementById('btnAddSkill'), 'custom skill builder present');
-    assert(doc.querySelectorAll('#commandList .cmd-item').length >= 5, 'quick commands listed');
+    assert(!doc.getElementById('commandList'), 'quick commands removed (v1.6.21)');
+    assert(doc.querySelectorAll('#skillList .cmd-item').length === 3, 'exactly 3 builtin skills listed');
+    assert(doc.getElementById('skillAutoInput'), 'automation option field in skill builder');
     const skillNames = [...doc.querySelectorAll('#skillList .cmd-name')].map(e => e.textContent.trim());
-    assert(skillNames.length >= 5, 'skills listed');
+    assert(skillNames.length === 3, 'skills listed (3 builtin)');
     assert(skillNames.every(t => t.startsWith('@')), 'skills prefixed with @');
     assert(!skillNames.some(t => /[؀-ۿ]/.test(t)), 'skill names in English only');
     const provNames = [...doc.querySelectorAll('#providerList .sr-name')].map(e => e.textContent);
@@ -615,11 +617,11 @@ function bootDom() {
     App.settings.agentsEnabled = {};
     assert(Agents.visible().length === 6, 're-enabled');
   });
-  test('command run button opens agents with prompt prefilled', () => {
+  test('skill run button opens agents with prompt prefilled', () => {
     App.showView('settings');
     App.fillSettings();
     doc.querySelector('#setTabs [data-set=ai]').click();
-    const btn = doc.querySelector('#commandList .cmd-run');
+    const btn = doc.querySelector('#skillList .cmd-run');
     btn.click();
     assert(!doc.getElementById('view-agents').classList.contains('hidden'), 'agents view opened');
     assert(doc.getElementById('agentInput').value.length > 3, 'prompt prefilled');
@@ -1015,7 +1017,7 @@ function bootDom() {
     assert(doc.getElementById('docChatInput') && doc.getElementById('docChatSend'), 'input + send intact');
   });
 
-  console.log('\n— v1.6.18: tables, toc collapse, split view, rail cleanup —');
+  console.log('\n— v1.6.18/21: tables, toc collapse, rail cleanup, doc stats —');
   test('renderMarkdown renders markdown tables as classic tables', () => {
     const md = window.eval('renderMarkdown')('| المادة | الحالة |\n|---|---|\n| 17/5 | ملغاة |\n| 57/4 | ملغاة |');
     const table = md.querySelector('table');
@@ -1040,18 +1042,23 @@ function bootDom() {
     assert(doc.querySelectorAll('#tocItems .toc-node').length === 3, 'expanded again');
     App.tocCollapsed = false;
   });
-  test('split view: pick a document renders it side by side; close restores', () => {
+  test('split view fully removed: no ◫ button, no split pane, no split methods', () => {
+    assert(!doc.getElementById('btnSplitDoc'), 'split button removed');
+    assert(!doc.getElementById('docSplit'), 'split pane removed');
+    assert(!doc.getElementById('splitPicker'), 'split picker removed');
+    assert(typeof App.toggleSplit !== 'function', 'toggleSplit removed');
+    assert(typeof App.renderSplitPane !== 'function', 'renderSplitPane removed');
+  });
+  test('document stats strip shows word and character counts at the bottom of the center column', () => {
     App.openDocument('sa-labor-law');
-    const other = KB.index.find(e => e.doc.id !== 'sa-labor-law').doc.id;
-    App.splitDocId = other;
-    App.renderDocument('sa-labor-law');
-    assert(!doc.getElementById('docSplit').classList.contains('hidden'), 'split pane visible');
-    assert(doc.getElementById('docCenter').classList.contains('split-on'), 'center in split mode');
-    assert(doc.getElementById('splitTitle').textContent.length > 0, 'split title shown');
-    assert(doc.getElementById('splitBody').textContent.length > 10, 'split body rendered');
-    doc.getElementById('btnSplitClose').click();
-    assert(doc.getElementById('docSplit').classList.contains('hidden'), 'split closed');
-    assert(!doc.getElementById('docCenter').classList.contains('split-on'), 'split mode off');
+    const stats = doc.getElementById('docStats');
+    assert(stats, 'doc stats strip present');
+    assert(/\d+/.test(stats.textContent), 'stats contain numbers');
+    assert(stats.textContent.includes('·'), 'words · chars separated');
+  });
+  test('quick commands list removed from AI settings; skills list present', () => {
+    assert(!doc.getElementById('commandList'), 'commandList removed');
+    assert(doc.getElementById('skillList'), 'skillList present');
   });
   test('rail has no tools button; notes button is a monochrome glyph', () => {
     assert(!doc.getElementById('btnTools'), 'tools button removed from rail');
