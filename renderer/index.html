@@ -26,8 +26,7 @@
       <div id="toolRail" class="tool-rail"></div>
       <div class="rail-sep"></div>
       <button id="btnAgents" class="tb-btn rail-btn mono" data-i18n-title="agents">✨</button>
-      <button id="btnTools" class="tb-btn rail-btn" data-i18n-title="tools">🧰</button>
-      <button id="btnNotes" class="tb-btn rail-btn" data-i18n-title="notes">📝</button>
+      <button id="btnNotes" class="tb-btn rail-btn mono" data-i18n-title="notes">⎘</button>
       <div class="rail-spacer"></div>
       <span id="appVersion" class="rail-ver"></span>
       <button id="btnDrawer" class="tb-btn rail-btn" title="⚙️">⚙️</button>
@@ -47,7 +46,10 @@
       <!-- Document reader: TOC | center tabs | right tabbed panel -->
       <section id="view-doc" class="view hidden">
         <aside id="docToc" class="doc-toc">
-          <h3 data-i18n="toc"></h3>
+          <div class="toc-head">
+            <h3 data-i18n="toc"></h3>
+            <button id="btnTocCollapse" class="toc-collapse mono" title="">⌄</button>
+          </div>
           <div id="tocItems"></div>
         </aside>
         <button id="btnTocToggle" class="toc-toggle" data-i18n-title="tocHide">❮</button>
@@ -56,6 +58,7 @@
             <button class="ctab active" data-tab="props" data-i18n="tabProps"></button>
             <button class="ctab" data-tab="original" data-i18n="tabOriginal"></button>
             <button class="ctab" data-tab="pub" data-i18n="tabPublication"></button>
+            <button id="btnSplitDoc" class="ctab-edit mono" title="">◫</button>
             <button id="btnEditDoc" class="ctab-edit mono" title="">⊘</button>
           </div>
           <div id="editBanner" class="edit-banner hidden">
@@ -81,6 +84,10 @@
             <div class="doc-paper">
               <div id="docPublication"></div>
             </div>
+          </div>
+          <div id="docSplit" class="doc-split hidden">
+            <div class="split-head"><span id="splitTitle"></span><button id="btnSplitClose" class="tb-btn mono" title="">×</button></div>
+            <div id="splitBody" class="doc-paper split-body"></div>
           </div>
         </div>
         <aside id="docProps" class="doc-props">

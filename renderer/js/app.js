@@ -57,6 +57,24 @@ function renderMarkdown(md) {
       continue;
     }
 
+    const isTableSep = (l) => /^\|[\s:|-]+\|?\s*$/.test(l.trim()) && l.includes('-');
+    if (/^\s*\|.*\|\s*$/.test(line) && i + 1 < lines.length && isTableSep(lines[i + 1])) {
+      flushPara();
+      if (inList) { html += '</ul>'; inList = false; }
+      const cells = (l) => l.trim().replace(/^\||\|$/g, '').split('|').map(c => c.trim());
+      const head = cells(line);
+      let j2 = i + 2;
+      const rows = [];
+      while (j2 < lines.length && /^\s*\|.*\|?\s*$/.test(lines[j2]) && lines[j2].includes('|') && !isTableSep(lines[j2])) {
+        rows.push(cells(lines[j2]));
+        j2++;
+      }
+      i = j2 - 1;
+      html += '<table><thead><tr>' + head.map(c => `<th>${inline(c)}</th>`).join('') + '</tr></thead><tbody>' +
+        rows.map(r => '<tr>' + r.map(c => `<td>${inline(c)}</td>`).join('') + '</tr>').join('') + '</tbody></table>';
+      continue;
+    }
+
     if (/^#{1,6}\s/.test(line)) {
       flushPara();
       if (inList) { html += '</ul>'; inList = false; }
@@ -239,7 +257,7 @@ const App = {
       document.getElementById('searchModeMenu').classList.toggle('hidden');
     };
     document.addEventListener('click', (e) => {
-      ['kbPickerMenu', 'searchModeMenu', 'tabPlusMenu'].forEach(id => {
+      ['kbPickerMenu', 'searchModeMenu'].forEach(id => {
         const menu = document.getElementById(id);
         if (menu && !menu.classList.contains('hidden') && !menu.contains(e.target)) {
           menu.classList.add('hidden');
@@ -248,11 +266,18 @@ const App = {
     });
     document.getElementById('btnKbPicker').onclick = (e) => {
       e.stopPropagation();
-      document.getElementById('kbPickerMenu').classList.toggle('hidden');
+      const menu = document.getElementById('kbPickerMenu');
+      if (menu.classList.contains('hidden')) {
+        const r = e.currentTarget.getBoundingClientRect();
+        menu.style.position = 'fixed';
+        menu.style.top = (r.bottom + 6) + 'px';
+        menu.style.insetInlineStart = 'auto';
+        menu.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 300)) + 'px';
+      }
+      menu.classList.toggle('hidden');
     };
     document.getElementById('btnDrawer').onclick = () => this.openDrawer();
     document.getElementById('btnAgents').onclick = () => Agents.open(Agents.current);
-    document.getElementById('btnTools').onclick = () => Tools.open(Tools.active || 'converter');
     document.getElementById('btnNotes').onclick = () => this.openTab({ kind: 'notes' });
     document.getElementById('siteLink').onclick = (e) => {
       e.preventDefault();
@@ -602,6 +627,15 @@ const App = {
     document.getElementById('btnDeleteNote').onclick = () => Notes.remove();
 
     document.getElementById('btnEditDoc').onclick = () => this.toggleEdit();
+    document.getElementById('btnTocCollapse').onclick = () => {
+      this.tocCollapsed = !this.tocCollapsed;
+      const b = document.getElementById('btnTocCollapse');
+      b.textContent = this.tocCollapsed ? '\u2304' : '\u2303';
+      b.title = I18n.t(this.tocCollapsed ? 'tocExpandAll' : 'tocCollapseAll');
+      this.buildToc();
+    };
+    document.getElementById('btnSplitDoc').onclick = (e) => this.toggleSplit(e);
+    document.getElementById('btnSplitClose').onclick = () => { this.splitDocId = null; this.renderDocument(this.currentDocId); };
     document.getElementById('btnSaveEdits').onclick = () => this.saveEdits();
     document.getElementById('btnDiscardEdits').onclick = () => this.discardEdits();
 
@@ -1293,14 +1327,9 @@ const App = {
     plus.className = 'tab-new-btn'; plus.textContent = '+'; plus.title = I18n.t('tabNewWindow');
     plus.onclick = (e) => {
       e.stopPropagation();
-      this.renderTabPlusMenu();
-      document.getElementById('tabPlusMenu').classList.toggle('hidden');
+      this.openTab({ kind: 'home' }, { forceNew: true });
     };
     wrap.appendChild(plus);
-    const menu = document.createElement('div');
-    menu.id = 'tabPlusMenu';
-    menu.className = 'kb-menu hidden';
-    wrap.appendChild(menu);
     bar.appendChild(wrap);
   },
 
@@ -1314,29 +1343,6 @@ const App = {
     Object.assign(t, hist[ni]);
     this.renderTabBar();
     this.renderView(t);
-  },
-
-  renderTabPlusMenu() {
-    const menu = document.getElementById('tabPlusMenu');
-    if (!menu) return;
-    menu.innerHTML = '';
-    const title = document.createElement('div');
-    title.className = 'kb-picker-title';
-    title.textContent = I18n.t('tabNewWindow');
-    menu.appendChild(title);
-    KB.kbs.filter(kb => this.kbIsOn(kb.id)).forEach(kb => {
-      const head = document.createElement('div');
-      head.className = 'kb-picker-title';
-      head.textContent = `${kb.icon || '\ud83d\udcda'} ${kb.name[I18n.lang] || kb.name.ar}`;
-      menu.appendChild(head);
-      (kb.documents || []).forEach(d => {
-        const b = document.createElement('button');
-        b.className = 'kb-menu-item';
-        b.textContent = d.title[I18n.lang] || d.title.ar || d.title.en;
-        b.onclick = () => { menu.classList.add('hidden'); this.openDocument(d.id, true); };
-        menu.appendChild(b);
-      });
-    });
   },
 
   openDocument(id, forceNew) {
@@ -1401,6 +1407,7 @@ const App = {
     document.getElementById('docChatLog').innerHTML = '';
 
     this.buildToc();
+    this.renderSplitPane();
     document.getElementById('editBanner').classList.add('hidden');
   },
 
@@ -1597,6 +1604,60 @@ const App = {
     });
   },
 
+  splitDocId: null,
+  tocCollapsed: false,
+
+  toggleSplit(e) {
+    if (this.splitDocId) { this.splitDocId = null; this.renderDocument(this.currentDocId); return; }
+    const btn = e && e.currentTarget ? e.currentTarget : document.getElementById('btnSplitDoc');
+    let pop = document.getElementById('splitPicker');
+    if (!pop) {
+      pop = document.createElement('div');
+      pop.id = 'splitPicker';
+      pop.className = 'kb-menu';
+      document.body.appendChild(pop);
+    }
+    if (!pop.classList.contains('hidden')) { pop.classList.add('hidden'); return; }
+    pop.innerHTML = '';
+    const title = document.createElement('div');
+    title.className = 'kb-picker-title';
+    title.textContent = I18n.t('splitPick');
+    pop.appendChild(title);
+    KB.kbs.filter(kb => this.kbIsOn(kb.id)).forEach(kb => {
+      (kb.documents || []).forEach(d => {
+        if (d.id === this.currentDocId) return;
+        const b = document.createElement('button');
+        b.className = 'kb-menu-item';
+        b.textContent = d.title[I18n.lang] || d.title.ar || d.title.en;
+        b.onclick = () => {
+          pop.classList.add('hidden');
+          this.splitDocId = d.id;
+          this.renderDocument(this.currentDocId);
+        };
+        pop.appendChild(b);
+      });
+    });
+    const r = btn.getBoundingClientRect();
+    pop.style.position = 'fixed';
+    pop.style.top = (r.bottom + 6) + 'px';
+    pop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 300)) + 'px';
+    pop.classList.remove('hidden');
+  },
+
+  renderSplitPane() {
+    const split = document.getElementById('docSplit');
+    if (!split) return;
+    const doc = this.splitDocId ? KB.get(this.splitDocId) : null;
+    const on = !!doc && this.splitDocId !== this.currentDocId;
+    split.classList.toggle('hidden', !on);
+    document.getElementById('docCenter').classList.toggle('split-on', on);
+    if (!on) return;
+    document.getElementById('splitTitle').textContent = doc.title[I18n.lang] || doc.title.ar || doc.title.en;
+    const body = document.getElementById('splitBody');
+    body.innerHTML = '';
+    this.fillDocContent(body, doc);
+  },
+
   buildToc() {
     const toc = document.getElementById('tocItems');
     toc.innerHTML = '';
@@ -1621,6 +1682,7 @@ const App = {
       stack.push(node);
     });
     const render = (nodes, container) => {
+      if (this.tocCollapsed) nodes = nodes.filter(n => n.level === 1).map(n => ({ ...n, children: [] }));
       nodes.forEach(n => {
         const item = document.createElement('div');
         item.className = 'toc-node';

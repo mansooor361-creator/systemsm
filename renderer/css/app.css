@@ -26,7 +26,7 @@ button { cursor: pointer; }
 #topbar {
   display: flex; align-items: center; gap: 14px;
   padding: 8px 16px; background: var(--bg2); border-bottom: 1px solid var(--border);
-  height: 58px; position: relative;
+  height: 58px; position: sticky; top: 0; z-index: 60;
 }
 .brand { display: flex; align-items: center; gap: 10px; cursor: pointer; }
 .logo { width: 42px; height: 42px; object-fit: contain; }
@@ -52,6 +52,7 @@ button { cursor: pointer; }
   border-inline-end: 1px solid var(--border);
   display: flex; flex-direction: column; align-items: center;
   gap: 6px; padding: 10px 0; position: relative;
+  overflow-y: auto; overflow-x: hidden;
 }
 .rail-btn {
   background: transparent; border: none; border-radius: 8px;
@@ -177,11 +178,11 @@ html[lang="en"] #view-doc > * { direction: ltr; }
 .doc-paper .doc-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
 .doc-summary { color: var(--paper-muted); font-size: 16px; line-height: 1.9; margin-bottom: 18px; }
 #docBody { line-height: 2.1; font-size: 16px; }
-#docBody h1, #docBody h2, #docBody h3 { margin: 22px 0 10px; color: #8a6d1f; }
+#docBody h1, #docBody h2, #docBody h3 { margin: 22px 0 10px; color: var(--text); }
 #docBody h1 { font-size: 21px; } #docBody h2 { font-size: 18px; } #docBody h3 { font-size: 16px; }
-#docBody h4 { font-size: 15.5px; margin: 18px 0 8px; color: #8a6d1f; }
-#docBody h5 { font-size: 15px; margin: 16px 0 8px; color: #8a6d1f; }
-#docBody h6 { font-size: 14.5px; margin: 14px 0 6px; color: #8a6d1f; }
+#docBody h4 { font-size: 15.5px; margin: 18px 0 8px; color: #7a5c10; }
+#docBody h5 { font-size: 15px; margin: 16px 0 8px; color: #7a5c10; }
+#docBody h6 { font-size: 14.5px; margin: 14px 0 6px; color: #7a5c10; }
 #docBody p { margin-bottom: 12px; }
 #docBody:focus { outline: none; }
 .article-card {
@@ -422,22 +423,27 @@ button.danger { background: transparent; border: 1px solid var(--danger); color:
   border-radius: 6px; height: fit-content;
 }
 
-/* yellow-light headings (like smartk-ai.com document view) */
+/* heading hierarchy: clean # ## ###, soft highlight for #### and deeper */
 .doc-body h1, .doc-paper h1 {
-  font-size: 24px; color: #7a5c10; background: #fdf3d0;
-  padding: 10px 14px; border-radius: 8px; margin: 14px 0 10px;
+  font-size: 22px; color: var(--text); background: transparent;
+  border-bottom: 2px solid var(--border); padding-bottom: 8px; margin: 18px 0 12px;
 }
-.doc-body h2, .doc-body h3, .doc-body h4 {
-  color: #7a5c10; background: #fdf6dd; padding: 7px 12px;
-  border-radius: 6px; margin: 12px 0 8px; font-size: 17px;
+.doc-body h2 {
+  font-size: 18px; color: var(--text); background: transparent;
+  padding: 0; margin: 16px 0 10px; font-weight: 800;
 }
-.doc-body h3 { font-size: 16px; }
-.doc-body h4 { font-size: 15px; }
-body.theme-dark .doc-body h2, body.theme-dark .doc-body h3, body.theme-dark .doc-body h4 {
+.doc-body h3 {
+  font-size: 16px; color: var(--text); background: transparent; padding: 0 0 0 0;
+  margin: 14px 0 8px; font-weight: 700; border-inline-start: 3px solid var(--border); padding-inline-start: 10px;
+}
+.doc-body h4 {
+  font-size: 15px; color: #7a5c10; background: #fdf6dd; padding: 6px 10px;
+  border-radius: 6px; margin: 12px 0 8px;
+}
+body.theme-dark .doc-body h2, body.theme-dark .doc-body h3 { background: transparent; color: var(--text); }
+body.theme-dark .doc-body h1, body.theme-dark .doc-paper h1 { background: transparent; color: var(--text); border-bottom-color: var(--border); }
+body.theme-dark .doc-body h4, body.theme-dark #docBody h5, body.theme-dark #docBody h6 {
   background: rgba(212, 169, 78, .14); color: #e8cd82;
-}
-body.theme-dark .doc-body h1, body.theme-dark .doc-paper h1 {
-  background: rgba(212, 169, 78, .18); color: #e8cd82;
 }
 
 /* article-level amendment annotation (in-app only, original text preserved) */
@@ -459,6 +465,32 @@ body.theme-dark .doc-body h1, body.theme-dark .doc-paper h1 {
 }
 .kb-menu-item:hover { background: var(--bg3); }
 .kb-soon { color: var(--muted); }
+
+/* ---------- classic tables ---------- */
+.doc-body table, .split-body table, .chat-a table {
+  border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 13.5px; line-height: 1.7;
+}
+.doc-body th, .doc-body td, .split-body th, .split-body td, .chat-a th, .chat-a td {
+  border: 1px solid var(--border); padding: 7px 10px; text-align: start; vertical-align: top;
+}
+.doc-body th, .split-body th, .chat-a th { background: var(--bg3); font-weight: 700; color: var(--text); }
+
+/* ---------- toc header with collapse-all ---------- */
+.toc-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.toc-head h3 { margin: 0; }
+.toc-collapse { background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 15px; padding: 2px 6px; }
+.toc-collapse:hover { color: var(--text); }
+
+/* ---------- split view (Obsidian-style side-by-side reading) ---------- */
+#docCenter.split-on { flex-direction: row; flex-wrap: wrap; }
+#docCenter.split-on .center-tabs, #docCenter.split-on #editBanner { flex-basis: 100%; }
+#docCenter.split-on .center-pane { flex: 1 1 0; min-width: 0; }
+#docSplit { flex: 1 1 0; min-width: 0; border-inline-start: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+#docSplit.hidden { display: none; }
+.split-head { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--muted); }
+.split-head span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.split-head .tb-btn { width: 24px; height: 24px; font-size: 13px; }
+.split-body { flex: 1; overflow-y: auto; padding: 14px; }
 
 /* ---------- v1.6: original document = official PDF only ---------- */
 .pdf-frame { width: 100%; height: calc(100vh - 220px); min-height: 480px; border: 1px solid var(--border); border-radius: 8px; background: var(--paper); }
@@ -664,7 +696,6 @@ body.theme-dark .doc-paper .co-caution, body.theme-dark .doc-paper .co-example,
 body.theme-dark .doc-paper .co-quote { background: transparent; }
 body.theme-dark .article-card { background: var(--bg3); border-color: var(--border); }
 body.theme-dark .article-card .anum { color: #e8cd82; }
-body.theme-dark #docBody h5, body.theme-dark #docBody h6 { color: #e8cd82; }
 
 /* ---------- v1.6.7: browser-style tabs ---------- */
 .tab-bar {

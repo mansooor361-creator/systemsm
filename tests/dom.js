@@ -94,7 +94,7 @@ function bootDom() {
     assert(!doc.getElementById('sidebar'), 'wide sidebar removed');
     const rail = doc.getElementById('rail');
     assert(rail, 'icon rail present');
-    ['btnRailHome', 'btnAgents', 'btnTools', 'btnNotes', 'btnDrawer']
+    ['btnRailHome', 'btnAgents', 'btnNotes', 'btnDrawer']
       .forEach(id => assert(rail.querySelector('#' + id), id + ' in rail'));
     assert(!doc.getElementById('btnChat'), 'rail chat button removed');
     assert(!doc.getElementById('btnGraph'), 'rail graph button removed');
@@ -109,7 +109,7 @@ function bootDom() {
     assert(!doc.getElementById('btnSearchExpand'), 'search expand button removed (v1.6.7)');
   });
   test('rail view buttons always visible (settings toggles removed in v1.6.2); drawer gear visible', () => {
-    ['btnAgents', 'btnTools', 'btnNotes'].forEach(id =>
+    ['btnAgents', 'btnNotes'].forEach(id =>
       assert(!doc.getElementById(id).classList.contains('hidden'), id + ' visible'));
     assert(!doc.getElementById('btnDrawer').classList.contains('hidden'));
   });
@@ -913,7 +913,7 @@ function bootDom() {
     App.openDocument(KB.index[0].doc.id);
     assert(!doc.body.classList.contains('chat-expanded'), 'reopening document resets expansion');
   });
-  test('tab bar: back/forward navigate history inside the SAME window; + opens new window menu (v1.6.14)', () => {
+  test('tab bar: back/forward navigate history inside the SAME window; + opens an empty workspace window (v1.6.14/v1.6.18)', () => {
     App.openDocument(KB.index[1].doc.id);
     const tab = App.tabs.find(x => x.id === App.activeTab);
     const docA = tab.docId;
@@ -933,13 +933,10 @@ function bootDom() {
     nextBtn.click();
     assert(tab.docId === KB.index[2].doc.id, 'forward returns to the page');
     bar.querySelector('.tab-new-btn').click();
-    const menu = doc.getElementById('tabPlusMenu');
-    assert(menu && !menu.classList.contains('hidden'), '+ opens new-window menu');
-    const items = menu.querySelectorAll('.kb-menu-item');
-    assert(items.length > 0, 'menu lists documents');
-    items[0].click();
-    assert(App.tabs.length === before + 1, 'selecting a doc opens a NEW window even if already open');
-    assert(!doc.getElementById('tabPlusMenu').classList.contains('hidden') === false, 'menu closed after selection');
+    assert(App.tabs.length === before + 1, '+ opens a NEW empty workspace window');
+    const newTab = App.tabs.find(x => x.id === App.activeTab);
+    assert(newTab.kind === 'home', 'new window is an empty searchable workspace');
+    App.closeTab(newTab.id);
   });
 
   test('linked folder KBs get a refresh-from-folder action', () => {
@@ -1016,6 +1013,51 @@ function bootDom() {
     assert(!doc.getElementById('docChatPlus'), 'plus button removed');
     assert(!doc.getElementById('docChatPlusPopup'), 'plus popup removed');
     assert(doc.getElementById('docChatInput') && doc.getElementById('docChatSend'), 'input + send intact');
+  });
+
+  console.log('\n— v1.6.18: tables, toc collapse, split view, rail cleanup —');
+  test('renderMarkdown renders markdown tables as classic tables', () => {
+    const md = window.eval('renderMarkdown')('| المادة | الحالة |\n|---|---|\n| 17/5 | ملغاة |\n| 57/4 | ملغاة |');
+    const table = md.querySelector('table');
+    assert(table, 'table element rendered');
+    assert(table.querySelectorAll('thead th').length === 2, 'two header cells');
+    assert(table.querySelectorAll('tbody tr').length === 2, 'two body rows');
+    assert(table.querySelector('tbody tr').textContent.includes('ملغاة'), 'cell content');
+  });
+  test('toc collapse-all button shows only top-level headings when collapsed', () => {
+    App.openDocument('sa-labor-law');
+    const body = doc.getElementById('docBody');
+    body.innerHTML = '<h1 id="t1">One</h1><h2 id="t2">Two</h2><h3 id="t3">Three</h3>';
+    App.tocCollapsed = false;
+    App.buildToc();
+    assert(doc.querySelectorAll('#tocItems .toc-node').length === 3, 'all levels expanded');
+    const btn = doc.getElementById('btnTocCollapse');
+    assert(btn && btn.closest('.toc-head'), 'collapse button beside index title');
+    btn.click();
+    assert(App.tocCollapsed === true, 'collapsed state');
+    assert(doc.querySelectorAll('#tocItems .toc-node').length === 1, 'only # headings when collapsed');
+    btn.click();
+    assert(doc.querySelectorAll('#tocItems .toc-node').length === 3, 'expanded again');
+    App.tocCollapsed = false;
+  });
+  test('split view: pick a document renders it side by side; close restores', () => {
+    App.openDocument('sa-labor-law');
+    const other = KB.index.find(e => e.doc.id !== 'sa-labor-law').doc.id;
+    App.splitDocId = other;
+    App.renderDocument('sa-labor-law');
+    assert(!doc.getElementById('docSplit').classList.contains('hidden'), 'split pane visible');
+    assert(doc.getElementById('docCenter').classList.contains('split-on'), 'center in split mode');
+    assert(doc.getElementById('splitTitle').textContent.length > 0, 'split title shown');
+    assert(doc.getElementById('splitBody').textContent.length > 10, 'split body rendered');
+    doc.getElementById('btnSplitClose').click();
+    assert(doc.getElementById('docSplit').classList.contains('hidden'), 'split closed');
+    assert(!doc.getElementById('docCenter').classList.contains('split-on'), 'split mode off');
+  });
+  test('rail has no tools button; notes button is a monochrome glyph', () => {
+    assert(!doc.getElementById('btnTools'), 'tools button removed from rail');
+    const notes = doc.getElementById('btnNotes');
+    assert(notes.classList.contains('mono'), 'notes button monochrome');
+    assert(notes.textContent.codePointAt(0) < 0x1F000, 'notes glyph is not a color emoji');
   });
 
   await runAll();
