@@ -996,6 +996,28 @@ function bootDom() {
     assert(icon < 0x1F000, 'icon is text-presentation glyph, not color emoji');
   });
 
+  console.log('\n— v1.6.17: edit lock/write toggle, doc chat cleanup —');
+  test('edit toggle lives in center-tabs row; toggles lock ⇄ write with monochrome glyphs', () => {
+    App.openDocument('sa-labor-law');
+    const btn = doc.getElementById('btnEditDoc');
+    assert(btn, 'edit toggle present');
+    assert(btn.closest('#centerTabs'), 'toggle sits in the center-tabs row');
+    assert(btn.textContent === '⊘', 'locked glyph by default');
+    btn.click();
+    assert(btn.textContent === '✎', 'write glyph in edit mode');
+    assert(doc.getElementById('docBody').contentEditable === 'true', 'body editable');
+    assert(!doc.getElementById('editBanner').classList.contains('hidden'), 'warning banner visible while editing');
+    btn.click();
+    assert(btn.textContent === '⊘', 'locked glyph after re-lock');
+    assert(doc.getElementById('docBody').contentEditable === 'false', 'body read-only after re-lock');
+  });
+  test('doc chat input row has no plus/context button', () => {
+    App.openDocument('sa-labor-law');
+    assert(!doc.getElementById('docChatPlus'), 'plus button removed');
+    assert(!doc.getElementById('docChatPlusPopup'), 'plus popup removed');
+    assert(doc.getElementById('docChatInput') && doc.getElementById('docChatSend'), 'input + send intact');
+  });
+
   await runAll();
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);

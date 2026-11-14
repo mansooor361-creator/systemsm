@@ -239,7 +239,7 @@ const App = {
       document.getElementById('searchModeMenu').classList.toggle('hidden');
     };
     document.addEventListener('click', (e) => {
-      ['kbPickerMenu', 'searchModeMenu', 'docChatPlusPopup', 'tabPlusMenu'].forEach(id => {
+      ['kbPickerMenu', 'searchModeMenu', 'tabPlusMenu'].forEach(id => {
         const menu = document.getElementById(id);
         if (menu && !menu.classList.contains('hidden') && !menu.contains(e.target)) {
           menu.classList.add('hidden');
@@ -1113,11 +1113,6 @@ const App = {
       document.getElementById('btnTocToggle').textContent = hidden ? '❯' : '❮';
     };
     document.getElementById('docChatSend').onclick = () => this.sendDocChat();
-    document.getElementById('docChatPlus').onclick = () => {
-      const pop = document.getElementById('docChatPlusPopup');
-      if (pop.classList.contains('hidden')) this.renderDocChatPlus(pop);
-      else pop.classList.add('hidden');
-    };
     document.getElementById('docChatInput').addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.sendDocChat(); }
     });
@@ -1163,48 +1158,6 @@ const App = {
     }
     log.appendChild(aEl);
     log.scrollTop = log.scrollHeight;
-  },
-
-  renderDocChatPlus(popup) {
-    popup.innerHTML = '';
-    const add = (item) => {
-      const b = document.createElement('button');
-      b.className = 'ctx-item';
-      b.innerHTML = `<span>${esc(item.label)}</span><span class="ctx-sub">${esc(item.sub)}</span>`;
-      b.onmousedown = (e) => {
-        e.preventDefault();
-        if (!this.docChatScope.some(c => c.type === item.type && c.id === item.id)) this.docChatScope.push(item);
-        popup.classList.add('hidden');
-        this.renderDocChatChips();
-      };
-      popup.appendChild(b);
-    };
-    KB.kbs.forEach(kb => {
-      const name = kb.name[I18n.lang] || kb.name.ar;
-      add({ type: 'kb', id: kb.id, label: `${kb.icon || '📚'} ${name}`, sub: I18n.t('ctxKb') });
-    });
-    KB.index.forEach(e => {
-      const name = e.doc.title[I18n.lang] || e.doc.title.ar || e.doc.title.en;
-      add({ type: 'doc', id: e.doc.id, label: `📄 ${name}`, sub: I18n.docTypeName(e.doc.type) });
-    });
-    popup.classList.toggle('hidden', !KB.kbs.length && !KB.index.length);
-  },
-
-  renderDocChatChips() {
-    const chips = document.getElementById('docChatChips');
-    if (!chips) return;
-    chips.innerHTML = '';
-    (this.docChatScope || []).forEach((c, i) => {
-      const chip = document.createElement('span');
-      chip.className = 'ctx-chip';
-      chip.textContent = c.label;
-      const x = document.createElement('button');
-      x.className = 'ctx-chip-x';
-      x.textContent = '\u00d7';
-      x.onclick = () => { this.docChatScope.splice(i, 1); this.renderDocChatChips(); };
-      chip.appendChild(x);
-      chips.appendChild(chip);
-    });
   },
 
   /* ---------- browser-style tabs ---------- */
@@ -1395,12 +1348,12 @@ const App = {
     if (!doc) return;
     this.currentDocId = id;
     this.editing = false;
+    const editBtn = document.getElementById('btnEditDoc');
+    if (editBtn) { editBtn.textContent = '\u2298'; editBtn.title = I18n.t('editLockTitle'); }
     document.body.classList.remove('chat-expanded');
     const ex = document.getElementById('docChatExpand');
     if (ex) ex.textContent = '\u2922';
     this.docChatScope = [];
-    const chips = document.getElementById('docChatChips');
-    if (chips) chips.innerHTML = '';
     this.showView('doc');
 
     const title = doc.title[I18n.lang] || doc.title.ar || doc.title.en;
@@ -1434,7 +1387,7 @@ const App = {
       bodyEl.innerHTML = overlay;
       const badge = document.createElement('div');
       badge.className = 'edited-badge';
-      badge.textContent = '✏️ ' + I18n.t('editedCopy');
+      badge.textContent = '\u270E ' + I18n.t('editedCopy');
       bodyEl.prepend(badge);
     } else {
       this.fillDocContent(bodyEl, doc);
@@ -1703,10 +1656,13 @@ const App = {
   toggleEdit() {
     const bodyEl = document.getElementById('docBody');
     const banner = document.getElementById('editBanner');
+    const btn = document.getElementById('btnEditDoc');
     this.editing = !this.editing;
     bodyEl.contentEditable = this.editing ? 'true' : 'false';
     document.getElementById('docPaper').classList.toggle('editing', this.editing);
     banner.classList.toggle('hidden', !this.editing);
+    btn.textContent = this.editing ? '\u270E' : '\u2298';
+    btn.title = I18n.t(this.editing ? 'editWriteTitle' : 'editLockTitle');
     if (this.editing) bodyEl.focus();
   },
 

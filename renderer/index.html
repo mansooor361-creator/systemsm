@@ -56,6 +56,7 @@
             <button class="ctab active" data-tab="props" data-i18n="tabProps"></button>
             <button class="ctab" data-tab="original" data-i18n="tabOriginal"></button>
             <button class="ctab" data-tab="pub" data-i18n="tabPublication"></button>
+            <button id="btnEditDoc" class="ctab-edit mono" title="">⊘</button>
           </div>
           <div id="editBanner" class="edit-banner hidden">
             <span id="editWarningText"></span>
@@ -64,7 +65,6 @@
               <button id="btnDiscardEdits" class="danger" data-i18n="discardEdits"></button>
             </div>
           </div>
-          <button id="btnEditDoc" class="edit-fab" title="✏️">✏️</button>
           <div id="paneProps" class="center-pane">
             <div id="docPaper" class="doc-paper">
               <div id="docHeader"></div>
@@ -105,12 +105,7 @@
               <button id="docChatExpand" class="tb-btn mono" data-i18n-title="docChatExpand">⤢</button>
             </div>
             <div id="docChatLog" class="chat-log doc-chat-log"></div>
-            <div class="agent-ctx doc-chat-ctx">
-              <div class="ctx-chips" id="docChatChips"></div>
-              <div id="docChatPlusPopup" class="ctx-popup hidden"></div>
-            </div>
             <div class="chat-input-row doc-chat-input-row">
-              <button id="docChatPlus" class="chat-plus-btn" data-i18n-title="addContextPlus">+</button>
               <textarea id="docChatInput" rows="2" data-i18n-ph="chatPlaceholder"></textarea>
               <button id="docChatSend" class="primary">↑</button>
             </div>

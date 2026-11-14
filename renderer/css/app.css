@@ -193,13 +193,13 @@ html[lang="en"] #view-doc > * { direction: ltr; }
   display: inline-block; background: #fff3cd; color: #856404; border: 1px solid #f0d47a;
   border-radius: 8px; padding: 6px 14px; font-size: 13px; margin-bottom: 16px;
 }
-.edit-fab {
-  position: sticky; top: 16px; float: left; margin: 16px;
-  width: 42px; height: 42px; border-radius: 10px; font-size: 17px;
-  background: var(--bg2); border: 1px solid var(--border); z-index: 5;
-  box-shadow: var(--shadow);
+.ctab-edit {
+  margin-inline-start: auto;
+  width: 26px; height: 26px; border-radius: 6px; font-size: 14px;
+  background: transparent; border: 1px solid var(--border); color: var(--muted);
+  cursor: pointer; line-height: 1; padding: 0;
 }
-.edit-fab:hover { border-color: var(--accent); }
+.ctab-edit:hover { color: var(--text); border-color: var(--muted); }
 .edit-banner {
   position: sticky; top: 0; z-index: 6;
   background: #fff3cd; color: #6b4e00; border-bottom: 2px solid #f0d47a;
@@ -693,7 +693,7 @@ body.theme-dark #docBody h5, body.theme-dark #docBody h6 { color: #e8cd82; }
 .act-icon:hover { color: var(--text); }
 
 /* ---------- v1.6.7: plus button inside chat input rows ---------- */
-.agent-input-row .chat-plus-btn, .doc-chat-input-row .chat-plus-btn { align-self: flex-end; margin-bottom: 4px; }
+.agent-input-row .chat-plus-btn { align-self: flex-end; margin-bottom: 4px; }
 .ctx-chip-x { background: transparent; border: none; color: var(--muted); font-size: 12px; padding: 0 0 0 4px; line-height: 1; }
 .ctx-chip-x:hover { color: var(--danger); }
 
@@ -723,7 +723,6 @@ body.theme-dark #docBody h5, body.theme-dark #docBody h6 { color: #e8cd82; }
 #rpaneChat .chat-input-row { padding: 10px 12px; align-items: flex-end; }
 #rpaneChat textarea { resize: none; font-size: 13px; min-height: 38px; max-height: 130px; padding: 8px 10px; border-radius: 8px; }
 #rpaneChat .chat-input-row .primary { width: 34px; height: 34px; font-size: 14px; padding: 0; flex: none; align-self: flex-end; }
-#rpaneChat .chat-input-row .chat-plus-btn { width: 26px; height: 26px; font-size: 14px; }
 
 body.chat-expanded #docToc,
 body.chat-expanded #btnTocToggle,
