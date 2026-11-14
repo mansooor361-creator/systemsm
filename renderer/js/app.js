@@ -215,7 +215,6 @@ const App = {
   renderAll() {
     this.renderKbPicker();
     this.renderToolRail();
-    this.renderHomeToolCards();
     this.renderFeed();
     this.renderAccount();
     this.renderAiSettings();
@@ -536,7 +535,6 @@ const App = {
           await window.daaix.settingsSet({ toolEnabled: this.settings.toolEnabled });
           Tools.renderMenu();
           this.renderToolRail();
-          this.renderHomeToolCards();
           this.toast(`${e.target.checked ? I18n.t('toolOn') : I18n.t('toolOff')} \u2014 ${t.label}`);
         };
         list.appendChild(row);
@@ -555,22 +553,6 @@ const App = {
       b.textContent = t.icon;
       b.onclick = () => Tools.open(t.id);
       wrap.appendChild(b);
-    });
-  },
-
-  renderHomeToolCards() {
-    const title = document.getElementById('homeToolsTitle');
-    const wrap = document.getElementById('homeToolCards');
-    if (!wrap) return;
-    const enabled = Tools.list().filter(t => this.toolIsOn(t.id));
-    title.classList.toggle('hidden', !enabled.length);
-    wrap.innerHTML = '';
-    enabled.forEach(t => {
-      const card = document.createElement('div');
-      card.className = 'quick-card';
-      card.innerHTML = `<div class="qc-icon">${t.icon}</div><div class="qc-label">${esc(t.label)}</div><div class="qc-desc">${esc(t.desc || '')}</div>`;
-      card.onclick = () => Tools.open(t.id);
-      wrap.appendChild(card);
     });
   },
 
@@ -972,20 +954,15 @@ const App = {
     const box = document.getElementById('searchResults');
     const feed = document.getElementById('updatesFeed');
     const feedHead = document.getElementById('feedHead');
-    const toolsTitle = document.getElementById('homeToolsTitle');
-    const toolCards = document.getElementById('homeToolCards');
     const query = (q || '').trim();
     if (query !== this._lastQuery) { this.searchCat = 'all'; this._lastQuery = query; }
     this.activateTab('home');
     const active = query.length >= 2;
     feed.classList.toggle('hidden', !!active);
     if (feedHead) feedHead.classList.toggle('hidden', !!active);
-    const toolsOn = Tools.list().some(t => this.toolIsOn(t.id));
-    toolsTitle.classList.toggle('hidden', !!active || !toolsOn);
-    toolCards.classList.toggle('hidden', !!active);
     box.innerHTML = '';
     if (!active) return;
-    const all = this.searchMode === 'semantic' ? KB.searchSemantic(query, 60) : KB.search(query, 60);
+    const all = this.searchMode === 'semantic' ? KB.searchSemantic(query, 200) : KB.search(query, 200);
     const results = this.searchCat === 'all' ? all : all.filter(r => r.doc.type === this.searchCat);
 
     const kbName = this.currentKbId && KB.kbs.find(k => k.id === this.currentKbId)
@@ -1021,6 +998,7 @@ const App = {
       item.className = 'sr-item';
       item.innerHTML = `
         <div class="sr-top"><div class="t">${esc(title)}</div><span class="chip type t-${doc.type}">${I18n.docTypeName(doc.type)}</span></div>
+        ${r.snippet ? `<div class="sr-snippet">${esc(r.snippet)}</div>` : ''}
         <a class="sr-open" href="#">${I18n.t('viewDetails')} ←</a>
         <div class="sr-props">
           <div><span>${I18n.t('docType')}:</span> ${I18n.docTypeName(doc.type)}</div>

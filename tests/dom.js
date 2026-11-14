@@ -446,15 +446,13 @@ function bootDom() {
     const chips = [...doc.querySelectorAll('#toolsMenu .tool-chip')];
     assert(chips.length === 9, 'disabled tool removed from tools menu');
     assert(!chips.some(c => c.textContent.includes('واتساب')), 'whatsapp chip hidden');
-    assert(!doc.getElementById('homeToolCards').textContent.includes('واتساب'), 'disabled tool hidden from home');
     waRow.querySelector('input').click();
     await new Promise(r => setTimeout(r, 50));
     assert(doc.querySelectorAll('#toolsMenu .tool-chip').length === 10, 're-enabled');
   });
-  test('enabled tools appear as home cards', () => {
-    App.renderHomeToolCards();
-    assert(doc.querySelectorAll('#homeToolCards .quick-card').length === 10, 'all enabled tools on home');
-    assert(!doc.getElementById('homeToolsTitle').classList.contains('hidden'), 'home tools title visible');
+  test('v1.6.11: home tools section removed entirely (rail + settings only)', () => {
+    assert(!doc.getElementById('homeToolCards'), 'home tool cards removed');
+    assert(!doc.getElementById('homeToolsTitle'), 'home tools title removed');
   });
 
   console.log('\n— Search: text + semantic (v1.6) —');
@@ -818,6 +816,18 @@ function bootDom() {
     inp.dispatchEvent(new window.Event('input', { bubbles: true }));
     const hint = doc.querySelector('#searchResults .hint');
     assert(hint && hint.textContent.trim().length > 2, 'no-results hint shown');
+    inp.value = '';
+    inp.dispatchEvent(new window.Event('input', { bubbles: true }));
+  });
+
+  console.log('\n— v1.6.11 search relevance —');
+  test('result cards show a text snippet from the matched passage', () => {
+    const inp = doc.getElementById('globalSearch');
+    inp.value = 'مكافأة نهاية الخدمة';
+    inp.dispatchEvent(new window.Event('input', { bubbles: true }));
+    const snips = [...doc.querySelectorAll('#searchResults .sr-snippet')];
+    assert(snips.length > 0, 'snippets rendered');
+    assert(snips.some(x => x.textContent.includes('مكاف')), 'snippet contains the searched term');
     inp.value = '';
     inp.dispatchEvent(new window.Event('input', { bubbles: true }));
   });

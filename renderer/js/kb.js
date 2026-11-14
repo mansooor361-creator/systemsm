@@ -73,6 +73,23 @@ const KB = {
     return { exact, partial, ok, total: exact + partial };
   },
 
+  titleHits(qTokens, doc) {
+    const titleTokens = this.tokenize((doc.title && (doc.title.ar || doc.title.en)) || '');
+    return qTokens.filter(q => titleTokens.some(t => t === q || (q.length >= 3 && (t.includes(q) || q.includes(t))))).length;
+  },
+
+  snippetFor(text, qTokens) {
+    for (const q of qTokens) {
+      const i = text.indexOf(q);
+      if (i >= 0) {
+        const start = Math.max(0, i - 60);
+        const end = Math.min(text.length, i + q.length + 90);
+        return (start > 0 ? '…' : '') + text.slice(start, end).replace(/\s+/g, ' ').trim() + (end < text.length ? '…' : '');
+      }
+    }
+    return '';
+  },
+
   search(query, limit = 40) {
     const qTokens = this.tokenize(query);
     if (!qTokens.length) return [];
@@ -80,8 +97,8 @@ const KB = {
     for (const entry of this.index) {
       const m = this.matchScore(qTokens, entry.tokens);
       if (!m.ok) continue;
-      const score = m.total / Math.sqrt(entry.tokens.length || 1);
-      results.push({ doc: entry.doc, kbName: entry.kbName, score });
+      const score = (m.total + this.titleHits(qTokens, entry.doc) * 2) / Math.sqrt(entry.tokens.length || 1);
+      results.push({ doc: entry.doc, kbName: entry.kbName, score, snippet: this.snippetFor(entry.text, qTokens) });
     }
     results.sort((a, b) => b.score - a.score);
     return results.slice(0, limit);
@@ -104,8 +121,8 @@ const KB = {
         hits += best;
       }
       if (hits <= 0) continue;
-      const score = (hits / qTokens.length) / Math.sqrt(entry.tokens.length || 1);
-      results.push({ doc: entry.doc, kbName: entry.kbName, score: score * 10 });
+      const score = ((hits / qTokens.length) + this.titleHits(qTokens, entry.doc) * 0.5) / Math.sqrt(entry.tokens.length || 1);
+      results.push({ doc: entry.doc, kbName: entry.kbName, score: score * 10, snippet: this.snippetFor(entry.text, qTokens) });
     }
     results.sort((a, b) => b.score - a.score);
     return results.slice(0, limit);

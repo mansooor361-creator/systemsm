@@ -72,6 +72,13 @@ test('v1.6.9: single-token partial match still returns results', () => {
   const r = KB.search('\u0645\u0643\u0627\u0641');
   assert(r.length >= 1, 'partial single-token query should match');
 });
+test('v1.6.11: results carry a snippet from the matched text; title matches rank first', () => {
+  const r = KB.search('مكافأة نهاية الخدمة', 200);
+  assert(r.length >= 2);
+  assert(r.every(x => typeof x.snippet === 'string'), 'snippet field present');
+  assert(r.some(x => x.snippet.includes('مكاف')), 'snippet contains matched term');
+  assert(r[0].doc.id === 'sa-labor-law' || r[0].doc.id === 'sa-ruling-labor-1', 'title/body match ranks first');
+});
 
 console.log('\n— Grounded retrieval —');
 test('builds passages from articles, versions and relations', () => {

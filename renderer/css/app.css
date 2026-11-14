@@ -755,3 +755,9 @@ body.chat-expanded #docProps { width: 100%; min-width: 0; flex: 1; max-width: no
 .tab-nav-btn:hover, .tab-new-btn:hover { color: var(--text); border-color: var(--accent); }
 .tab-plus-wrap { position: relative; flex: none; align-self: center; margin-inline-start: 6px; }
 #tabPlusMenu { position: absolute; top: calc(100% + 6px); inset-inline-start: auto; inset-inline-end: 0; max-height: 60vh; overflow-y: auto; }
+
+/* ---------- v1.6.11: search snippets, home tools section removed ---------- */
+.sr-snippet {
+  font-size: 13px; color: var(--muted); margin: 6px 0 2px;
+  line-height: 1.7; border-inline-start: 2px solid var(--border); padding-inline-start: 10px;
+}
