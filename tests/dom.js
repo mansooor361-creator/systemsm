@@ -12,6 +12,7 @@ const root = path.join(__dirname, '..');
 const html = fs.readFileSync(path.join(root, 'renderer', 'index.html'), 'utf8');
 
 let updateCb = null;
+let progressCb = null;
 const stubBridge = {
   settingsGet: async () => ({ language: 'ar', theme: 'dark', updateUrl: '', llm: {}, showButtons: { agents: false, chat: false, graph: false, tools: false, notes: false } }),
   settingsSet: async (patch) => patch,
@@ -29,7 +30,9 @@ const stubBridge = {
   netPost: async () => ({ answer: 'x' }),
   appVersion: async () => '1.2.0',
   openExternal: () => {},
-  onUpdateAvailable: (cb) => { updateCb = cb; }
+  onUpdateAvailable: (cb) => { updateCb = cb; },
+  rescanFolder: async () => ({ ok: true, count: 2, kb: { id: 'kb-local-test', name: { ar: '\u0645\u062d\u0644\u064a', en: 'Local' }, icon: '\ud83d\udcc1', documents: [] } }),
+  onKbProgress: (cb) => { progressCb = cb; }
 };
 
 let dom;
@@ -759,6 +762,40 @@ function bootDom() {
     App.openDocument(KB.index[0].doc.id);
     assert(bar.querySelectorAll('.app-tab').length === before, 'reopening the same document reuses its tab');
     assert(App.tabs.length <= 10, 'tab cap of 10 respected');
+  });
+
+  console.log('\n— v1.6.8 KB sources & progress —');
+  test('KB pane offers folder / cloud / platform sources; cloud panel lists providers', () => {
+    ['btnKbSourceFolder', 'btnKbSourceCloud', 'btnKbSourcePlatform'].forEach(id => assert(doc.getElementById(id), id));
+    doc.getElementById('btnKbSourceCloud').click();
+    const panel = doc.getElementById('kbCloudPanel');
+    assert(!panel.classList.contains('hidden'), 'cloud panel opens');
+    assert(panel.querySelectorAll('.cloud-row').length >= 8, 'cloud providers + direct link listed');
+    assert(panel.textContent.includes('Google Drive') && panel.textContent.includes('OneDrive') && panel.textContent.includes('Dropbox'), 'major providers present');
+    doc.getElementById('btnKbSourcePlatform').click();
+    assert(!doc.getElementById('kbPlatformPanel').classList.contains('hidden'), 'platform panel opens');
+    assert(doc.getElementById('setKbApiKey'), 'platform API key field');
+    assert(doc.getElementById('setKbApiUrl').defaultValue.includes('smartk-ai.com'), 'platform URL prefilled');
+  });
+  test('import/conversion progress indicator tracks stages, percent and completion', async () => {
+    assert(progressCb, 'progress listener registered');
+    progressCb({ stage: 'read', done: 5, total: 10, file: 'doc.md' });
+    const bar = doc.getElementById('kbProgress');
+    assert(!bar.classList.contains('hidden'), 'progress bar visible');
+    assert(doc.getElementById('kbProgressPct').textContent === '50%', 'percent updates');
+    assert(doc.getElementById('kbProgressFile').textContent === 'doc.md', 'current file shown');
+    progressCb({ stage: 'read', done: 10, total: 10, file: 'z.md' });
+    await new Promise(r => setTimeout(r, 1100));
+    assert(bar.classList.contains('hidden'), 'bar hides after completion');
+  });
+  test('linked folder KBs get a refresh-from-folder action', () => {
+    const kb = KB.kbs[0];
+    kb.sourcePath = '/tmp/kb';
+    App.renderKbSettings();
+    assert(doc.querySelector('#kbSettingsList .kb-rescan'), 'refresh button on linked KB');
+    delete kb.sourcePath;
+    App.renderKbSettings();
+    assert(!doc.querySelector('#kbSettingsList .kb-rescan'), 'no refresh button on non-linked KB');
   });
 
   await runAll();

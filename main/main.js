@@ -171,6 +171,60 @@ ipcMain.handle('kb:fetchRemote', async (_e, url) => {
   } catch (e) { return { ok: false, error: String(e.message || e) }; }
 });
 
+const fsp = fs.promises;
+
+function kbProgress(data) {
+  const win = BrowserWindow.getFocusedWindow() || mainWindow;
+  if (win && !win.isDestroyed()) win.webContents.send('kb:progress', data);
+}
+
+async function walkFiles(dir, exts) {
+  const out = [];
+  async function walk(d) {
+    let entries;
+    try { entries = await fsp.readdir(d, { withFileTypes: true }); } catch { return; }
+    for (const ent of entries) {
+      const full = path.join(d, ent.name);
+      if (ent.isDirectory()) await walk(full);
+      else if (exts.test(ent.name)) out.push(full);
+    }
+  }
+  await walk(dir);
+  return out;
+}
+
+async function buildLocalKb(dir, fixedId) {
+  kbProgress({ stage: 'scan', done: 0, total: 0, file: dir });
+  const files = await walkFiles(dir, /\.(md|markdown)$/i);
+  const documents = [];
+  let done = 0;
+  for (const f of files) {
+    const raw = await fsp.readFile(f, 'utf8');
+    const titleMatch = raw.match(/^#\s+(.+)$/m);
+    const name = path.basename(f).replace(/\.(md|markdown)$/i, '');
+    documents.push({
+      id: 'note-' + Buffer.from(f).toString('base64url').slice(0, 40),
+      type: 'note',
+      title: { ar: titleMatch ? titleMatch[1].trim() : name, en: name },
+      issuer: { ar: path.basename(path.dirname(f)), en: path.basename(path.dirname(f)) },
+      number: '\u2014', date: '\u2014', status: 'in_force', version: 1,
+      summary: null, articles: [], relations: [], sources: [], versionHistory: [],
+      body: raw
+    });
+    done++;
+    kbProgress({ stage: 'read', done, total: files.length, file: path.basename(f) });
+    await new Promise(r => setImmediate(r));
+  }
+  const kb = {
+    id: fixedId || ('kb-local-' + Date.now()),
+    name: { ar: '\u0642\u0627\u0639\u062f\u0629 \u0645\u062d\u0644\u064a\u0629 \u2014 ' + path.basename(dir), en: 'Local KB \u2014 ' + path.basename(dir) },
+    icon: '\ud83d\udcc1', version: '1.0', updated: new Date().toISOString().slice(0, 10),
+    sourcePath: dir,
+    documents
+  };
+  return kb;
+}
+
 ipcMain.handle('fs:importFolder', async () => {
   try {
     const win = BrowserWindow.getFocusedWindow() || mainWindow;
@@ -178,36 +232,17 @@ ipcMain.handle('fs:importFolder', async () => {
       properties: ['openDirectory']
     });
     if (canceled || !filePaths.length) return { ok: false };
-    const dir = filePaths[0];
-    const files = [];
-    (function walk(d) {
-      fs.readdirSync(d, { withFileTypes: true }).forEach(ent => {
-        const full = path.join(d, ent.name);
-        if (ent.isDirectory()) walk(full);
-        else if (/\.(md|markdown)$/i.test(ent.name)) files.push(full);
-      });
-    })(dir);
-    const documents = files.map(f => {
-      const raw = fs.readFileSync(f, 'utf8');
-      const titleMatch = raw.match(/^#\s+(.+)$/m);
-      const name = path.basename(f).replace(/\.(md|markdown)$/i, '');
-      return {
-        id: 'note-' + Buffer.from(f).toString('base64url').slice(0, 40),
-        type: 'note',
-        title: { ar: titleMatch ? titleMatch[1].trim() : name, en: name },
-        issuer: { ar: path.basename(path.dirname(f)), en: path.basename(path.dirname(f)) },
-        number: '—', date: '—', status: 'in_force', version: 1,
-        summary: null, articles: [], relations: [], sources: [], versionHistory: [],
-        body: raw
-      };
-    });
-    const kb = {
-      id: 'kb-local-' + Date.now(),
-      name: { ar: 'قاعدة محلية — ' + path.basename(dir), en: 'Local KB — ' + path.basename(dir) },
-      icon: '📁', version: '1.0', updated: new Date().toISOString().slice(0, 10),
-      documents
-    };
-    return { ok: true, kb, count: documents.length };
+    const kb = await buildLocalKb(filePaths[0]);
+    return { ok: true, kb, count: kb.documents.length, sourcePath: filePaths[0] };
+  } catch (e) {
+    return { ok: false, error: String(e.message || e) };
+  }
+});
+
+ipcMain.handle('fs:rescanFolder', async (_e, dir, kbId) => {
+  try {
+    const kb = await buildLocalKb(dir, kbId);
+    return { ok: true, kb, count: kb.documents.length };
   } catch (e) {
     return { ok: false, error: String(e.message || e) };
   }
@@ -222,20 +257,14 @@ ipcMain.handle('fs:convertFolder', async (_e, opts) => {
     });
     if (canceled || !filePaths.length) return { ok: false };
     const dir = filePaths[0];
-    const files = [];
-    (function walk(d) {
-      fs.readdirSync(d, { withFileTypes: true }).forEach(ent => {
-        const full = path.join(d, ent.name);
-        if (ent.isDirectory()) walk(full);
-        else if (/\.(pdf|docx|txt|html|htm|md|markdown)$/i.test(ent.name)) files.push(full);
-      });
-    })(dir);
+    const files = await walkFiles(dir, /\.(pdf|docx|txt|html|htm|md|markdown)$/i);
     for (const f of files) {
       try {
         const md = await convertToMarkdown(f, fs.readFileSync(f));
         const outPath = f.replace(/\.(pdf|docx|txt|html|htm|md|markdown)$/i, '') + '.md';
         fs.writeFileSync(outPath, md, 'utf8');
         summary.converted++;
+        kbProgress({ stage: 'convert', done: summary.converted + summary.failed.length, total: files.length, file: path.basename(f) });
         if (opts && opts.uploadUrl) {
           try {
             const { net } = require('electron');

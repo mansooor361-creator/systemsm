@@ -187,10 +187,21 @@
         <div id="setPaneKbs" class="set-pane hidden">
           <p class="hint" data-i18n="kbPaneHint"></p>
           <div class="kb-add-row">
-            <input id="setKbApiUrl" type="url" data-i18n-ph="kbApiPh" />
-            <button id="btnKbAddApi" class="primary" data-i18n="kbAddApi"></button>
-            <button id="btnKbImportFolder2" class="primary" data-i18n="importFolder"></button>
+            <button id="btnKbSourceFolder" class="primary" data-i18n="srcFolder"></button>
+            <button id="btnKbSourceCloud" class="primary" data-i18n="srcCloud"></button>
+            <button id="btnKbSourcePlatform" class="primary" data-i18n="srcPlatform"></button>
             <span id="kbAddStatus" class="update-status"></span>
+          </div>
+          <div id="kbCloudPanel" class="kb-cloud-panel hidden"></div>
+          <div id="kbPlatformPanel" class="kb-platform-panel hidden">
+            <input id="setKbApiUrl" type="url" data-i18n-ph="kbApiPh" value="https://smartk-ai.com" />
+            <input id="setKbApiKey" type="password" data-i18n-ph="platformKey" autocomplete="off" />
+            <button id="btnKbAddApi" class="primary" data-i18n="platformConnect"></button>
+          </div>
+          <div id="kbProgress" class="kb-progress hidden">
+            <div class="kb-progress-head"><span id="kbProgressStage"></span><span id="kbProgressPct"></span></div>
+            <div class="kb-progress-track"><div id="kbProgressBarFill"></div></div>
+            <div id="kbProgressFile" class="hint"></div>
           </div>
           <div id="kbSettingsList" class="settings-rows"></div>
         </div>

@@ -403,6 +403,77 @@ const App = {
     });
   },
 
+  KB_CLOUDS: [
+    { id: 'gdrive', icon: '\ud83c\udf10', name: 'Google Drive', url: 'https://drive.google.com' },
+    { id: 'onedrive', icon: '\u2601\ufe0f', name: 'OneDrive', url: 'https://onedrive.live.com' },
+    { id: 'dropbox', icon: '\ud83d\udce6', name: 'Dropbox', url: 'https://www.dropbox.com' },
+    { id: 'icloud', icon: '\ud83c\udf4f', name: 'iCloud Drive', url: 'https://www.icloud.com' },
+    { id: 'box', icon: '\ud83d\uddc3\ufe0f', name: 'Box', url: 'https://www.box.com' },
+    { id: 'pcloud', icon: '\ud83d\uddc4\ufe0f', name: 'pCloud', url: 'https://www.pcloud.com' },
+    { id: 'mega', icon: '\ud83d\udd12', name: 'MEGA', url: 'https://mega.io' }
+  ],
+
+  renderCloudPanel() {
+    const panel = document.getElementById('kbCloudPanel');
+    if (!panel) return;
+    panel.innerHTML = '';
+    const title = document.createElement('p');
+    title.className = 'hint';
+    title.textContent = I18n.t('cloudTitle');
+    panel.appendChild(title);
+    this.KB_CLOUDS.forEach(c => {
+      const row = document.createElement('div');
+      row.className = 'cloud-row';
+      row.innerHTML = `<span class="sr-icon mono">${c.icon}</span>
+        <div class="sr-main"><div class="sr-name">${esc(c.name)}</div>
+        <div class="sr-desc">${I18n.t('cloudNeedsAuth')}</div></div>
+        <button class="ghost-btn">${I18n.t('cloudConnect')}</button>`;
+      row.querySelector('button').onclick = () => {
+        window.daaix.openExternal(c.url);
+        this.toast(I18n.t('cloudNeedsAuth'));
+      };
+      panel.appendChild(row);
+    });
+    const direct = document.createElement('div');
+    direct.className = 'cloud-row';
+    direct.innerHTML = `<span class="sr-icon mono">\ud83d\udd17</span>
+      <div class="sr-main"><div class="sr-name">${I18n.t('directUrl')}</div>
+      <div class="sr-desc">${I18n.t('kbApiPh')}</div></div>`;
+    panel.appendChild(direct);
+  },
+
+  bindKbProgress() {
+    if (!window.daaix.onKbProgress) return;
+    this._kbProgTimer = null;
+    window.daaix.onKbProgress((d) => this.showKbProgress(d));
+  },
+
+  showKbProgress(d) {
+    const bar = document.getElementById('kbProgress');
+    if (!bar || !d) return;
+    bar.classList.remove('hidden');
+    const stageKey = d.stage === 'scan' ? 'progressScan' : d.stage === 'convert' ? 'progressConvert' : 'progressRead';
+    document.getElementById('kbProgressStage').textContent = I18n.t(stageKey);
+    document.getElementById('kbProgressFile').textContent = d.file || '';
+    const fill = document.getElementById('kbProgressBarFill');
+    const pctEl = document.getElementById('kbProgressPct');
+    if (d.total) {
+      const pct = Math.min(100, Math.round((d.done / d.total) * 100));
+      fill.style.width = pct + '%';
+      pctEl.textContent = pct + '%';
+      if (d.done >= d.total) {
+        clearTimeout(this._kbProgTimer);
+        this._kbProgTimer = setTimeout(() => {
+          bar.classList.add('hidden');
+          this.toast(I18n.t('progressDone'));
+        }, 900);
+      }
+    } else {
+      fill.style.width = '30%';
+      pctEl.textContent = '...';
+    }
+  },
+
   renderKbSettings() {
     const list = document.getElementById('kbSettingsList');
     if (!list) return;
@@ -418,6 +489,7 @@ const App = {
           <div class="sr-name">${esc(name)} <span class="cat-chip src">${esc(src)}</span></div>
           <div class="sr-desc">${(kb.documents || []).length} ${I18n.t('documentsPl')}</div>
         </div>
+        ${kb.sourcePath ? `<button class="ghost-btn kb-rescan">${I18n.t('refreshKb')}</button>` : ''}
         <label class="switch"><input type="checkbox" ${this.kbIsOn(kb.id) ? 'checked' : ''} /><span class="sl"></span></label>`;
       row.querySelector('input').onchange = async (e) => {
         this.settings.kbEnabled[kb.id] = e.target.checked;
@@ -425,6 +497,19 @@ const App = {
         this.renderKbPicker();
         this.toast(`${e.target.checked ? I18n.t('toolOn') : I18n.t('toolOff')} \u2014 ${name}`);
       };
+      if (kb.sourcePath) {
+        row.querySelector('.kb-rescan').onclick = async () => {
+          const res = await window.daaix.rescanFolder(kb.sourcePath, kb.id);
+          if (res && res.ok) {
+            res.kb.source = 'local';
+            KB.addDownloaded([res.kb]);
+            Retrieval.build();
+            await window.daaix.kbSaveDownloaded(res.kb);
+            this.renderAll();
+            this.toast(`${I18n.t('imported')}: ${res.count}`);
+          } else this.toast((res && res.error) || '\u2014');
+        };
+      }
       list.appendChild(row);
     });
   },
@@ -537,12 +622,28 @@ const App = {
     document.getElementById('btnDiscardEdits').onclick = () => this.discardEdits();
 
     document.getElementById('btnImportFolder').onclick = () => this.doImportFolder(document.getElementById('importStatus'));
-    document.getElementById('btnKbImportFolder2').onclick = () => this.doImportFolder(document.getElementById('kbAddStatus'));
+    document.getElementById('btnKbSourceFolder').onclick = () => this.doImportFolder(document.getElementById('kbAddStatus'));
+    document.getElementById('btnKbSourceCloud').onclick = () => {
+      document.getElementById('kbPlatformPanel').classList.add('hidden');
+      const panel = document.getElementById('kbCloudPanel');
+      panel.classList.toggle('hidden');
+      if (!panel.classList.contains('hidden')) this.renderCloudPanel();
+    };
+    document.getElementById('btnKbSourcePlatform').onclick = () => {
+      document.getElementById('kbCloudPanel').classList.add('hidden');
+      document.getElementById('kbPlatformPanel').classList.toggle('hidden');
+    };
+    this.bindKbProgress();
+
     document.getElementById('btnKbAddApi').onclick = async () => {
       const status = document.getElementById('kbAddStatus');
       const url = document.getElementById('setKbApiUrl').value.trim();
       if (!url) { status.textContent = '—'; return; }
       status.textContent = '...';
+      const keyEl = document.getElementById('setKbApiKey');
+      const key = keyEl ? keyEl.value.trim() : '';
+      this.settings.platform = { url, key };
+      await window.daaix.settingsSet({ platform: { url, key } });
       const res = await window.daaix.kbFetchRemote(url);
       if (!res || !res.ok) { status.textContent = (res && res.error) || 'error'; return; }
       const data = res.data;
