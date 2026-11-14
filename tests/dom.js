@@ -902,17 +902,25 @@ function bootDom() {
     App.openDocument(KB.index[0].doc.id);
     assert(!doc.body.classList.contains('chat-expanded'), 'reopening document resets expansion');
   });
-  test('tab bar: prev/next navigation and + opens new window with doc menu', () => {
+  test('tab bar: back/forward navigate history inside the SAME window; + opens new window menu (v1.6.14)', () => {
     App.openDocument(KB.index[1].doc.id);
-    App.openDocument(KB.index[2].doc.id);
-    const bar = doc.getElementById('tabBar');
-    assert(bar.querySelector('.tab-nav-btn'), 'prev/next nav buttons present');
-    const activeBefore = App.activeTab;
-    bar.querySelectorAll('.tab-nav-btn')[0].click();
-    assert(App.activeTab !== activeBefore, 'prev button switches window');
-    bar.querySelectorAll('.tab-nav-btn')[1].click();
-    assert(App.activeTab === activeBefore, 'next button returns');
+    const tab = App.tabs.find(x => x.id === App.activeTab);
+    const docA = tab.docId;
     const before = App.tabs.length;
+    App.navInTab({ kind: 'doc', docId: KB.index[2].doc.id });
+    assert(tab.docId === KB.index[2].doc.id, 'related-doc link navigates in place');
+    assert(App.tabs.length === before, 'no new window created for in-place navigation');
+    assert(App.activeTab === tab.id, 'still the same window');
+    const bar = doc.getElementById('tabBar');
+    let [prevBtn, nextBtn] = bar.querySelectorAll('.tab-nav-btn');
+    assert(prevBtn && nextBtn, 'back/forward buttons present');
+    assert(prevBtn.disabled === false && nextBtn.disabled === true, 'forward disabled at history tip');
+    prevBtn.click();
+    assert(tab.docId === docA, 'back returns to previous page in the same window');
+    [prevBtn, nextBtn] = doc.getElementById('tabBar').querySelectorAll('.tab-nav-btn');
+    assert(nextBtn.disabled === false, 'forward enabled after going back');
+    nextBtn.click();
+    assert(tab.docId === KB.index[2].doc.id, 'forward returns to the page');
     bar.querySelector('.tab-new-btn').click();
     const menu = doc.getElementById('tabPlusMenu');
     assert(menu && !menu.classList.contains('hidden'), '+ opens new-window menu');

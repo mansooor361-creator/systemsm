@@ -1127,7 +1127,7 @@ const App = {
       res.passages.forEach(p => {
         const a = document.createElement('a');
         a.textContent = p.docTitle + (p.articleNum ? ' (' + p.articleNum + ')' : '');
-        a.onclick = () => this.openDocument(p.docId);
+        a.onclick = () => this.navInTab({ kind: 'doc', docId: p.docId });
         cites.appendChild(a);
       });
       aEl.appendChild(cites);
@@ -1206,6 +1206,8 @@ const App = {
     }
     if (this.tabs.length >= 10) { this.toast(I18n.t('tabsMax')); return; }
     t.id = 'tab-' + (++this._tabSeq);
+    t.hist = [{ kind: t.kind, docId: t.docId, toolId: t.toolId }];
+    t.hIdx = 0;
     this.tabs.push(t);
     this.activateTab(t.id);
   },
@@ -1224,6 +1226,10 @@ const App = {
     if (!t) return;
     this.activeTab = id;
     this.renderTabBar();
+    this.renderView(t);
+  },
+
+  renderView(t) {
     if (t.kind === 'home') this.showView('home');
     else if (t.kind === 'doc') this.renderDocument(t.docId);
     else if (t.kind === 'agents') { this.showView('agents'); Agents.render(); }
@@ -1232,17 +1238,36 @@ const App = {
     else if (t.kind === 'settings') this.showView('settings');
   },
 
+  navInTab(view) {
+    const t = this.tabs.find(x => x.id === this.activeTab);
+    if (!t || t.id === 'home') {
+      if (view.kind === 'doc') this.openDocument(view.docId);
+      return;
+    }
+    t.hist = (t.hist || []).slice(0, (t.hIdx || 0) + 1);
+    t.hist.push({ kind: view.kind, docId: view.docId, toolId: view.toolId });
+    t.hIdx = t.hist.length - 1;
+    t.kind = view.kind; t.docId = view.docId; t.toolId = view.toolId;
+    this.renderTabBar();
+    this.renderView(t);
+  },
+
   renderTabBar() {
     const bar = document.getElementById('tabBar');
     if (!bar) return;
     bar.classList.toggle('hidden', this.tabs.length <= 1);
     bar.innerHTML = '';
     if (this.tabs.length > 1) {
+      const t = this.tabs.find(x => x.id === this.activeTab);
+      const hist = (t && t.hist) || [];
+      const hi = (t && t.hIdx) || 0;
       const prev = document.createElement('button');
       prev.className = 'tab-nav-btn'; prev.textContent = '\u2039'; prev.title = I18n.t('tabPrev');
+      prev.disabled = hi <= 0;
       prev.onclick = (e) => { e.stopPropagation(); this.stepTab(-1); };
       const next = document.createElement('button');
       next.className = 'tab-nav-btn'; next.textContent = '\u203a'; next.title = I18n.t('tabNext');
+      next.disabled = hi >= hist.length - 1;
       next.onclick = (e) => { e.stopPropagation(); this.stepTab(1); };
       bar.appendChild(prev); bar.appendChild(next);
     }
@@ -1281,10 +1306,15 @@ const App = {
   },
 
   stepTab(dir) {
-    const i = this.tabs.findIndex(x => x.id === this.activeTab);
-    if (i < 0) return;
-    const n = this.tabs[(i + dir + this.tabs.length) % this.tabs.length];
-    this.activateTab(n.id);
+    const t = this.tabs.find(x => x.id === this.activeTab);
+    if (!t) return;
+    const hist = t.hist || [];
+    const ni = (t.hIdx || 0) + dir;
+    if (ni < 0 || ni >= hist.length) return;
+    t.hIdx = ni;
+    Object.assign(t, hist[ni]);
+    this.renderTabBar();
+    this.renderView(t);
   },
 
   renderTabPlusMenu() {
@@ -1538,7 +1568,7 @@ const App = {
       item.className = 'rel-item';
       item.innerHTML = `<span>⚖️ ${esc(d.title[I18n.lang] || d.title.ar || d.title.en)}</span>
         <span class="rtype">${esc(d.number || '')} · ${esc(d.date || '')}</span>`;
-      item.onclick = () => this.openDocument(d.id);
+      item.onclick = () => this.navInTab({ kind: 'doc', docId: d.id });
       wrap.appendChild(item);
     });
   },
@@ -1558,7 +1588,7 @@ const App = {
       const tTitle = target ? (target.title[I18n.lang] || target.title.ar || target.title.en || targetId) : targetId;
       item.innerHTML = `<span class="rtype">${esc(label)}</span><span>${esc(tTitle)}</span>
         ${note ? `<span class="rel-note">${esc(note[I18n.lang] || note.ar || note.en || '')}</span>` : ''}`;
-      if (target) item.onclick = () => this.openDocument(targetId);
+      if (target) item.onclick = () => this.navInTab({ kind: 'doc', docId: targetId });
       wrap.appendChild(item);
     };
     outgoing.forEach(r => addRel(I18n.t('rel_' + r.type), r.target, r.note));
