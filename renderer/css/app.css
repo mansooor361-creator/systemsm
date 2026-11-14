@@ -637,3 +637,12 @@ html[dir="ltr"] .switch input:checked + .sl::before { transform: translateX(18px
   width: 100%; max-width: 420px; padding: 6px 10px; font-size: 13px;
 }
 .prov-active { display: flex; align-items: center; margin-top: 4px; }
+
+/* v1.6.5 — doc chat in right column, DB picker button, feed list view */
+.kb-db-btn { display: flex; align-items: center; justify-content: center; }
+.kb-db-btn svg { display: block; }
+.rpane-chat-head { display: flex; justify-content: flex-start; padding: 2px 0 6px; }
+body.chat-expanded #docProps { width: 55%; min-width: 340px; }
+.feed-head { display: flex; align-items: center; gap: 10px; max-width: 1100px; }
+.updates-feed.feed-list { display: flex; flex-direction: column; }
+.updates-feed.feed-list .feed-item { flex-direction: row; align-items: center; width: 100%; }

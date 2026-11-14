@@ -148,28 +148,5 @@ const KB = {
       });
     }
     return { outgoing, incoming };
-  },
-
-  graphData(centerId) {
-    const nodes = new Map();
-    const edges = [];
-    const addNode = (id) => {
-      if (!id || nodes.has(id)) return;
-      const d = this.get(id);
-      if (!d) return;
-      nodes.set(id, { id, label: d.title.ar || d.title.en || id, type: d.type });
-    };
-    if (centerId) {
-      addNode(centerId);
-      const { outgoing, incoming } = this.relationsOf(centerId);
-      outgoing.forEach(r => { addNode(r.target); edges.push({ a: centerId, b: r.target, type: r.type }); });
-      incoming.forEach(r => { addNode(r.sourceDoc.id); edges.push({ a: r.sourceDoc.id, b: centerId, type: r.type }); });
-    } else {
-      this.index.forEach(e => addNode(e.doc.id));
-      this.index.forEach(e => (e.doc.relations || []).forEach(r => {
-        if (this.byId.has(r.target)) edges.push({ a: e.doc.id, b: r.target, type: r.type });
-      }));
-    }
-    return { nodes: [...nodes.values()], edges };
   }
 };

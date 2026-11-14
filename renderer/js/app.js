@@ -167,47 +167,6 @@ const Chat = {
     return Retrieval.extractiveAnswer(query, llmOpts);
   },
 
-  async send() {
-    const input = document.getElementById('chatInput');
-    const q = input.value.trim();
-    if (!q) return;
-    input.value = '';
-    const log = document.getElementById('chatLog');
-
-    const qEl = document.createElement('div');
-    qEl.className = 'chat-q';
-    qEl.textContent = q;
-    log.appendChild(qEl);
-
-    const res = await this.answer(q, { scope: document.getElementById('chatScope').value });
-
-    const aEl = document.createElement('div');
-    aEl.className = 'chat-a';
-    if (!res.passages || !res.passages.length) {
-      aEl.appendChild(renderMarkdown(`> [!WARNING]\n> ${res.answer}`));
-    } else {
-      aEl.appendChild(renderMarkdown(res.answer));
-    }
-
-    if (res.passages && res.passages.length) {
-      const cites = document.createElement('div');
-      cites.className = 'chat-cites';
-      cites.innerHTML = `<span>${I18n.t('chatCitations')}:</span>`;
-      res.passages.forEach(p => {
-        const a = document.createElement('a');
-        a.textContent = p.docTitle + (p.articleNum ? ' (' + p.articleNum + ')' : '');
-        a.onclick = () => App.openDocument(p.docId);
-        cites.appendChild(a);
-      });
-      aEl.appendChild(cites);
-    }
-    const tag = document.createElement('span');
-    tag.className = 'mode-tag';
-    tag.textContent = res.mode === 'llm' ? 'AI + KB' : 'KB (extractive, 100% grounded)';
-    aEl.appendChild(tag);
-    log.appendChild(aEl);
-    log.scrollTop = log.scrollHeight;
-  }
 };
 
 /* ---------- main app ---------- */
@@ -267,18 +226,13 @@ const App = {
 
   applyLangUi() {
     document.getElementById('btnLangFix') && (document.getElementById('btnLangFix').textContent = I18n.lang === 'ar' ? 'EN' : 'ع');
-    const scope = document.getElementById('chatScope');
-    scope.options[0].textContent = I18n.t('chatAll');
-    scope.options[1].textContent = I18n.t('chatCurrent');
-    document.getElementById('graphHint').textContent = I18n.lang === 'ar'
-      ? 'انقر على أي عقدة لفتح الوثيقة — الألوان تمثل نوع الوثيقة'
-      : 'Click any node to open the document — colors represent document type';
     const warn = document.getElementById('editWarningText');
     if (warn) warn.textContent = I18n.t('editWarning');
   },
 
   bindTopbar() {
-    document.getElementById('brandHome').onclick = () => this.showView('home');
+    const modeBtn = document.getElementById('btnSearchMode');
+    if (modeBtn) modeBtn.textContent = this.searchMode === 'text' ? '\ud83d\udd0d' : '\u2728';
     document.getElementById('btnRailHome').onclick = () => this.showView('home');
     document.getElementById('btnSearchMode').onclick = (e) => {
       e.stopPropagation();
@@ -303,8 +257,6 @@ const App = {
     };
     document.getElementById('btnDrawer').onclick = () => this.openDrawer();
     document.getElementById('btnAgents').onclick = () => Agents.open(Agents.current);
-    document.getElementById('btnChat').onclick = () => this.showView('chat');
-    document.getElementById('btnGraph').onclick = () => { this.showView('graph'); Graph.show(this.currentDocId); };
     document.getElementById('btnTools').onclick = () => Tools.open(Tools.active || 'consultant');
     document.getElementById('btnNotes').onclick = () => { this.showView('notes'); Notes.refresh(); };
     document.getElementById('siteLink').onclick = (e) => {
@@ -575,10 +527,11 @@ const App = {
   },
 
   bindViews() {
-    document.getElementById('chatSend').onclick = () => Chat.send();
-    document.getElementById('chatInput').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); Chat.send(); }
-    });
+    document.getElementById('docChatExpand').onclick = () => {
+      const expanded = document.body.classList.toggle('chat-expanded');
+      document.getElementById('docChatExpand').textContent = expanded ? '\u2923' : '\u2922';
+    };
+    document.getElementById('btnFeedView').onclick = () => this.toggleFeedView();
     document.getElementById('btnNewNote').onclick = () => Notes.create();
     document.getElementById('btnSaveNote').onclick = () => Notes.save();
     document.getElementById('btnDeleteNote').onclick = () => Notes.remove();
@@ -825,10 +778,9 @@ const App = {
   },
 
   showView(name) {
-    ['home', 'doc', 'chat', 'graph', 'agents', 'tools', 'notes', 'settings'].forEach(v => {
+    ['home', 'doc', 'agents', 'tools', 'notes', 'settings'].forEach(v => {
       document.getElementById('view-' + v).classList.toggle('hidden', v !== name);
     });
-    if (name !== 'graph') Graph.stop();
   },
 
   toast(msg) {
@@ -840,9 +792,27 @@ const App = {
   },
 
   /* ---------- home ---------- */
+  feedView: 'grid',
+
+  applyFeedView() {
+    const feed = document.getElementById('updatesFeed');
+    const btn = document.getElementById('btnFeedView');
+    if (!feed || !btn) return;
+    feed.classList.toggle('feed-list', this.feedView === 'list');
+    btn.textContent = this.feedView === 'list' ? '\u25a6' : '\u2630';
+    btn.title = I18n.t(this.feedView === 'list' ? 'feedGridView' : 'feedListView');
+  },
+
+  toggleFeedView() {
+    this.feedView = this.feedView === 'list' ? 'grid' : 'list';
+    try { localStorage.setItem('daaix-feedView', this.feedView); } catch (e) { /* ignore */ }
+    this.applyFeedView();
+  },
+
   renderFeed() {
     const feed = document.getElementById('updatesFeed');
     feed.innerHTML = '';
+    this.applyFeedView();
     const items = [];
     KB.index.forEach(e => {
       (e.doc.versionHistory || []).forEach(v => {
@@ -879,6 +849,8 @@ const App = {
 
   setSearchMode(mode) {
     this.searchMode = mode;
+    const btn = document.getElementById('btnSearchMode');
+    if (btn) btn.textContent = mode === 'text' ? '\ud83d\udd0d' : '\u2728';
     document.getElementById('searchModeMenu').classList.add('hidden');
     const q = document.getElementById('globalSearch').value;
     if (q && q.trim().length >= 2) this.search(q);
@@ -1013,7 +985,11 @@ const App = {
     const res = await Chat.answer(q, { scopeDocIds: Retrieval.scopeDocIds(this.currentDocId, 1) });
     const aEl = document.createElement('div');
     aEl.className = 'chat-a';
-    aEl.appendChild(renderMarkdown(res.answer));
+    if (!res.passages || !res.passages.length) {
+      aEl.appendChild(renderMarkdown(`> [!WARNING]\n> ${res.answer}`));
+    } else {
+      aEl.appendChild(renderMarkdown(res.answer));
+    }
     if (res.passages && res.passages.length) {
       const cites = document.createElement('div');
       cites.className = 'chat-cites';

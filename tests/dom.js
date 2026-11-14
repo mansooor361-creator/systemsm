@@ -91,19 +91,21 @@ function bootDom() {
     assert(!doc.getElementById('sidebar'), 'wide sidebar removed');
     const rail = doc.getElementById('rail');
     assert(rail, 'icon rail present');
-    ['btnRailHome', 'btnAgents', 'btnChat', 'btnGraph', 'btnTools', 'btnNotes', 'btnDrawer']
+    ['btnRailHome', 'btnAgents', 'btnTools', 'btnNotes', 'btnDrawer']
       .forEach(id => assert(rail.querySelector('#' + id), id + ' in rail'));
+    assert(!doc.getElementById('btnChat'), 'rail chat button removed');
+    assert(!doc.getElementById('btnGraph'), 'rail graph button removed');
     assert(!doc.getElementById('btnRailKb'), 'rail folder icon removed');
     assert(!doc.getElementById('kbMenu'), 'rail KB menu removed');
     assert(doc.getElementById('toolRail'), 'tool rail container present');
-    assert(doc.querySelector('#topbar .brand .logo-full'), 'official full logo in topbar');
+    assert(!doc.querySelector('#topbar .logo-full'), 'logo image removed from topbar');
     assert(!doc.getElementById('btnKbMenu'), 'folder icon removed from topbar');
-    assert(doc.getElementById('btnKbPicker'), 'KB picker button next to search');
-    assert(doc.getElementById('btnKbPicker').textContent.includes('\uD83D\uDCDA'), 'picker icon is books, not folder');
+    assert(doc.querySelector('#topbar .brand #btnKbPicker svg'), 'classic monochrome DB cylinder picker button before search');
+    assert(doc.querySelectorAll('#btnKbPicker').length === 1, 'single KB picker button (books icon removed)');
     assert(doc.getElementById('btnSearchMode') && doc.getElementById('btnSearchExpand') && doc.getElementById('searchModeMenu'), 'search mode dropdown button + expand button');
   });
   test('rail view buttons always visible (settings toggles removed in v1.6.2); drawer gear visible', () => {
-    ['btnAgents', 'btnChat', 'btnGraph', 'btnTools', 'btnNotes'].forEach(id =>
+    ['btnAgents', 'btnTools', 'btnNotes'].forEach(id =>
       assert(!doc.getElementById(id).classList.contains('hidden'), id + ' visible'));
     assert(!doc.getElementById('btnDrawer').classList.contains('hidden'));
   });
@@ -191,16 +193,22 @@ function bootDom() {
     assert(!window._localStorage['daaix-edit-sa-labor-law'], 'discard removes overlay');
   });
 
-  console.log('\n— Chat (plain style) —');
-  test('plain Q/A without bubbles; refusal as warning callout', async () => {
-    doc.getElementById('chatInput').value = 'ما أحكام مكافأة نهاية الخدمة عند الاستقالة؟';
-    await Chat.send();
-    assert(doc.querySelector('.chat-q'), 'plain question element');
-    assert(doc.querySelector('.chat-a .doc-body'), 'plain answer element');
-    assert(!doc.querySelector('.msg.user'), 'no bubble for question');
-    doc.getElementById('chatInput').value = 'ما سعر البيتكوين اليوم؟';
-    await Chat.send();
-    const answers = [...doc.querySelectorAll('.chat-a')];
+  console.log('\n— Document chat (right column only) —');
+  test('doc chat lives in the right column; plain Q/A; refusal as warning callout', async () => {
+    assert(!doc.getElementById('chatInput'), 'standalone chat view removed — chat only in right column');
+    assert(!doc.getElementById('view-chat'), 'view-chat section removed');
+    App.openDocument('sa-labor-law');
+    App.showView('doc');
+    doc.querySelector('#rightTabs [data-tab=chat]').click();
+    assert(!doc.getElementById('rpaneChat').classList.contains('hidden'), 'chat pane in right column');
+    doc.getElementById('docChatInput').value = 'ما أحكام مكافأة نهاية الخدمة عند الاستقالة؟';
+    await App.sendDocChat();
+    assert(doc.querySelector('#docChatLog .chat-q'), 'plain question element');
+    assert(doc.querySelector('#docChatLog .chat-a .doc-body'), 'plain answer element');
+    assert(!doc.querySelector('#docChatLog .msg.user'), 'no bubble for question');
+    doc.getElementById('docChatInput').value = 'ما سعر البيتكوين اليوم؟';
+    await App.sendDocChat();
+    const answers = [...doc.querySelectorAll('#docChatLog .chat-a')];
     assert(answers[answers.length - 1].querySelector('.callout.co-warning'), 'refusal rendered as warning callout');
   });
 
@@ -534,10 +542,10 @@ function bootDom() {
   });
 
   console.log('\n— v1.6.2: brand logo, AI & agents window —');
-  test('topbar brand uses the official full logo image (no brown text)', () => {
-    const img = doc.querySelector('#topbar .brand .logo-full');
-    assert(img, 'logo-full image in topbar');
-    assert(img.getAttribute('src').includes('logo-full.png'), 'official logo-full asset');
+  test('topbar brand hosts the classic DB cylinder KB picker (no logo image, no brown text)', () => {
+    const btn = doc.querySelector('#topbar .brand #btnKbPicker');
+    assert(btn && btn.querySelector('svg'), 'DB cylinder picker button in brand position');
+    assert(!doc.querySelector('#topbar .logo-full'), 'logo image removed');
     assert(!doc.querySelector('#topbar .brand .brand-name'), 'brown brand-name text removed');
   });
   test('settings has 4th window: AI & agents with models, agents, commands, skills', () => {
@@ -616,6 +624,48 @@ function bootDom() {
     assert(doc.querySelector('#docHeader h1').textContent.includes('Labor Law'));
     assert(doc.querySelector('#docHeader .doc-info').textContent.includes('In Force (Amended)'));
     await App.setLang('ar');
+  });
+
+  console.log('\n— v1.6.5: no graph, mode icon, chat expand, feed list view —');
+  test('relation graph removed entirely', () => {
+    assert(!doc.getElementById('btnGraph'), 'no graph rail button');
+    assert(!doc.getElementById('view-graph'), 'no graph view');
+    assert(!doc.getElementById('graphCanvas'), 'no graph canvas');
+    assert(!doc.getElementById('graphHint'), 'no graph hint');
+    let threw = false;
+    try { window.eval('Graph'); } catch (e) { threw = true; }
+    assert(threw, 'Graph object no longer defined');
+  });
+  test('search mode button icon reflects the active mode', () => {
+    const btn = doc.getElementById('btnSearchMode');
+    App.setSearchMode('text');
+    assert(btn.textContent === '\uD83D\uDD0D', 'lens icon in text mode');
+    App.setSearchMode('semantic');
+    assert(btn.textContent === '\u2728', 'AI sparkle icon in semantic mode');
+    App.setSearchMode('text');
+  });
+  test('doc chat expand button toggles wide right column', () => {
+    App.openDocument('sa-labor-law');
+    App.showView('doc');
+    doc.querySelector('#rightTabs [data-tab=chat]').click();
+    const btn = doc.getElementById('docChatExpand');
+    assert(btn, 'expand button inside the right column chat');
+    btn.click();
+    assert(doc.body.classList.contains('chat-expanded'), 'chat expanded');
+    assert(btn.textContent === '\u2923', 'collapse icon while expanded');
+    btn.click();
+    assert(!doc.body.classList.contains('chat-expanded'), 'chat restored');
+  });
+  test('feed view toggle: boxes grid <-> stacked list, persisted', () => {
+    const feed = doc.getElementById('updatesFeed');
+    const btn = doc.getElementById('btnFeedView');
+    assert(btn, 'feed view toggle button next to feed title');
+    assert(!feed.classList.contains('feed-list'), 'grid by default');
+    btn.click();
+    assert(feed.classList.contains('feed-list'), 'stacked list after toggle');
+    assert(btn.textContent === '\u25a6', 'grid icon while listed');
+    btn.click();
+    assert(!feed.classList.contains('feed-list'), 'back to grid');
   });
 
   console.log('\n— v1.6.4: providers, # trigger, + context button, usage quota —');
