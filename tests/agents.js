@@ -164,5 +164,19 @@ test('v1.6.22: saveProject writes settings + project.md content', async () => {
   ctx.App.settings = {};
 });
 
+console.log('\n\u2014 v1.6.25: memory switches \u2014');
+test('saveMemoryPoint returns false when saved-memories switch is off', async () => {
+  ctx.App.settings.assistantMemory = { recent: true, saved: false, maxRecent: 30, recentList: [], savedList: [] };
+  const ok = await ctx.Agents.saveMemoryPoint('\u0646\u0642\u0637\u0629 \u0644\u0644\u062a\u062c\u0631\u0628\u0629');
+  assert(ok === false, 'refuses when disabled');
+});
+test('rememberSession respects maxRecent bounds (10-50)', () => {
+  ctx.App.settings.assistantMemory = { recent: true, saved: true, maxRecent: 12, recentList: [], savedList: [] };
+  for (let i = 0; i < 20; i++) ctx.Agents.rememberSession('\u0633\u0624\u0627\u0644 \u0631\u0642\u0645 ' + i + ' \u0639\u0646 \u0627\u0644\u0646\u0638\u0627\u0645', '\u062c\u0648\u0627\u0628 \u0645\u062e\u062a\u0635\u0631.');
+  const mem = ctx.Agents.assistantMemory();
+  assert(mem.recentList.length <= 12, 'capped at maxRecent');
+  ctx.App.settings.assistantMemory = { recent: true, saved: true, maxRecent: 30, recentList: [], savedList: [] };
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

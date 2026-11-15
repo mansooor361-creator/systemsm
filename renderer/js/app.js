@@ -211,6 +211,7 @@ const App = {
 
 
     this.bindTopbar();
+    this.bindQuickSwitcher();
     this.bindDrawer();
     this.bindViews();
     this.bindSettingsTabs();
@@ -222,6 +223,90 @@ const App = {
     window.daaix.onUpdateAvailable((data) => {
       this.toast(`${I18n.t('updatesAvailable')}: ${data.updates.length}`);
     });
+  },
+
+  /* ---------- v1.6.25: Obsidian-style quick switcher (Ctrl+O) ---------- */
+  bindQuickSwitcher() {
+    window.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === 'o' || e.key === 'O' || e.key === 'خ')) {
+        e.preventDefault();
+        this.toggleQuickSwitcher();
+      } else if (e.key === 'Escape') {
+        const qs = document.getElementById('quickSwitcher');
+        if (qs && !qs.classList.contains('hidden')) this.closeQuickSwitcher();
+      }
+    });
+  },
+
+  toggleQuickSwitcher() {
+    const qs = document.getElementById('quickSwitcher');
+    if (qs && !qs.classList.contains('hidden')) this.closeQuickSwitcher();
+    else this.openQuickSwitcher();
+  },
+
+  openQuickSwitcher() {
+    let qs = document.getElementById('quickSwitcher');
+    if (!qs) {
+      qs = document.createElement('div');
+      qs.id = 'quickSwitcher';
+      qs.innerHTML = `<div class="qs-backdrop"></div>
+        <div class="qs-panel">
+          <div class="qs-head"><span class="qs-glyph">⌘</span><span class="qs-title">${esc(I18n.t('qsTitle'))}</span><span class="qs-kbd">Ctrl+O</span></div>
+          <input id="qsInput" type="text" placeholder="${esc(I18n.t('qsPh'))}" autocomplete="off" />
+          <div id="qsResults" class="qs-results"></div>
+        </div>`;
+      document.body.appendChild(qs);
+      qs.querySelector('.qs-backdrop').onclick = () => this.closeQuickSwitcher();
+      const input = qs.querySelector('#qsInput');
+      input.addEventListener('input', () => this.renderQuickSwitcher(input.value));
+      input.addEventListener('keydown', (e) => {
+        const items = [...qs.querySelectorAll('.qs-item')];
+        let idx = items.findIndex(el => el.classList.contains('active'));
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+          e.preventDefault();
+          if (!items.length) return;
+          idx = e.key === 'ArrowDown' ? (idx + 1) % items.length : (idx - 1 + items.length) % items.length;
+          items.forEach((el, i) => el.classList.toggle('active', i === idx));
+          items[idx].scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'Enter') {
+          e.preventDefault();
+          if (idx >= 0) items[idx].click();
+          else if (items.length) items[0].click();
+        }
+      });
+    }
+    qs.classList.remove('hidden');
+    const input = qs.querySelector('#qsInput');
+    input.value = '';
+    this.renderQuickSwitcher('');
+    input.focus();
+  },
+
+  closeQuickSwitcher() {
+    const qs = document.getElementById('quickSwitcher');
+    if (qs) qs.classList.add('hidden');
+  },
+
+  renderQuickSwitcher(q) {
+    const box = document.getElementById('qsResults');
+    if (!box) return;
+    box.innerHTML = '';
+    const query = (q || '').trim();
+    let docs;
+    if (query.length >= 2) {
+      docs = KB.search(query, 20).map(r => r.doc);
+    } else {
+      docs = KB.index.slice(0, 20).map(e => e.doc);
+    }
+    docs.forEach((doc, i) => {
+      const title = doc.title[I18n.lang] || doc.title.ar || doc.title.en;
+      const b = document.createElement('button');
+      b.className = 'qs-item' + (i === 0 ? ' active' : '');
+      b.innerHTML = `<span class="qs-doc-icon mono">▤</span><span class="qs-doc-title">${esc(title)}</span><span class="qs-doc-type">${esc(I18n.docTypeName(doc.type))}</span>`;
+      b.onclick = () => { this.closeQuickSwitcher(); this.openDocument(doc.id); };
+      box.appendChild(b);
+    });
+    if (!docs.length) box.innerHTML = `<p class="hint qs-empty">${I18n.t('noResults')}</p>`;
   },
 
   applyTheme(theme) {
@@ -446,16 +531,27 @@ const App = {
     title.className = 'hint';
     title.textContent = I18n.t('cloudTitle');
     panel.appendChild(title);
+    /* v1.6.25: the reliable way to connect ANY cloud — its sync folder */
+    const sync = document.createElement('div');
+    sync.className = 'cloud-row cloud-sync';
+    sync.innerHTML = `<span class="sr-icon mono">\u2601</span>
+      <div class="sr-main"><div class="sr-name">${esc(I18n.t('srcCloud'))}</div>
+      <div class="sr-desc">${esc(I18n.t('cloudSyncHint'))}</div></div>
+      <button class="ghost-btn cloud-link-folder">${esc(I18n.t('srcFolder'))}</button>`;
+    sync.querySelector('.cloud-link-folder').onclick = () => {
+      panel.classList.add('hidden');
+      this.doImportFolder(document.getElementById('kbAddStatus'));
+    };
+    panel.appendChild(sync);
     this.KB_CLOUDS.forEach(c => {
       const row = document.createElement('div');
       row.className = 'cloud-row';
       row.innerHTML = `<span class="sr-icon mono">${c.icon}</span>
         <div class="sr-main"><div class="sr-name">${esc(c.name)}</div>
-        <div class="sr-desc">${I18n.t('cloudNeedsAuth')}</div></div>
+        <div class="sr-desc">${esc(I18n.t('cloudSyncHint'))}</div></div>
         <button class="ghost-btn">${I18n.t('cloudConnect')}</button>`;
       row.querySelector('button').onclick = () => {
         window.daaix.openExternal(c.url);
-        this.toast(I18n.t('cloudNeedsAuth'));
       };
       panel.appendChild(row);
     });
@@ -834,6 +930,30 @@ const App = {
     if (memList) {
       memList.innerHTML = '';
       const mem = Agents.assistantMemory();
+      /* v1.6.25: memory switches + max-recent control (10-50) */
+      const ctl = document.createElement('div');
+      ctl.className = 'mem-ctl';
+      ctl.innerHTML = `
+        <label class="switch"><input type="checkbox" id="memRecentOn" ${mem.recent ? 'checked' : ''} /><span class="sl"></span></label>
+        <span class="mem-ctl-label">${esc(I18n.t('memRecent'))}</span>
+        <label class="switch"><input type="checkbox" id="memSavedOn" ${mem.saved ? 'checked' : ''} /><span class="sl"></span></label>
+        <span class="mem-ctl-label">${esc(I18n.t('memSavedList'))}</span>
+        <input type="number" id="memMaxRecent" min="10" max="50" value="${mem.maxRecent || 30}" title="${esc(I18n.t('memMaxRecent'))}" />`;
+      ctl.querySelector('#memRecentOn').onchange = async (e) => {
+        mem.recent = e.target.checked;
+        await window.daaix.settingsSet({ assistantMemory: mem });
+      };
+      ctl.querySelector('#memSavedOn').onchange = async (e) => {
+        mem.saved = e.target.checked;
+        await window.daaix.settingsSet({ assistantMemory: mem });
+      };
+      ctl.querySelector('#memMaxRecent').onchange = async (e) => {
+        const v = Math.max(10, Math.min(50, parseInt(e.target.value, 10) || 30));
+        e.target.value = v;
+        mem.maxRecent = v;
+        await window.daaix.settingsSet({ assistantMemory: mem });
+      };
+      memList.appendChild(ctl);
       const sec = (title, arr, key) => {
         if (!arr || !arr.length) return;
         const h = document.createElement('div');

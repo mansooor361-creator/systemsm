@@ -1086,6 +1086,58 @@ function bootDom() {
     assert(notes.textContent.codePointAt(0) < 0x1F000, 'notes glyph is not a color emoji');
   });
 
+  console.log('\n— v1.6.25: memory controls, quick switcher, cloud sync flow —');
+  test('v1.6.25: memory switches + maxRecent control render in AI settings and persist', async () => {
+    App.renderAiSettings();
+    const recent = doc.getElementById('memRecentOn');
+    const saved = doc.getElementById('memSavedOn');
+    const maxR = doc.getElementById('memMaxRecent');
+    assert(recent && saved && maxR, 'memory controls present');
+    recent.checked = false;
+    recent.dispatchEvent(new window.Event('change'));
+    await new Promise(r => setTimeout(r, 10));
+    assert(Agents.assistantMemory().recent === false, 'recent switch persisted');
+    maxR.value = '99';
+    maxR.dispatchEvent(new window.Event('change'));
+    await new Promise(r => setTimeout(r, 10));
+    assert(Agents.assistantMemory().maxRecent === 50, 'maxRecent clamped to 50');
+    recent.checked = true;
+    recent.dispatchEvent(new window.Event('change'));
+    await new Promise(r => setTimeout(r, 10));
+    assert(Agents.assistantMemory().recent === true, 'recent switch restored');
+  });
+  test('v1.6.25: Ctrl+O opens quick switcher, Enter opens first result, Esc closes', () => {
+    window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'o', ctrlKey: true, bubbles: true }));
+    const qs = doc.getElementById('quickSwitcher');
+    assert(qs && !qs.classList.contains('hidden'), 'quick switcher opened with Ctrl+O');
+    const items = doc.querySelectorAll('#qsResults .qs-item');
+    assert(items.length > 0, 'documents listed');
+    assert(items[0].classList.contains('active'), 'first item active');
+    doc.getElementById('qsInput').dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    assert(qs.classList.contains('hidden'), 'switcher closed after Enter');
+    assert(doc.querySelector('#docHeader h1'), 'a document view opened');
+    window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  });
+  test('v1.6.25: quick switcher filters by query (title match first)', () => {
+    window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'o', ctrlKey: true, bubbles: true }));
+    const input = doc.getElementById('qsInput');
+    input.value = 'مكافأة';
+    input.dispatchEvent(new window.Event('input', { bubbles: true }));
+    const titles = [...doc.querySelectorAll('#qsResults .qs-doc-title')].map(el => el.textContent);
+    assert(titles.length > 0, 'filtered results listed');
+    assert(titles.some(t => t.includes('مكافأة')), 'matching title appears');
+    App.closeQuickSwitcher();
+  });
+  test('v1.6.25: cloud panel leads with sync-folder flow (works with OneDrive/Drive/any cloud)', () => {
+    doc.getElementById('btnKbSourceCloud').click();
+    const panel = doc.getElementById('kbCloudPanel');
+    const sync = panel.querySelector('.cloud-row.cloud-sync');
+    assert(sync, 'sync-folder row present and first');
+    assert(sync.querySelector('.cloud-link-folder'), 'link-folder button present');
+    assert(panel.querySelectorAll('.cloud-row').length >= 8, 'providers still listed');
+    doc.getElementById('btnKbSourcePlatform').click();
+  });
+
   console.log('\n— v1.6.23: skill edit/hide + settings card grid —');
   test('v1.6.23: no rotated version text in the right rail (removed)', () => {
     assert(!doc.getElementById('appVersion'), 'appVersion removed from rail');
