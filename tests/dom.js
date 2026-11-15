@@ -1195,17 +1195,18 @@ function bootDom() {
     assert(md.querySelector('h3'), '### without space renders h3');
     assert(!/#/.test(h2.textContent), 'no raw # visible in reading view');
   });
-  test('v1.6.26: h5/h6 sections always collapse into details.deep-fold (closed by default)', () => {
-    const md = window.eval('renderMarkdown')('#####تفاصيل فرعية\nمحتوى مخفي افتراضيًا\n####عنوان أصفر\nبعد الطي');
+  test('v1.6.27: only ###### collapses; #..##### are real headings taken in the TOC', () => {
+    const md = window.eval('renderMarkdown')('#####عنوان خامس\nنص تحت الخامس\n######تفاصيل صغيرة\nمحتوى مخفي افتراضيًا\n####عنوان أصفر\nبعد الطي');
+    assert(md.querySelector('h5') && md.querySelector('h5').textContent.includes('عنوان خامس'), 'h5 renders inline as a real heading');
+    assert(md.querySelector('h4'), 'h4 rendered inline');
     const folds = md.querySelectorAll('details.deep-fold');
-    assert(folds.length === 1, 'one deep fold');
+    assert(folds.length === 1, 'one deep fold for ######');
     assert(!folds[0].open, 'collapsed by default');
-    assert(folds[0].querySelector('summary h5'), 'h5 inside summary');
+    assert(folds[0].querySelector('summary h6'), 'h6 inside summary');
     assert(folds[0].querySelector('.fold-body').textContent.includes('محتوى مخفي'), 'fold body keeps content');
-    assert(md.querySelector('h4'), 'h4 still rendered inline');
-    assert(!folds[0].textContent.includes('بعد الطي'), 'fold ends at next level<=4 heading');
+    assert(!folds[0].textContent.includes('بعد الطي'), 'fold ends at next level<=5 heading');
     folds[0].open = true;
-    assert(folds[0].querySelector('.fold-body').textContent.includes('محتوى مخفي'), 'fold opens on demand');
+    assert(folds[0].querySelector('.fold-body').textContent.includes('محتوى مخفي'), 'fold expands on demand');
   });
   test('v1.6.26: trailing hashes stripped; bare # line stays a paragraph', () => {
     const md = window.eval('renderMarkdown')('## عنوان مع زوائد ##\n#\nنص عادي');

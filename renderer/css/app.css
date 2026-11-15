@@ -443,11 +443,18 @@ button.danger { background: transparent; border: 1px solid var(--danger); color:
   font-size: 15px; color: #7a5c10; background: #fdf6dd; padding: 6px 10px;
   border-radius: 6px; margin: 12px 0 8px;
 }
+/* v1.6.27: ##### is a real heading (soft yellow, slightly smaller) — only ###### folds */
+.doc-body h5 {
+  font-size: 14.5px; color: #7a5c10; background: #fdf6dd; padding: 5px 10px;
+  border-radius: 6px; margin: 12px 0 8px;
+}
 body.theme-dark .doc-body h2, body.theme-dark .doc-body h3 { background: transparent; color: var(--text); }
 body.theme-dark .doc-body h1, body.theme-dark .doc-paper h1 { background: transparent; color: var(--text); border-bottom-color: var(--border); }
-body.theme-dark .doc-body h4, body.theme-dark #docBody h5, body.theme-dark #docBody h6 {
+body.theme-dark .doc-body h4, body.theme-dark .doc-body h5,
+body.theme-dark #docBody h5, body.theme-dark #docBody h6 {
   background: rgba(212, 169, 78, .14); color: #e8cd82;
 }
+body.theme-dark details.deep-fold > summary h6 { background: transparent; color: var(--text); }
 
 /* v1.6.26: comfortable reading rhythm */
 .doc-body { line-height: 1.95; }

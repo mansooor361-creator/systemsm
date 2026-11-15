@@ -93,14 +93,14 @@ function renderMdLines(lines) {
       if (inList) { html += '</ul>'; inList = false; }
       const level = hm[1].length;
       const anchor = 'h-' + html.length;
-      if (level <= 4) {
+      if (level <= 5) {
         html += `<h${level} id="${anchor}">${inline(htext)}</h${level}>`;
       } else {
-        /* deep heading (##### ######): always collapsed; fold ends at the next heading of level <= 4 */
+        /* deep heading (###### only): small heading, collapsed by default with expand state; fold ends at the next heading of level <= 5 */
         let j = i + 1;
         while (j < lines.length) {
           const m2 = lines[j].match(/^#{1,6}\s*\S/);
-          if (m2 && m2[0].match(/^#+/)[0].length <= 4) break;
+          if (m2 && m2[0].match(/^#+/)[0].length <= 5) break;
           j++;
         }
         const inner = renderMdLines(lines.slice(i + 1, j));
