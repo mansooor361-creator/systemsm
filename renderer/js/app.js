@@ -19,7 +19,18 @@ const CALLOUTS = {
 function renderMarkdown(md) {
   const div = document.createElement('div');
   div.className = 'doc-body';
-  const lines = String(md).split('\n');
+  div.innerHTML = renderMdLines(String(md).split('\n'));
+  div.querySelectorAll('a[data-ext]').forEach(a => a.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (window.daaix) window.daaix.openExternal(a.href);
+  }));
+  return div;
+}
+
+/* v1.6.26: shared markdown line renderer — robust headings (space after # optional,
+   trailing # stripped) so reading view never shows raw #; h1-h4 render inline,
+   h5/h6 always collapse into <details class="deep-fold"> (open on demand) */
+function renderMdLines(lines) {
   let html = '', inList = false, buf = [];
 
   const inline = (s) => esc(s)
@@ -75,14 +86,31 @@ function renderMarkdown(md) {
       continue;
     }
 
-    if (/^#{1,6}\s/.test(line)) {
+    const hm = line.match(/^(#{1,6})\s*(.*)$/);
+    const htext = hm ? hm[2].replace(/\s*#+\s*$/, '').trim() : '';
+    if (hm && htext) {
       flushPara();
       if (inList) { html += '</ul>'; inList = false; }
-      const level = line.match(/^#+/)[0].length;
-      const text = inline(line.replace(/^#+\s*/, ''));
+      const level = hm[1].length;
       const anchor = 'h-' + html.length;
-      html += `<h${level} id="${anchor}">${text}</h${level}>`;
-    } else if (/^>\s?/.test(line)) {
+      if (level <= 4) {
+        html += `<h${level} id="${anchor}">${inline(htext)}</h${level}>`;
+      } else {
+        /* deep heading (##### ######): always collapsed; fold ends at the next heading of level <= 4 */
+        let j = i + 1;
+        while (j < lines.length) {
+          const m2 = lines[j].match(/^#{1,6}\s*\S/);
+          if (m2 && m2[0].match(/^#+/)[0].length <= 4) break;
+          j++;
+        }
+        const inner = renderMdLines(lines.slice(i + 1, j));
+        html += `<details class="deep-fold"><summary class="fold-head"><h${level} id="${anchor}">${inline(htext)}</h${level}><span class="fold-arrow">\u25b8</span></summary><div class="fold-body">${inner}</div></details>`;
+        i = j - 1;
+      }
+      continue;
+    }
+
+    if (/^>\s?/.test(line)) {
       flushPara();
       html += `<blockquote>${inline(line.replace(/^>\s?/, ''))}</blockquote>`;
     } else if (/^[-*]\s/.test(line)) {
@@ -102,12 +130,7 @@ function renderMarkdown(md) {
   }
   flushPara();
   if (inList) html += '</ul>';
-  div.innerHTML = html;
-  div.querySelectorAll('a[data-ext]').forEach(a => a.addEventListener('click', (e) => {
-    e.preventDefault();
-    if (window.daaix) window.daaix.openExternal(a.href);
-  }));
-  return div;
+  return html;
 }
 
 /* ---------- notes ---------- */
@@ -1845,7 +1868,11 @@ const App = {
         const label = document.createElement('span');
         label.className = 'toc-label';
         label.textContent = n.el.textContent.slice(0, 80);
-        label.onclick = () => n.el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        label.onclick = () => {
+          const det = n.el.closest('details.deep-fold');
+          if (det) det.open = true;
+          n.el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        };
         row.appendChild(label);
         item.appendChild(row);
         const kids = document.createElement('div');

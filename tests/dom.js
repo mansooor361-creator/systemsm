@@ -1187,6 +1187,34 @@ function bootDom() {
     assert(doc.querySelector('#toolSettingsList .set-card .sc-foot .switch'), 'switch inside card footer');
   });
 
+  console.log('\n— v1.6.26: robust headings + always-collapsed deep sections —');
+  test('v1.6.26: headings without a space after # render as headings (no raw # in reading view)', () => {
+    const md = window.eval('renderMarkdown')('##عنوان بلا مسافة\nنص الفقرة\n###عنوان ثالث');
+    const h2 = md.querySelector('h2');
+    assert(h2 && h2.textContent.includes('عنوان بلا مسافة'), '## without space renders h2');
+    assert(md.querySelector('h3'), '### without space renders h3');
+    assert(!/#/.test(h2.textContent), 'no raw # visible in reading view');
+  });
+  test('v1.6.26: h5/h6 sections always collapse into details.deep-fold (closed by default)', () => {
+    const md = window.eval('renderMarkdown')('#####تفاصيل فرعية\nمحتوى مخفي افتراضيًا\n####عنوان أصفر\nبعد الطي');
+    const folds = md.querySelectorAll('details.deep-fold');
+    assert(folds.length === 1, 'one deep fold');
+    assert(!folds[0].open, 'collapsed by default');
+    assert(folds[0].querySelector('summary h5'), 'h5 inside summary');
+    assert(folds[0].querySelector('.fold-body').textContent.includes('محتوى مخفي'), 'fold body keeps content');
+    assert(md.querySelector('h4'), 'h4 still rendered inline');
+    assert(!folds[0].textContent.includes('بعد الطي'), 'fold ends at next level<=4 heading');
+    folds[0].open = true;
+    assert(folds[0].querySelector('.fold-body').textContent.includes('محتوى مخفي'), 'fold opens on demand');
+  });
+  test('v1.6.26: trailing hashes stripped; bare # line stays a paragraph', () => {
+    const md = window.eval('renderMarkdown')('## عنوان مع زوائد ##\n#\nنص عادي');
+    assert(md.querySelector('h2').textContent.trim() === 'عنوان مع زوائد', 'trailing ## stripped');
+    assert(!md.querySelector('h1'), 'bare # line is not a heading');
+    const ps = [...md.querySelectorAll('p')].map(p => p.textContent);
+    assert(ps.some(t => t.includes('نص عادي')), 'following text intact');
+  });
+
   await runAll();
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);

@@ -449,6 +449,32 @@ body.theme-dark .doc-body h4, body.theme-dark #docBody h5, body.theme-dark #docB
   background: rgba(212, 169, 78, .14); color: #e8cd82;
 }
 
+/* v1.6.26: comfortable reading rhythm */
+.doc-body { line-height: 1.95; }
+.doc-body p { margin: 0 0 12px; }
+
+/* v1.6.26: deep headings (##### ######) always collapsed — monochrome fold */
+details.deep-fold {
+  border: 1px solid var(--border); border-radius: 6px;
+  margin: 10px 0; background: var(--bg3); overflow: hidden;
+}
+details.deep-fold > summary {
+  list-style: none; cursor: pointer; padding: 8px 12px;
+  display: flex; align-items: center; gap: 8px; user-select: none;
+}
+details.deep-fold > summary::-webkit-details-marker { display: none; }
+details.deep-fold > summary h5, details.deep-fold > summary h6 {
+  margin: 0; font-size: 14px; font-weight: 700; color: var(--text);
+  background: transparent; padding: 0; border: none; flex: 1;
+}
+.fold-arrow { color: var(--muted); font-size: 11px; transition: transform .15s; }
+details.deep-fold[open] > summary .fold-arrow { transform: rotate(90deg); }
+details.deep-fold > .fold-body { padding: 0 14px 10px; border-top: 1px solid var(--border); }
+details.deep-fold > .fold-body > *:first-child { margin-top: 8px; }
+body.theme-dark details.deep-fold { background: rgba(255, 255, 255, .03); }
+body.theme-dark details.deep-fold > summary h5,
+body.theme-dark details.deep-fold > summary h6 { color: var(--text); }
+
 /* article-level amendment annotation (in-app only, original text preserved) */
 .article-amend {
   margin-top: 8px; padding: 7px 10px; font-size: 13px; color: var(--muted);
