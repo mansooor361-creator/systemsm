@@ -48,7 +48,7 @@
         "ar_SA",
         "en_US"
       ],
-      "artifactName": "${productName} Setup"
+      "artifactName": "${productName}.Setup"
     },
     "portable": {
       "artifactName": "${productName}"
