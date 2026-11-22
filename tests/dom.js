@@ -270,7 +270,7 @@ function bootDom() {
   test('enabled tools appear in the side rail with classic monochrome glyphs (v1.6.13)', () => {
     App.showView('home');
     const railBtns = [...doc.querySelectorAll('#toolRail .tool-rail-btn')];
-    assert(railBtns.length === 10, 'all enabled tools in rail, got ' + railBtns.length);
+    assert(railBtns.length === 11, 'all enabled tools in rail, got ' + railBtns.length);
     assert(railBtns.every(b => b.classList.contains('mono')), 'rail tool icons are monochrome');
     assert(railBtns.every(b => b.title && b.title.length > 1), 'hover title shows tool name');
     assert(railBtns.every(b => b.textContent.codePointAt(0) < 0x1F000), 'classic glyphs, no color emoji');
@@ -282,7 +282,7 @@ function bootDom() {
   });
   test('contract tool: generates structure + analyzes clauses', () => {
     Tools.open('contract');
-    assert(doc.querySelectorAll('#toolsMenu .tool-chip').length === 10, '10 tools now (consultant removed)');
+    assert(doc.querySelectorAll('#toolsMenu .tool-chip').length === 11, '11 tools now (OCR added)');
     doc.getElementById('ctGen').click();
     const gen = doc.getElementById('ctOut').textContent;
     assert(gen.includes('أبجدية العقود'), 'contract alphabet in generated structure');
@@ -362,7 +362,7 @@ function bootDom() {
   test('enabled tools appear as monochrome icons in the rail; click opens the tool', () => {
     App.renderToolRail();
     const btns = doc.querySelectorAll('#toolRail .tool-rail-btn');
-    assert(btns.length === 10, 'all enabled tools in rail');
+    assert(btns.length === 11, 'all enabled tools in rail');
     assert(btns[0].title.length > 2, 'tooltip shows tool name');
     btns[3].click();
     assert(!doc.getElementById('view-tools').classList.contains('hidden'), 'tool opens from rail');
@@ -467,18 +467,18 @@ function bootDom() {
     doc.getElementById('setToolSearch').value = '';
     App.renderToolSettings();
     rows = doc.querySelectorAll('#toolSettingsList .set-card');
-    assert(rows.length === 10, 'all 10 tools listed');
+    assert(rows.length === 11, 'all 11 tools listed');
     assert(rows[0].querySelector('.cat-chip'), 'category chip on tool row');
     const waRow = [...rows].find(r => r.textContent.includes('واتساب'));
     assert(waRow, 'whatsapp tool row found');
     waRow.querySelector('input').click();
     await new Promise(r => setTimeout(r, 50));
     const chips = [...doc.querySelectorAll('#toolsMenu .tool-chip')];
-    assert(chips.length === 9, 'disabled tool removed from tools menu');
+    assert(chips.length === 10, 'disabled tool removed from tools menu (11 - 1)');
     assert(!chips.some(c => c.textContent.includes('واتساب')), 'whatsapp chip hidden');
     waRow.querySelector('input').click();
     await new Promise(r => setTimeout(r, 50));
-    assert(doc.querySelectorAll('#toolsMenu .tool-chip').length === 10, 're-enabled');
+    assert(doc.querySelectorAll('#toolsMenu .tool-chip').length === 11, 're-enabled');
   });
   test('v1.6.11: home tools section removed entirely (rail + settings only)', () => {
     assert(!doc.getElementById('homeToolCards'), 'home tool cards removed');
@@ -1182,7 +1182,7 @@ function bootDom() {
   test('v1.6.23: tools and KB settings render as stacked card grid', () => {
     App.renderToolSettings();
     App.renderKbSettings();
-    assert(doc.querySelectorAll('#toolSettingsList .set-card').length === 10, '10 tool cards');
+    assert(doc.querySelectorAll('#toolSettingsList .set-card').length === 11, '11 tool cards');
     assert(doc.querySelectorAll('#kbSettingsList .set-card').length === KB.kbs.length, 'one card per KB');
     assert(doc.querySelector('#toolSettingsList .set-card .sc-foot .switch'), 'switch inside card footer');
   });
@@ -1242,6 +1242,32 @@ function bootDom() {
     assert(kid.querySelector(':scope > .toc-item > .toc-toggle').textContent === '\u25b8', 'arrow flips to ▸ when collapsed');
     kid.querySelector('.toc-toggle').click();
     assert(kid.querySelector(':scope > .toc-item > .toc-toggle').textContent === '\u25be', 'arrow back to ▾');
+  });
+
+  console.log('\n— v1.6.30: OCR engine — سحب صور الوثائق (AI agents) —');
+  test('v1.6.30: OCR tool listed as an AI tool with bilingual label', () => {
+    const t = Tools.list().find(x => x.id === 'ocr');
+    assert(t, 'ocr tool present');
+    assert(t.cat === 'ai', 'registered as AI-powered tool');
+    assert(window.eval('I18n').t('toolOcr').includes('سحب صور الوثائق'), 'Arabic label');
+  });
+  test('v1.6.30: OCR panel renders pick button, vision-model input and status', () => {
+    Tools.open('ocr');
+    assert(doc.getElementById('ocrPick'), 'pick button');
+    assert(doc.getElementById('ocrModel'), 'vision model input');
+    assert(doc.getElementById('ocrStatus'), 'status line');
+    assert(doc.getElementById('ocrOut'), 'results area');
+  });
+  test('v1.6.30: OCR run without an LLM endpoint shows the settings hint', async () => {
+    Tools.open('ocr');
+    window.daaixSettings.llm = {};
+    const pick = stubBridge.pickFile;
+    stubBridge.pickFile = async () => ({ path: '/tmp/x.png', name: 'x.png', data: 'AAAA' });
+    doc.getElementById('ocrPick').click();
+    await new Promise(r => setTimeout(r, 20));
+    assert(doc.getElementById('ocrStatus').textContent.length > 0, 'hint shown instead of crash');
+    stubBridge.pickFile = pick;
+    window.daaixSettings.llm = { baseUrl: 'https://api.example.com/v1', model: 'test' };
   });
 
   await runAll();

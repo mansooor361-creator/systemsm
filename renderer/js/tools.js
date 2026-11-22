@@ -14,7 +14,9 @@ const Tools = {
       { id: 'building', icon: '🏗️', glyph: '\u2302', label: I18n.t('toolBuilding'), cat: 'legal', desc: I18n.t('descBuilding') },
       { id: 'contract', icon: '📝', glyph: '\u00a7', label: I18n.t('toolContract'), cat: 'legal', desc: I18n.t('descContract') },
       { id: 'socialMonitor', icon: '📡', glyph: '\u25c9', label: I18n.t('toolSocial'), cat: 'ai', desc: I18n.t('socialDesc') },
-      { id: 'whatsapp', icon: '💬', glyph: '\u2706\ufe0e', label: I18n.t('toolWhatsapp'), cat: 'ai', desc: I18n.t('waDesc') }
+      { id: 'whatsapp', icon: '💬', glyph: '\u2706\ufe0e', label: I18n.t('toolWhatsapp'), cat: 'ai', desc: I18n.t('waDesc') },
+      /* v1.6.30: OCR engine powered by the AI agents — strongest scan for image text and document image extraction */
+      { id: 'ocr', icon: '📷', glyph: '⌕', label: I18n.t('toolOcr'), cat: 'ai', desc: I18n.t('descOcr') }
     ];
   },
 
@@ -682,6 +684,137 @@ const Tools = {
         };
         card.appendChild(sendBtn);
       }
+      out.appendChild(card);
+    };
+  },
+
+  /* ============ 11. OCR — سحب صور الوثائق (AI vision engine) ============ */
+  /* v1.6.30: document image scanner powered by the AI agents layer (vision LLM via the configured endpoint). */
+  render_ocr(panel) {
+    const box = this.el(`
+      <div>
+        <h2>📷 ${I18n.t('toolOcr')}</h2>
+        <p class="hint">${I18n.t('descOcr')}</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:12px 0">
+          <button class="primary" id="ocrPick">📁 ${I18n.t('ocrPick')}</button>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)">${I18n.t('ocrModel')}
+            <input id="ocrModel" placeholder="gpt-4o / gemini / qwen-vl…" style="width:230px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;outline:none" />
+          </label>
+        </div>
+        <div id="ocrStatus" class="hint" style="margin-bottom:10px"></div>
+        <div id="ocrOut"></div>
+      </div>`);
+    panel.appendChild(box);
+
+    const modelInput = box.querySelector('#ocrModel');
+    modelInput.value = (window.daaixSettings || {}).ocrModel || '';
+    modelInput.onchange = async (e) => {
+      const v = e.target.value.trim();
+      if (window.daaixSettings) window.daaixSettings.ocrModel = v;
+      await window.daaix.settingsSet({ ocrModel: v });
+    };
+
+    box.querySelector('#ocrPick').onclick = async () => {
+      const status = box.querySelector('#ocrStatus');
+      const out = box.querySelector('#ocrOut');
+      const file = await window.daaix.pickFile(I18n.t('ocrPick'), ['png', 'jpg', 'jpeg', 'webp', 'bmp', 'gif', 'pdf']);
+      if (!file) return;
+      const llm = (window.daaixSettings || {}).llm || {};
+      if (!llm.baseUrl || !/^(https?:)?\/\//.test(llm.baseUrl)) {
+        status.textContent = I18n.t('ocrNeedLlm');
+        return;
+      }
+      status.textContent = I18n.t('ocrWorking');
+      const isPdf = /\.pdf$/i.test(file.name);
+      const ext = (file.name.split('.').pop() || 'png').toLowerCase();
+      const mime = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', bmp: 'image/bmp', gif: 'image/gif' }[ext] || (isPdf ? 'application/pdf' : 'image/png');
+      const dataUrl = `data:${mime};base64,${file.data}`;
+      const model = modelInput.value.trim() || llm.model || 'gpt-4o-mini';
+      const lang = I18n.lang;
+      const prompt = [
+        lang === 'ar'
+          ? 'You are the OCR engine of DaAIx ("سحب صور الوثائق") working as an AI vision agent.'
+          : 'You are the OCR engine of DaAIx ("Document Image Scanner") working as an AI vision agent.',
+        'Extract EVERY piece of text visible in the attached image or document — Arabic, English, or any other language — exactly as written.',
+        'STRICT RULES:',
+        '1) Return ONLY the extracted text as clean Markdown — no commentary, no preamble, no translations.',
+        '2) Preserve the original wording verbatim: never translate, correct, summarise or rephrase.',
+        '3) Preserve structure: headings (#), numbered lists, tables, article numbers, dates, amounts and signatures exactly as shown.',
+        '4) Read both printed and handwritten text.',
+        '5) If part of the image is unreadable, write [unreadable] in its place.',
+        lang === 'ar' ? 'أخرج النص بنفس لغته الأصلية مع الإخراج بصيغة Markdown.' : 'Output the text in its original language.'
+      ].join('\n');
+      const sendVision = (url) => fetch(llm.baseUrl.replace(/\/$/, '') + '/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (llm.apiKey || '') },
+        body: JSON.stringify({
+          model,
+          temperature: 0,
+          messages: [{ role: 'user', content: [
+            { type: 'text', text: prompt },
+            { type: 'image_url', image_url: { url } }
+          ]}]
+        })
+      }).then(async (res) => {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        const textOut = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+        if (!textOut) throw new Error('empty');
+        return textOut;
+      });
+
+      let text = null;
+      try {
+        text = await sendVision(dataUrl);
+      } catch (visionErr) {
+        if (isPdf) {
+          /* scanned-PDF fallback: embedded text layer via the converter engine */
+          const conv = await window.daaix.convertToMarkdown({ path: file.path, data: file.data });
+          const md = conv.ok ? String(conv.markdown || '') : '';
+          if (md.replace(/\s/g, '').length >= 40) {
+            text = md;
+          } else {
+            status.textContent = I18n.t('ocrScannedPdfHint');
+            return;
+          }
+        } else {
+          status.textContent = I18n.t('ocrFail') + ' — ' + String(visionErr && visionErr.message || visionErr);
+          return;
+        }
+      }
+      status.textContent = I18n.t('ocrDone') + ' — ' + file.name;
+
+      const card = this.el(`<div class="result-card"></div>`);
+      const head = this.el(`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+        <span style="font-weight:700">${(typeof esc === 'function') ? esc(file.name) : file.name}</span>
+        <span class="hint" style="flex:1">${text.length.toLocaleString()} ${I18n.t('charsCount')}</span>
+      </div>`);
+      card.appendChild(head);
+      const actions = this.el(`<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px"></div>`);
+      const mk = (label, fn) => {
+        const b = this.el(`<button class="ghost-btn">${label}</button>`);
+        b.onclick = fn;
+        return b;
+      };
+      actions.appendChild(mk(I18n.t('ocrCopy'), () => { if (navigator.clipboard) navigator.clipboard.writeText(text); App.toast(I18n.t('ocrCopied')); }));
+      actions.appendChild(mk(I18n.t('ocrSaveNote'), () => {
+        const id = 'note-' + Date.now();
+        const tm = text.match(/^#\s+(.+)$/m);
+        const title = (tm ? tm[1] : file.name).trim().slice(0, 60);
+        window.daaix.notesSave({ id, markdown: '# ' + title + '\n\n' + text }).then(() => {
+          App.toast(I18n.t('ocrSaved'));
+          Notes.refresh();
+        });
+      }));
+      actions.appendChild(mk(I18n.t('ocrToAgent'), () => {
+        const input = document.getElementById('agentInput');
+        if (input) { input.value = text.slice(0, 4000); input.focus(); }
+        App.activateTab('agents');
+      }));
+      card.appendChild(actions);
+      const preview = this.el(`<div class="md-preview"></div>`);
+      preview.appendChild(renderMarkdown(text));
+      card.appendChild(preview);
       out.appendChild(card);
     };
   }
