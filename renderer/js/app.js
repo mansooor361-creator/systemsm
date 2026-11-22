@@ -249,6 +249,10 @@ const App = {
     window.daaix.onUpdateAvailable((data) => {
       this.toast(`${I18n.t('updatesAvailable')}: ${data.updates.length}`);
     });
+
+    /* v1.6.31: watched connectors — check for new items every minute */
+    this._connChecking = false;
+    setInterval(() => { this.autoCheckConnectors(); }, 60000);
   },
 
   /* ---------- v1.6.25: Obsidian-style quick switcher (Ctrl+O) ---------- */
@@ -809,7 +813,7 @@ const App = {
     document.getElementById('btnAiSave').onclick = () => this.saveSettingsForm();
     document.getElementById('btnAddConnector').onclick = () => {
       const connectors = this.settings.connectors || [];
-      connectors.push({ name: '', url: '', apiKey: '', enabled: true });
+      connectors.push({ name: '', url: '', apiKey: '', enabled: true, interval: 30, lastCheck: '', items: [] });
       this.settings.connectors = connectors;
       this.renderConnectors();
     };
@@ -951,6 +955,50 @@ const App = {
       };
       skillList.appendChild(row);
     });
+
+    /* v1.6.31: OCR engine lives with the agents — settings here, not inside the tool body */
+    const ocrSec = document.createElement('div');
+    ocrSec.className = 'cmd-item';
+    const curOcrId = this.settings.ocrAgentId || '';
+    const ocrAgentOpts = Agents.list().map(a => `<option value="agent:${esc(a.id)}"${curOcrId === ('agent:' + a.id) ? ' selected' : ''}>${esc(a.icon + ' ' + ((I18n.lang === 'ar') ? a.label.ar : a.label.en))}</option>`).join('');
+    const ocrSkillOpts = Agents.allSkills().filter(sk => sk.model).map(sk => `<option value="sk:${esc(sk.id)}"${curOcrId === ('sk:' + sk.id) ? ' selected' : ''}>\u2728 ${esc(sk.name)} \u2014 ${esc(sk.model)}</option>`).join('');
+    ocrSec.innerHTML = `
+      <div class="cmd-main" style="flex:1">
+        <div class="cmd-name">\ud83d\udcf7 ${esc(I18n.t('toolOcr'))} \u2014 ${esc(I18n.t('ocrAgent'))}</div>
+        <select id="ocrAgent" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;outline:none;margin-top:4px">
+          <option value=""${curOcrId ? '' : ' selected'}>\u2014 ${esc(I18n.t('ocrAgentGeneric'))}</option>
+          ${ocrAgentOpts}${ocrSkillOpts}
+        </select>
+        <input id="ocrModel" placeholder="gpt-4o / gemini / qwen-vl\u2026" value="${esc(this.settings.ocrModel || '')}" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;outline:none;margin-top:8px" />
+        <div id="ocrAgentInfo" class="cmd-desc" style="margin-top:6px">${esc(I18n.t('ocrAgentInfo'))}</div>
+      </div>`;
+    ocrSec.querySelector('#ocrAgent').onchange = async (e) => {
+      const v = e.target.value;
+      this.settings.ocrAgentId = v;
+      await window.daaix.settingsSet({ ocrAgentId: v });
+      const info = ocrSec.querySelector('#ocrAgentInfo');
+      const mdl = ocrSec.querySelector('#ocrModel');
+      if (v.indexOf('sk:') === 0) {
+        const sk = Agents.skillById(v.slice(3));
+        if (sk && sk.model && mdl.value !== sk.model) {
+          mdl.value = sk.model;
+          this.settings.ocrModel = sk.model;
+          await window.daaix.settingsSet({ ocrModel: sk.model });
+        }
+        info.textContent = sk ? (sk.name + ' \u2014 ' + sk.model) : '';
+      } else if (v.indexOf('agent:') === 0) {
+        const a = Agents.list().find(x => x.id === v.slice(6));
+        info.textContent = a ? (((I18n.lang === 'ar') ? a.label.ar : a.label.en) + ' \u2014 ' + (this.settings.ocrModel || ((window.daaixSettings || {}).llm || {}).model || '')) : '';
+      } else {
+        info.textContent = I18n.t('ocrAgentInfo');
+      }
+    };
+    ocrSec.querySelector('#ocrModel').onchange = async (e) => {
+      const v = e.target.value.trim();
+      this.settings.ocrModel = v;
+      await window.daaix.settingsSet({ ocrModel: v });
+    };
+    skillList.parentNode.insertBefore(ocrSec, skillList.nextSibling);
 
     const memList = document.getElementById('memoryList');
     if (memList) {
@@ -1138,30 +1186,140 @@ const App = {
       return;
     }
     connectors.forEach((c, idx) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'connector-wrap';
       const row = document.createElement('div');
       row.className = 'connector-row';
       row.innerHTML = `
         <input type="text" data-c="name" placeholder="${I18n.t('connectorName')}" value="${esc(c.name || '')}" />
         <input type="url" data-c="url" placeholder="${I18n.t('connectorUrl')}" value="${esc(c.url || '')}" />
+        <input type="number" data-c="interval" min="5" step="5" title="${I18n.t('connInterval')}" value="${Math.max(5, parseInt(c.interval, 10) || 30)}" />
         <input type="password" data-c="apiKey" placeholder="${I18n.t('apiKey')}" value="${esc(c.apiKey || '')}" autocomplete="off" />
         <label class="check-item"><input type="checkbox" data-c="enabled" ${c.enabled !== false ? 'checked' : ''} /></label>
+        <button class="ghost-btn conn-check" title="${I18n.t('connCheckNow')}">⟳ ${I18n.t('connCheckNow')}</button>
         <button class="danger conn-del">✕</button>`;
       row.querySelector('.conn-del').onclick = () => {
         this.settings.connectors.splice(idx, 1);
         this.renderConnectors();
       };
-      list.appendChild(row);
+      row.querySelector('.conn-check').onclick = () => this.checkConnector(idx);
+      wrap.appendChild(row);
+      /* v1.6.31: watched items found on the page, newest first */
+      const itemsBox = document.createElement('div');
+      itemsBox.className = 'conn-items';
+      const items = (c.items || []).slice().sort((a, b) => String(b.foundAt || '').localeCompare(String(a.foundAt || '')));
+      if (items.length) {
+        items.slice(0, 50).forEach(it => {
+          const li = document.createElement('div');
+          li.className = 'conn-item';
+          const d = it.foundAt ? new Date(it.foundAt) : null;
+          li.innerHTML = `<span class="conn-item-title" title="${esc(it.title || '')}">${esc(it.title || '')}</span>` +
+            `<span class="conn-item-date">${d ? d.toLocaleDateString() : ''}</span>`;
+          li.title = it.title || '';
+          li.style.cursor = 'pointer';
+          li.onclick = () => window.daaix.openExternal(it.link);
+          itemsBox.appendChild(li);
+        });
+      } else {
+        itemsBox.innerHTML = `<div class="conn-item conn-empty">${I18n.t('connNoItems')}</div>`;
+      }
+      wrap.appendChild(itemsBox);
+      list.appendChild(wrap);
     });
   },
 
   readConnectors() {
     const rows = [...document.querySelectorAll('#connectorList .connector-row')];
-    return rows.map(row => ({
-      name: row.querySelector('[data-c=name]').value.trim(),
-      url: row.querySelector('[data-c=url]').value.trim(),
-      apiKey: row.querySelector('[data-c=apiKey]').value.trim(),
-      enabled: row.querySelector('[data-c=enabled]').checked
-    })).filter(c => c.url);
+    const old = this.settings.connectors || [];
+    return rows.map((row, i) => {
+      const prev = old[i] || {};
+      return {
+        name: row.querySelector('[data-c=name]').value.trim(),
+        url: row.querySelector('[data-c=url]').value.trim(),
+        apiKey: row.querySelector('[data-c=apiKey]').value.trim(),
+        enabled: row.querySelector('[data-c=enabled]').checked,
+        interval: Math.max(5, parseInt(row.querySelector('[data-c=interval]').value, 10) || 30),
+        lastCheck: prev.lastCheck || '',
+        items: prev.items || []
+      };
+    }).filter(c => c.url);
+  },
+
+  /* ---------- v1.6.31: watched connectors — periodic re-check for new items ---------- */
+  async checkConnector(idx) {
+    const c = (this.settings.connectors || [])[idx];
+    if (!c || !c.url) return Promise.resolve();
+    const res = await window.daaix.netGetText(c.url);
+    if (!res || !res.ok) {
+      this.toast(I18n.t('connCheckNow') + ' ✕ — ' + ((res && res.error) || ''));
+      return;
+    }
+    const items = this.extractPageItems(res.text, c.url);
+    const known = new Set((c.items || []).map(x => x.link));
+    let added = 0;
+    (items || []).forEach(it => {
+      if (it.link && !known.has(it.link)) { (c.items = c.items || []).push(it); known.add(it.link); added++; }
+    });
+    c.items = (c.items || []).slice(-200);
+    c.lastCheck = new Date().toISOString();
+    this.settings.connectors = this.settings.connectors || [];
+    await window.daaix.settingsSet({ connectors: this.settings.connectors });
+    this.renderConnectors();
+    this.toast(I18n.t('connNewFound') + ': ' + added);
+  },
+
+  extractPageItems(html, baseUrl) {
+    const out = [];
+    const seen = new Set();
+    const push = (title, link) => {
+      if (seen.has(link) || out.length >= 100) return;
+      seen.add(link);
+      out.push({ title: String(title || '').slice(0, 140), link, foundAt: new Date().toISOString() });
+    };
+    let host = '';
+    try { host = new URL(baseUrl).host; } catch (_) { return out; }
+    try {
+      const doc = new DOMParser().parseFromString(String(html || ''), 'text/html');
+      [...doc.querySelectorAll('a[href]')].forEach(a => {
+        const text = (a.textContent || '').replace(/\s+/g, ' ').trim();
+        const href = a.getAttribute('href') || '';
+        if (text.length < 8 || href.charAt(0) === '#' || /^(mailto|javascript):/i.test(href)) return;
+        let abs = '';
+        try { abs = new URL(href, baseUrl).href; } catch (_) { return; }
+        if (!/^https?:\/\//i.test(abs)) return;
+        try { if (new URL(abs).host !== host) return; } catch (_) { return; }
+        push(text, abs);
+      });
+    } catch (_) { /* fall through to regex */ }
+    if (!out.length) {
+      String(html || '').replace(/<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]{5,200}?)<\/a>/gi, (m, href, t) => {
+        const text = String(t).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+        if (text.length < 8) return m;
+        let abs = '';
+        try { abs = new URL(href, baseUrl).href; } catch (_) { return m; }
+        if (!/^https?:\/\//i.test(abs)) return m;
+        try { if (new URL(abs).host !== host) return m; } catch (_) { return m; }
+        push(text, abs);
+        return m;
+      });
+    }
+    return out;
+  },
+
+  async autoCheckConnectors() {
+    if (this._connChecking) return;
+    const cs = this.settings.connectors || [];
+    const now = Date.now();
+    const due = [];
+    cs.forEach((c, idx) => {
+      if (c.enabled === false || !c.url) return;
+      const iv = Math.max(5, parseInt(c.interval, 10) || 30) * 60000;
+      const last = c.lastCheck ? (Date.parse(c.lastCheck) || 0) : 0;
+      if (now - last >= iv) due.push(idx);
+    });
+    if (!due.length) return;
+    this._connChecking = true;
+    try { for (const i of due) await this.checkConnector(i); } finally { this._connChecking = false; }
   },
 
   showView(name) {

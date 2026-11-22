@@ -8,7 +8,6 @@ const Tools = {
       { id: 'converter', icon: '🔄', glyph: '\u21c4', label: I18n.t('toolConverter'), cat: 'free', desc: I18n.t('descConverter') },
       { id: 'costs', icon: '🧾', glyph: '\u2211', label: I18n.t('toolCosts'), cat: 'legal', desc: I18n.t('descCosts') },
       { id: 'labor', icon: '👷', glyph: '\u2692\ufe0e', label: I18n.t('toolLabor'), cat: 'legal', desc: I18n.t('descLabor') },
-      { id: 'laborConsultant', icon: '🧑‍⚖️', glyph: '\u2695\ufe0e', label: I18n.t('toolLaborConsultant'), cat: 'legal', desc: I18n.t('descLaborConsultant') },
       { id: 'competition', icon: '🏆', glyph: '\u2694\ufe0e', label: I18n.t('toolCompetition'), cat: 'legal', desc: I18n.t('descCompetition') },
       { id: 'offers', icon: '📊', glyph: '\u25a4', label: I18n.t('toolOffers'), cat: 'legal', desc: I18n.t('descOffers') },
       { id: 'building', icon: '🏗️', glyph: '\u2302', label: I18n.t('toolBuilding'), cat: 'legal', desc: I18n.t('descBuilding') },
@@ -184,15 +183,14 @@ const Tools = {
   },
 
   /* ============ 5 & 6. Scoped consultants ============ */
-  render_laborConsultant(panel) { this.render_consultantScoped(panel, 'laborConsultant', ['sa-labor-law', 'sa-reg-hr', 'sa-ruling-labor-1', 'sa-principle-hc-1']); },
   render_competition(panel) { this.render_consultantScoped(panel, 'competition', null, /منافسات|مشتريات|عطاء|منافسة|competition|procurement|tender/i); },
 
   render_consultantScoped(panel, id, docIds, titleRegex) {
-    const labels = { laborConsultant: 'toolLaborConsultant', competition: 'toolCompetition' };
-    const placeholders = { laborConsultant: 'consultantQuestion', competition: 'competitionQuestion' };
+    const labels = { competition: 'toolCompetition' };
+    const placeholders = { competition: 'competitionQuestion' };
     const box = this.el(`
       <div>
-        <h2>${id === 'laborConsultant' ? '🧑‍⚖️' : '🏆'} ${I18n.t(labels[id])}</h2>
+        <h2>🏆 ${I18n.t(labels[id])}</h2>
         <div class="form-grid" style="grid-template-columns:1fr">
           <label>${I18n.t(placeholders[id])}
             <textarea id="scQ" rows="3" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px;outline:none"></textarea>
@@ -697,22 +695,23 @@ const Tools = {
         <p class="hint">${I18n.t('descOcr')}</p>
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:12px 0">
           <button class="primary" id="ocrPick">📁 ${I18n.t('ocrPick')}</button>
-          <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)">${I18n.t('ocrModel')}
-            <input id="ocrModel" placeholder="gpt-4o / gemini / qwen-vl…" style="width:230px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;outline:none" />
-          </label>
+          <span class="hint" id="ocrAgentLine"></span>
         </div>
         <div id="ocrStatus" class="hint" style="margin-bottom:10px"></div>
         <div id="ocrOut"></div>
       </div>`);
     panel.appendChild(box);
 
-    const modelInput = box.querySelector('#ocrModel');
-    modelInput.value = (window.daaixSettings || {}).ocrModel || '';
-    modelInput.onchange = async (e) => {
-      const v = e.target.value.trim();
-      if (window.daaixSettings) window.daaixSettings.ocrModel = v;
-      await window.daaix.settingsSet({ ocrModel: v });
-    };
+    /* v1.6.31: model + agent are chosen in AI/agents settings, not here */
+    const ocrSel = ((window.daaixSettings || {}).ocrAgentId) || '';
+    const ocrSk = (ocrSel.indexOf('sk:') === 0) ? Agents.skillById(ocrSel.slice(3)) : null;
+    const ocrAgentLine = box.querySelector('#ocrAgentLine');
+    if (ocrAgentLine) {
+      const lbl = ocrSk ? { ar: ocrSk.name, en: ocrSk.name }
+        : ((ocrSel.indexOf('agent:') === 0) ? ((Agents.list().find(a => a.id === ocrSel.slice(6)) || {}).label) : null);
+      const txt = lbl ? ((I18n.lang === 'ar' ? lbl.ar : lbl.en) || lbl.ar || lbl.en) : I18n.t('ocrAgentGeneric');
+      ocrAgentLine.textContent = `${I18n.t('ocrAgent')}: ${txt}`;
+    }
 
     box.querySelector('#ocrPick').onclick = async () => {
       const status = box.querySelector('#ocrStatus');
@@ -729,7 +728,7 @@ const Tools = {
       const ext = (file.name.split('.').pop() || 'png').toLowerCase();
       const mime = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', bmp: 'image/bmp', gif: 'image/gif' }[ext] || (isPdf ? 'application/pdf' : 'image/png');
       const dataUrl = `data:${mime};base64,${file.data}`;
-      const model = modelInput.value.trim() || llm.model || 'gpt-4o-mini';
+      const model = (ocrSk && ocrSk.model) || (window.daaixSettings || {}).ocrModel || llm.model || 'gpt-4o-mini';
       const lang = I18n.lang;
       const prompt = [
         lang === 'ar'

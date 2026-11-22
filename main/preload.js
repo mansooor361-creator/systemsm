@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('daaix', {
   kbCheckUpdates: () => ipcRenderer.invoke('kb:checkUpdates'),
   kbFetchRemote: (url) => ipcRenderer.invoke('kb:fetchRemote', url),
   netPost: (url, apiKey, body) => ipcRenderer.invoke('net:post', url, apiKey, body),
+  netGetText: (url) => ipcRenderer.invoke('net:getText', url),
   importFolder: () => ipcRenderer.invoke('fs:importFolder'),
   rescanFolder: (dir, kbId) => ipcRenderer.invoke('fs:rescanFolder', dir, kbId),
   convertFolder: (opts) => ipcRenderer.invoke('fs:convertFolder', opts),

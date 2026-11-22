@@ -172,11 +172,16 @@ html[lang="en"] #view-doc > * { direction: ltr; }
 .toc-children { position: relative; margin-inline-start: 15px; padding-inline-start: 4px; }
 .toc-children::before {
   content: ''; position: absolute; top: 0; bottom: 0; inset-inline-start: 0;
-  width: 1px; background: var(--border);
+  width: 1px; background: var(--border); opacity: .55;
 }
 .toc-children > .toc-node::before {
   content: ''; position: absolute; top: 17px; inset-inline-start: -15px;
-  width: 11px; height: 1px; background: var(--border);
+  width: 11px; height: 1px; background: var(--border); opacity: .55;
+}
+/* v1.6.31: the rail must stop at the last sibling's stub — mask its tail */
+.toc-children > .toc-node:last-child::after {
+  content: ''; position: absolute; top: 18px; bottom: 0; inset-inline-start: -1px;
+  width: 3px; background: var(--bg2);
 }
 .toc-children.collapsed { display: none; }
 
@@ -309,13 +314,26 @@ button.danger { background: transparent; border: 1px solid var(--danger); color:
 .agent-result { max-height: none; }
 .agent-result .doc-body { font-size: 15px; }
 .connector-row {
-  display: grid; grid-template-columns: 1fr 2fr 1fr auto auto; gap: 8px; align-items: center;
+  display: grid; grid-template-columns: 1fr 2fr 64px 1fr auto auto auto; gap: 8px; align-items: center;
   padding: 8px 0; border-bottom: 1px dashed var(--border);
 }
 .connector-row input {
   background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; outline: none;
 }
 .connector-row .conn-del { padding: 6px 12px; border-radius: 8px; }
+.connector-row .conn-check { white-space: nowrap; padding: 6px 12px; border-radius: 8px; }
+/* v1.6.31: watched connectors — items found on the page as tidy rows */
+.conn-items { padding: 2px 0 10px; border-bottom: 1px dashed var(--border); }
+.conn-items:empty { display: none; }
+.conn-item {
+  display: flex; align-items: center; gap: 10px; padding: 4px 6px;
+  font-size: 13px; line-height: 1.5; border-radius: 6px; color: var(--text);
+}
+.conn-item:hover { background: var(--bg3); }
+.conn-item-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conn-item-date { flex: none; font-size: 11px; color: var(--muted); }
+.conn-empty { color: var(--muted); font-size: 12px; cursor: default; }
+.conn-empty:hover { background: transparent; }
 
 /* ---------- tools ---------- */
 .tools-menu { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }

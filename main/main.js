@@ -277,6 +277,18 @@ ipcMain.handle('net:post', async (_e, url, apiKey, body) => {
   }
 });
 
+ipcMain.handle('net:getText', async (_e, url) => {
+  try {
+    const { net } = require('electron');
+    if (!/^https?:\/\//i.test(String(url || ''))) throw new Error('bad url');
+    const res = await net.fetch(url, { signal: AbortSignal.timeout(30000) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return { ok: true, text: await res.text() };
+  } catch (e) {
+    return { ok: false, error: String(e.message || e) };
+  }
+});
+
 ipcMain.handle('kb:fetchRemote', async (_e, url) => {
   try {
     const res = await netFetch(url);

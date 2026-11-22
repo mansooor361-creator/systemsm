@@ -28,6 +28,7 @@ const stubBridge = {
   kbCheckUpdates: async () => ({ ok: true, updates: [] }),
   kbFetchRemote: async () => ({ ok: false }),
   netPost: async () => ({ answer: 'x' }),
+  netGetText: async () => ({ ok: false, error: 'offline' }),
   appVersion: async () => '1.2.0',
   openExternal: () => {},
   onUpdateAvailable: (cb) => { updateCb = cb; },
@@ -270,7 +271,7 @@ function bootDom() {
   test('enabled tools appear in the side rail with classic monochrome glyphs (v1.6.13)', () => {
     App.showView('home');
     const railBtns = [...doc.querySelectorAll('#toolRail .tool-rail-btn')];
-    assert(railBtns.length === 11, 'all enabled tools in rail, got ' + railBtns.length);
+    assert(railBtns.length === 10, 'all enabled tools in rail, got ' + railBtns.length);
     assert(railBtns.every(b => b.classList.contains('mono')), 'rail tool icons are monochrome');
     assert(railBtns.every(b => b.title && b.title.length > 1), 'hover title shows tool name');
     assert(railBtns.every(b => b.textContent.codePointAt(0) < 0x1F000), 'classic glyphs, no color emoji');
@@ -282,7 +283,7 @@ function bootDom() {
   });
   test('contract tool: generates structure + analyzes clauses', () => {
     Tools.open('contract');
-    assert(doc.querySelectorAll('#toolsMenu .tool-chip').length === 11, '11 tools now (OCR added)');
+    assert(doc.querySelectorAll('#toolsMenu .tool-chip').length === 10, '10 tools now (consultant removed, OCR added)');
     doc.getElementById('ctGen').click();
     const gen = doc.getElementById('ctOut').textContent;
     assert(gen.includes('أبجدية العقود'), 'contract alphabet in generated structure');
@@ -362,7 +363,7 @@ function bootDom() {
   test('enabled tools appear as monochrome icons in the rail; click opens the tool', () => {
     App.renderToolRail();
     const btns = doc.querySelectorAll('#toolRail .tool-rail-btn');
-    assert(btns.length === 11, 'all enabled tools in rail');
+    assert(btns.length === 10, 'all enabled tools in rail');
     assert(btns[0].title.length > 2, 'tooltip shows tool name');
     btns[3].click();
     assert(!doc.getElementById('view-tools').classList.contains('hidden'), 'tool opens from rail');
@@ -467,18 +468,18 @@ function bootDom() {
     doc.getElementById('setToolSearch').value = '';
     App.renderToolSettings();
     rows = doc.querySelectorAll('#toolSettingsList .set-card');
-    assert(rows.length === 11, 'all 11 tools listed');
+    assert(rows.length === 10, 'all 10 tools listed');
     assert(rows[0].querySelector('.cat-chip'), 'category chip on tool row');
     const waRow = [...rows].find(r => r.textContent.includes('واتساب'));
     assert(waRow, 'whatsapp tool row found');
     waRow.querySelector('input').click();
     await new Promise(r => setTimeout(r, 50));
     const chips = [...doc.querySelectorAll('#toolsMenu .tool-chip')];
-    assert(chips.length === 10, 'disabled tool removed from tools menu (11 - 1)');
+    assert(chips.length === 9, 'disabled tool removed from tools menu (10 - 1)');
     assert(!chips.some(c => c.textContent.includes('واتساب')), 'whatsapp chip hidden');
     waRow.querySelector('input').click();
     await new Promise(r => setTimeout(r, 50));
-    assert(doc.querySelectorAll('#toolsMenu .tool-chip').length === 11, 're-enabled');
+    assert(doc.querySelectorAll('#toolsMenu .tool-chip').length === 10, 're-enabled');
   });
   test('v1.6.11: home tools section removed entirely (rail + settings only)', () => {
     assert(!doc.getElementById('homeToolCards'), 'home tool cards removed');
@@ -1182,7 +1183,7 @@ function bootDom() {
   test('v1.6.23: tools and KB settings render as stacked card grid', () => {
     App.renderToolSettings();
     App.renderKbSettings();
-    assert(doc.querySelectorAll('#toolSettingsList .set-card').length === 11, '11 tool cards');
+    assert(doc.querySelectorAll('#toolSettingsList .set-card').length === 10, '10 tool cards');
     assert(doc.querySelectorAll('#kbSettingsList .set-card').length === KB.kbs.length, 'one card per KB');
     assert(doc.querySelector('#toolSettingsList .set-card .sc-foot .switch'), 'switch inside card footer');
   });
@@ -1251,10 +1252,12 @@ function bootDom() {
     assert(t.cat === 'ai', 'registered as AI-powered tool');
     assert(window.eval('I18n').t('toolOcr').includes('سحب صور الوثائق'), 'Arabic label');
   });
-  test('v1.6.30: OCR panel renders pick button, vision-model input and status', () => {
+  test('v1.6.30: OCR panel renders pick button and status (no model input — it moved to AI settings in v1.6.31)', () => {
     Tools.open('ocr');
+    const panel = doc.getElementById('toolPanel');
     assert(doc.getElementById('ocrPick'), 'pick button');
-    assert(doc.getElementById('ocrModel'), 'vision model input');
+    assert(!panel.querySelector('#ocrModel'), 'model input removed from the tool body');
+    assert(panel.querySelector('#ocrAgentLine'), 'agent line shown in the tool body');
     assert(doc.getElementById('ocrStatus'), 'status line');
     assert(doc.getElementById('ocrOut'), 'results area');
   });
@@ -1268,6 +1271,70 @@ function bootDom() {
     assert(doc.getElementById('ocrStatus').textContent.length > 0, 'hint shown instead of crash');
     stubBridge.pickFile = pick;
     window.daaixSettings.llm = { baseUrl: 'https://api.example.com/v1', model: 'test' };
+  });
+
+  console.log('\n— v1.6.31: OCR settings live with the agents + watched connectors —');
+  test('v1.6.31: OCR engine settings live in the AI/agents settings — agent list + models on select', async () => {
+    App.settings.customSkills = [{ id: 'cs-ocr', name: 'VisionSkill', agent: 'memo', model: 'qwen-vl-max', description: 'd', instructions: 'i' }];
+    App.renderAiSettings();
+    const sel = doc.getElementById('ocrAgent');
+    assert(sel, 'ocrAgent select present in AI settings');
+    assert(sel.tagName === 'SELECT' && sel.options.length >= 7, 'generic option + all agents + custom skills listed');
+    assert(doc.getElementById('ocrModel'), 'ocrModel input lives in AI settings');
+    assert(doc.getElementById('ocrAgentInfo'), 'agent info line present');
+    sel.value = 'sk:cs-ocr';
+    sel.dispatchEvent(new dom.window.Event('change'));
+    await new Promise(r => setTimeout(r, 30));
+    assert(doc.getElementById('ocrModel').value === 'qwen-vl-max', 'picking a skill fills its model');
+    assert(/VisionSkill/.test(doc.getElementById('ocrAgentInfo').textContent), 'skill name shown in info line');
+    App.settings.customSkills = [];
+    App.renderAiSettings();
+  });
+  test('v1.6.31: tool panel shows the chosen agent line, not a model input', () => {
+    App.settings.ocrAgentId = 'agent:research';
+    Tools.open('ocr');
+    const line = doc.querySelector('#toolPanel #ocrAgentLine');
+    assert(line && /وكيل السحب/.test(line.textContent), 'agent line rendered in tool body');
+    App.settings.ocrAgentId = '';
+    Tools.open('ocr');
+  });
+  test('v1.6.31: connectors are watched sources — interval + check-now + tidy item rows', async () => {
+    App.settings.connectors = [{ name: 'جريدة أم القرى', url: 'https://www.example.gov.sa/news', apiKey: '', enabled: true, interval: 15, lastCheck: '', items: [] }];
+    App.renderConnectors();
+    const row = doc.querySelector('#connectorList .connector-row');
+    assert(row, 'connector row rendered');
+    const iv = row.querySelector('[data-c=interval]');
+    assert(iv && iv.value === '15' && iv.min === '5', 'interval input (minutes) rendered');
+    assert(row.querySelector('.conn-check'), 'check-now button rendered');
+    assert(doc.querySelector('#connectorList .conn-items .conn-empty'), 'empty items note rendered');
+    const origGet = stubBridge.netGetText;
+    stubBridge.netGetText = async () => ({ ok: true, text: '<html><body>' +
+      '<a href="/news/q1">رسارة بشأن قرار وارد معين هنا</a>' +
+      '<a href="https://www.example.gov.sa/news/q2">قرار رقم 25 القطاع الخاص</a></body></html>' });
+    await App.checkConnector(0);
+    await new Promise(r => setTimeout(r, 30));
+    const items = [...doc.querySelectorAll('#connectorList .conn-item')].filter(x => !x.classList.contains('conn-empty'));
+    assert(items.length === 2, 'new page items appear as rows');
+    assert(items.some(x => /قرار رقم 25/.test(x.textContent)), 'item title rendered');
+    assert(App.settings.connectors[0].lastCheck, 'lastCheck stamped');
+    await App.checkConnector(0);
+    const items2 = [...doc.querySelectorAll('#connectorList .conn-item')].filter(x => !x.classList.contains('conn-empty'));
+    assert(items2.length === 2, 'second check adds nothing (dedup by link)');
+    stubBridge.netGetText = origGet;
+    App.settings.connectors = [];
+    App.renderConnectors();
+  });
+  test('v1.6.31: extractor keeps same-site links, absolute-izes hrefs, drops noise', () => {
+    const html = '<html><body>' +
+      '<a href="/p/1">عنوان طويل بما يكفي للقبول</a>' +
+      '<a href="https://other.org/x">another very long link title here</a>' +
+      '<a href="#">نص قصير</a>' +
+      '<a href="mailto:a@b.c">some long enough mailto text</a>' +
+      '</body></html>';
+    const items = App.extractPageItems(html, 'https://www.example.gov.sa/i/');
+    assert(items.length === 1, 'only the same-site item survives');
+    assert(items[0].link === 'https://www.example.gov.sa/p/1', 'relative href absolute-ized');
+    assert(items[0].foundAt, 'foundAt stamped');
   });
 
   await runAll();
