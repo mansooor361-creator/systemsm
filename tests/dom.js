@@ -1260,12 +1260,10 @@ function bootDom() {
     assert(t.cat === 'ai', 'registered as AI-powered tool');
     assert(window.eval('I18n').t('toolOcr').includes('سحب صور الوثائق'), 'Arabic label');
   });
-  test('v1.6.30: OCR panel renders pick button and status (no model input — it moved to AI settings in v1.6.31)', () => {
+  test('v1.6.30: OCR panel renders pick button, vision-model input and status (model also editable in tool since v1.6.33)', () => {
     Tools.open('ocr');
-    const panel = doc.getElementById('toolPanel');
     assert(doc.getElementById('ocrPick'), 'pick button');
-    assert(!panel.querySelector('#ocrModel'), 'model input removed from the tool body');
-    assert(panel.querySelector('#ocrAgentLine'), 'agent line shown in the tool body');
+    assert(doc.getElementById('ocrModel'), 'vision model input in the tool body');
     assert(doc.getElementById('ocrStatus'), 'status line');
     assert(doc.getElementById('ocrOut'), 'results area');
   });
@@ -1288,21 +1286,27 @@ function bootDom() {
     const sel = doc.getElementById('ocrAgent');
     assert(sel, 'ocrAgent select present in AI settings');
     assert(sel.tagName === 'SELECT' && sel.options.length >= 7, 'generic option + all agents + custom skills listed');
-    assert(doc.getElementById('ocrModel'), 'ocrModel input lives in AI settings');
+    assert(doc.querySelector('#setPaneAi #ocrModel'), 'ocrModel input lives in AI settings');
     assert(doc.getElementById('ocrAgentInfo'), 'agent info line present');
     sel.value = 'sk:cs-ocr';
     sel.dispatchEvent(new dom.window.Event('change'));
     await new Promise(r => setTimeout(r, 30));
-    assert(doc.getElementById('ocrModel').value === 'qwen-vl-max', 'picking a skill fills its model');
+    assert(doc.querySelector('#setPaneAi #ocrModel').value === 'qwen-vl-max', 'picking a skill fills its model');
     assert(/VisionSkill/.test(doc.getElementById('ocrAgentInfo').textContent), 'skill name shown in info line');
     App.settings.customSkills = [];
     App.renderAiSettings();
   });
-  test('v1.6.31: tool panel shows the chosen agent line, not a model input', () => {
+  test('v1.6.33: tool body shows agent line + vision-model field; typing a model persists it', async () => {
     App.settings.ocrAgentId = 'agent:research';
     Tools.open('ocr');
     const line = doc.querySelector('#toolPanel #ocrAgentLine');
     assert(line && /وكيل السحب/.test(line.textContent), 'agent line rendered in tool body');
+    const mi = doc.querySelector('#toolPanel #ocrModel');
+    assert(mi, 'vision-model input back in the tool body');
+    mi.value = 'qwen2-vl-7b';
+    mi.dispatchEvent(new dom.window.Event('change'));
+    await new Promise(r => setTimeout(r, 20));
+    assert(window.daaixSettings.ocrModel === 'qwen2-vl-7b', 'typing a model in the tool persists it');
     App.settings.ocrAgentId = '';
     Tools.open('ocr');
   });

@@ -695,6 +695,9 @@ const Tools = {
         <p class="hint">${I18n.t('descOcr')}</p>
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:12px 0">
           <button class="primary" id="ocrPick">📁 ${I18n.t('ocrPick')}</button>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)">${I18n.t('ocrModel')}
+            <input id="ocrModel" placeholder="gpt-4o / gemini / qwen-vl…" style="width:230px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;outline:none" />
+          </label>
           <span class="hint" id="ocrAgentLine"></span>
         </div>
         <div id="ocrStatus" class="hint" style="margin-bottom:10px"></div>
@@ -702,7 +705,18 @@ const Tools = {
       </div>`);
     panel.appendChild(box);
 
-    /* v1.6.31: model + agent are chosen in AI/agents settings, not here */
+    /* v1.6.33: the vision-model field lives here in the tool as well —
+       the agent/agent-model picker stays in the AI/agents settings */
+    const modelInput = box.querySelector('#ocrModel');
+    if (modelInput) {
+      modelInput.value = (window.daaixSettings || {}).ocrModel || '';
+      modelInput.onchange = async (e) => {
+        const v = e.target.value.trim();
+        if (window.daaixSettings) window.daaixSettings.ocrModel = v;
+        await window.daaix.settingsSet({ ocrModel: v });
+      };
+    }
+
     const ocrSel = ((window.daaixSettings || {}).ocrAgentId) || '';
     const ocrSk = (ocrSel.indexOf('sk:') === 0) ? Agents.skillById(ocrSel.slice(3)) : null;
     const ocrAgentLine = box.querySelector('#ocrAgentLine');
