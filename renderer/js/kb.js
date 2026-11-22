@@ -24,6 +24,11 @@ const KB = {
     this.kbs.forEach(kb => {
       (kb.documents || []).forEach((doc, di) => {
         doc.kbId = kb.id;
+        /* v1.6.34: normalize every document to the canonical legal format */
+        if (doc && doc.body && typeof DocFormat !== 'undefined') {
+          const nb = DocFormat.normalize(doc.body);
+          if (nb !== doc.body) doc.body = nb;
+        }
         while (this.byId.has(doc.id)) doc.id = doc.id + '-x' + di;
         this.byId.set(doc.id, doc);
         const text = this.docText(doc);

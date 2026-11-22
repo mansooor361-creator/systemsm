@@ -113,6 +113,23 @@ function renderMdLines(lines) {
       continue;
     }
 
+    /* v1.6.34: canonical numbered paragraph "1  . text" / compound "1/1  . text" */
+    const npm2 = line.match(/^(\d{1,4}(?:\/\d{1,4})?)  \.(?: (.*))?$/);
+    if (npm2) {
+      flushPara();
+      if (inList) { html += '</ul>'; inList = false; }
+      html += `<div class="num-p"><span class="num-p-num">${esc(npm2[1] + '  . ')}</span><span class="num-p-text">${inline(npm2[2] || '')}</span></div>`;
+      continue;
+    }
+    /* v1.6.34: canonical literal (lettered) paragraph "\t* أ  . text" */
+    const litm = line.match(/^\t\* ([\u0623\u0628\u062C\u062F\u0647\u0648\u0632\u062D\u0637\u0643\u0644\u0645\u0646\u0633\u0639\u0641\u0642\u0631\u0634\u062A\u0638])\u0640?  \.(?: (.*))?$/);
+    if (litm) {
+      flushPara();
+      if (inList) { html += '</ul>'; inList = false; }
+      html += `<div class="lit-p"><span class="lit-p-num">\u002a ${esc(litm[1])}  . </span><span class="lit-p-text">${inline(litm[2] || '')}</span></div>`;
+      continue;
+    }
+
     if (/^>\s?/.test(line)) {
       flushPara();
       html += `<blockquote>${inline(line.replace(/^>\s?/, ''))}</blockquote>`;

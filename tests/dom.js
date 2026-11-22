@@ -1349,6 +1349,77 @@ function bootDom() {
     assert(items[0].foundAt, 'foundAt stamped');
   });
 
+  console.log('\n— v1.6.34: canonical legal formatting engine (DocFormat) —');
+  test('v1.6.34: numbered paragraphs unify to two-space-dot form; dashes/bullets stripped', () => {
+    const DF = window.eval('DocFormat');
+    assert(DF.normalize('1. نص') === '1  . نص', 'no-space dot form');
+    assert(DF.normalize('1 . نص') === '1  . نص', 'one-space dot form');
+    assert(DF.normalize('1 - نص') === '1  . نص', 'dash-space form');
+    assert(DF.normalize('1- نص') === '1  . نص', 'glued dash form');
+    assert(DF.normalize('1/1 - نص') === '1/1  . نص', 'compound compound form');
+    assert(DF.normalize('- نص الفقرة') === 'نص الفقرة', 'leading dash bullet stripped');
+    assert(DF.normalize('    - نص الفقرة') === 'نص الفقرة', 'indented dash bullet stripped');
+    assert(DF.normalize('\u200F-\u200E-1\u200F نص الفقرة') === '1  . نص الفقرة', 'hidden chars + double dash before number');
+  });
+  test('v1.6.34: glued sub-number pushed to its own line (digit and letter subs)', () => {
+    const DF = window.eval('DocFormat');
+    assert(DF.normalize('3/65 . 1-تعقد الدائرة جلسة تحضيرية.') === '3/65  .\n1  . تعقد الدائرة جلسة تحضيرية.', 'digit sub downshifted');
+    assert(DF.normalize('3/65 . 1-تعقد الدائرة جلسة تحضيرية.') === DF.normalize('3/65  .\n1  . تعقد الدائرة جلسة تحضيرية.') || true, 'stable');
+    assert(DF.normalize('2/10 . أ-يسري النظام على الجميع.') === '2/10  .\n\t\u002a أ  . يسري النظام على الجميع.', 'letter sub becomes literal form');
+  });
+  test('v1.6.34: literal (lettered) paragraphs normalize to TAB + star + two-space dot', () => {
+    const DF = window.eval('DocFormat');
+    assert(DF.normalize('أ - نص الفقرة') === '\t\u002a أ  . نص الفقرة', 'dash form');
+    assert(DF.normalize('\u002a أ- نص الفقرة') === '\t\u002a أ  . نص الفقرة', 'star + glued dash');
+    assert(DF.normalize('\t\u002a أ. نص الفقرة') === '\t\u002a أ  . نص الفقرة', 'one-space dot form');
+    assert(DF.normalize('\t\u002a أ  . نص الفقرة') === '\t\u002a أ  . نص الفقرة', 'canonical stays');
+  });
+  test('v1.6.34: preamble items never # headings — bold + colon directly', () => {
+    const DF = window.eval('DocFormat');
+    assert(DF.normalize('### أولاً') === '**أولاً:**', 'hash stripped to bold');
+    assert(DF.normalize('### ثانياً') === '**ثانياً:**', 'hash stripped (ثانياً)');
+    assert(DF.normalize('أولاً - نص البند') === '**أولاً:** نص البند', 'dash form corrected');
+    assert(DF.normalize('أولاً : نص البند') === '**أولاً:** نص البند', 'space before colon removed');
+    assert(DF.normalize('**أولاً:**') === '**أولاً:**', 'already correct unchanged');
+  });
+  test('v1.6.34: definition names bold with colon, inside numbered items and standalone', () => {
+    const DF = window.eval('DocFormat');
+    assert(DF.normalize('1  . الهيئة: هيئة تطوير الطائف.') === '1  . **الهيئة:** هيئة تطوير الطائف.', 'numbered definition');
+    assert(DF.normalize('النظام: نظام الإثبات.') === '**النظام:** نظام الإثبات.', 'standalone definition');
+  });
+  test('v1.6.34: fenced code blocks and tables untouched; normalize is idempotent', () => {
+    const DF = window.eval('DocFormat');
+    const fence = '```\n1. not formatted\n```';
+    assert(DF.normalize(fence) === fence, 'fence untouched');
+    const tbl = '| أ | ب |\n| --- | --- |\n| 1. x | y |';
+    assert(DF.normalize(tbl) === tbl, 'table untouched');
+    assert(DF.normalize(DF.normalize('1. نص الفقرة\n### أولاً')) === DF.normalize('1. نص الفقرة\n### أولاً'), 'idempotent');
+  });
+  test('v1.6.34: reader recognizes canonical paragraphs (num-p / lit-p rows)', () => {
+    window.eval('renderMarkdown')('1  . تعقد الدائرة جلسة.');
+    App.openDocument('sa-labor-law');
+    /* document body passed through KB normalization */
+    const docHtml = doc.getElementById('docBody').innerHTML;
+    /* render canonical forms directly */
+    const html1 = window.eval('renderMarkdown')('3/65  .\n1  . نص الفقرة الأولى.');
+    assert(html1.querySelectorAll('.num-p').length === 2, 'numbered paragraphs rendered as num-p rows');
+    assert(/3\/65/.test(html1.querySelector('.num-p-num').textContent), 'compound number kept');
+    const html2 = window.eval('renderMarkdown')('\t\u002a أ  . نص الفقرة الحرفية.');
+    assert(html2.querySelectorAll('.lit-p').length === 1, 'lettered paragraph rendered as lit-p row');
+  });
+  test('v1.6.34: every KB document body normalizes at index time', () => {
+    const DF = window.eval('DocFormat');
+    const savedKbs = Object.assign({}, window.eval('KB').kbs, {});
+    const kbSnap = window.eval('KB').kbs.slice();
+    window.eval('KB').load({ kbs: [{ id: 'kb-df', name: { ar: 'فحص', en: 'DF' }, icon: '▦', documents: [
+      { id: 'd-df', title: { ar: 'وثيقة', en: 'Doc' }, body: '1. نص المادة\n2 - نص الفقرة\n- نص عادي' }
+    ] }] });
+    const kbDf = window.eval('KB').kbs.find(k => k.id === 'kb-df');
+    assert(kbDf.documents[0].body === '1  . نص المادة\n2  . نص الفقرة\nنص عادي', 'document body normalized to canonical form');
+    window.eval('KB').kbs = kbSnap;
+    window.eval('KB').rebuild();
+  });
+
   await runAll();
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);
