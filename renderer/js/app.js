@@ -770,7 +770,7 @@ const App = {
     document.getElementById('btnSaveEdits').onclick = () => this.saveEdits();
     document.getElementById('btnDiscardEdits').onclick = () => this.discardEdits();
 
-    document.getElementById('btnImportFolder').onclick = () => this.doImportFolder(document.getElementById('importStatus'));
+    /* v1.6.32: folder import removed from the settings page — KB management keeps its own import */
     document.getElementById('btnKbSourceFolder').onclick = () => this.doImportFolder(document.getElementById('kbAddStatus'));
     document.getElementById('btnKbSourceCloud').onclick = () => {
       document.getElementById('kbPlatformPanel').classList.add('hidden');

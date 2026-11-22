@@ -1221,11 +1221,19 @@ function bootDom() {
   test('v1.6.28: general settings render as agents-style .set-card grid; all controls kept', () => {
     App.fillSettings();
     const pane = doc.getElementById('setPaneSettings');
-    assert(pane.querySelectorAll('.set-card').length >= 4, 'settings cards rendered (appearance/updates/kb/connectors)');
+    assert(pane.querySelectorAll('.set-card').length >= 3, 'settings cards rendered (appearance/updates/connectors)');
     assert(!pane.querySelector('.settings-grid'), 'old two-column grid removed');
-    ['setLang', 'setTheme', 'setUpdateUrl', 'btnCheckUpdates', 'updateStatus', 'btnImportFolder', 'importStatus', 'connectorList', 'btnAddConnector', 'btnSaveSettings']
+    ['setLang', 'setTheme', 'setUpdateUrl', 'btnCheckUpdates', 'updateStatus', 'connectorList', 'btnAddConnector', 'btnSaveSettings']
       .forEach(id => assert(doc.getElementById(id), id + ' still present'));
     assert(pane.querySelector('.set-card .sc-foot .primary'), 'actions live in card footers');
+  });
+  test('v1.6.32: folder-import card removed from the settings page (import stays in KB management)', () => {
+    App.fillSettings();
+    const pane = doc.getElementById('setPaneSettings');
+    assert(!pane.querySelector('#btnImportFolder'), 'import-folder button gone from settings');
+    assert(!pane.querySelector('#importStatus'), 'import status span gone from settings');
+    assert(!/kbFolder/.test(pane.textContent) || !doc.getElementById('btnImportFolder'), 'no KB-folder card in settings');
+    assert(doc.getElementById('btnKbSourceFolder'), 'KB page keeps its own folder import');
   });
 
   console.log('\n— v1.6.29: connected TOC tree + classic search lens —');
