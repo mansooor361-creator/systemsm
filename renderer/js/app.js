@@ -5,6 +5,9 @@ function esc(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+/* v1.6.29: classic outline magnifier (monochrome, follows text color) */
+const LENS_SVG = '<svg class="lens" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="9" cy="9" r="5.2"/><line x1="13" y1="13" x2="17.4" y2="17.4" stroke-linecap="round"/></svg>';
+
 const CALLOUTS = {
   note: { cls: 'co-note', icon: '✎' },
   info: { cls: 'co-info', icon: 'ℹ︎' },
@@ -356,7 +359,7 @@ const App = {
 
   bindTopbar() {
     const modeBtn = document.getElementById('btnSearchMode');
-    if (modeBtn) modeBtn.textContent = this.searchMode === 'text' ? '\ud83d\udd0d' : '\u2728';
+    if (modeBtn) modeBtn.innerHTML = LENS_SVG;
     document.getElementById('btnRailHome').onclick = () => this.activateTab('home');
     document.getElementById('btnSearchMode').onclick = (e) => {
       e.stopPropagation();
@@ -1234,7 +1237,7 @@ const App = {
   setSearchMode(mode) {
     this.searchMode = mode;
     const btn = document.getElementById('btnSearchMode');
-    if (btn) btn.textContent = mode === 'text' ? '\ud83d\udd0d' : '\u2728';
+    if (btn) btn.innerHTML = LENS_SVG;
     document.getElementById('searchModeMenu').classList.add('hidden');
     const q = document.getElementById('globalSearch').value;
     if (q && q.trim().length >= 2) this.search(q);
@@ -1244,8 +1247,8 @@ const App = {
     const menu = document.getElementById('searchModeMenu');
     menu.innerHTML = '';
     [
-      ['text', '\ud83d\udd0d', 'searchTextTitle'],
-      ['semantic', '\u2728', 'searchSemanticTitle']
+      ['text', '\u2315', 'searchTextTitle'],
+      ['semantic', '\u2727', 'searchSemanticTitle']
     ].forEach(([m, icon, key]) => {
       const b = document.createElement('button');
       b.className = 'kb-menu-item' + (this.searchMode === m ? ' active-mode' : '');

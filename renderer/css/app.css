@@ -167,7 +167,17 @@ html[lang="en"] #view-doc > * { direction: ltr; }
 .toc-toggle { flex: none; width: 14px; text-align: center; color: var(--muted); font-size: 11px; cursor: pointer; user-select: none; }
 .toc-toggle:hover { color: var(--text); }
 .toc-toggle.leaf { cursor: default; opacity: .45; }
-.toc-children { margin-inline-start: 13px; border-inline-start: 1px dashed var(--border); }
+/* v1.6.29: connected outline tree — solid vertical rail + horizontal stub per child */
+.toc-node { position: relative; }
+.toc-children { position: relative; margin-inline-start: 15px; padding-inline-start: 4px; }
+.toc-children::before {
+  content: ''; position: absolute; top: 0; bottom: 0; inset-inline-start: 0;
+  width: 1px; background: var(--border);
+}
+.toc-children > .toc-node::before {
+  content: ''; position: absolute; top: 17px; inset-inline-start: -15px;
+  width: 11px; height: 1px; background: var(--border);
+}
 .toc-children.collapsed { display: none; }
 
 .doc-center { flex: 1; overflow-y: auto; position: relative; min-width: 0; background: var(--paper); color: var(--paper-text); }

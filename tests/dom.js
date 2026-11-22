@@ -685,12 +685,12 @@ function bootDom() {
     try { window.eval('Graph'); } catch (e) { threw = true; }
     assert(threw, 'Graph object no longer defined');
   });
-  test('search mode button icon reflects the active mode', () => {
+  test('v1.6.29: search mode button always shows the classic outline lens', () => {
     const btn = doc.getElementById('btnSearchMode');
     App.setSearchMode('text');
-    assert(btn.textContent === '\uD83D\uDD0D', 'lens icon in text mode');
+    assert(btn.querySelector('svg.lens'), 'classic lens svg in text mode');
     App.setSearchMode('semantic');
-    assert(btn.textContent === '\u2728', 'AI sparkle icon in semantic mode');
+    assert(btn.querySelector('svg.lens'), 'classic lens svg in semantic mode');
     App.setSearchMode('text');
   });
   test('doc chat expand button toggles wide right column', () => {
@@ -1225,6 +1225,23 @@ function bootDom() {
     ['setLang', 'setTheme', 'setUpdateUrl', 'btnCheckUpdates', 'updateStatus', 'btnImportFolder', 'importStatus', 'connectorList', 'btnAddConnector', 'btnSaveSettings']
       .forEach(id => assert(doc.getElementById(id), id + ' still present'));
     assert(pane.querySelector('.set-card .sc-foot .primary'), 'actions live in card footers');
+  });
+
+  console.log('\n— v1.6.29: connected TOC tree + classic search lens —');
+  test('v1.6.29: TOC tree nests togglable nodes following the # hierarchy', () => {
+    App.openDocument('sa-labor-law');
+    const first = doc.querySelector('#tocItems > .toc-node');
+    assert(first, 'root toc node');
+    const tg = first.querySelector(':scope > .toc-item > .toc-toggle');
+    assert(tg && tg.textContent === '\u25be', 'open arrow ▾ on expanded node with children');
+    const kids = first.querySelector(':scope > .toc-children');
+    assert(kids && kids.querySelector(':scope > .toc-node'), 'children nested under parent');
+    const kid = kids.querySelector(':scope > .toc-node > .toc-item > .toc-toggle') ? kids.querySelector(':scope > .toc-node') : null;
+    assert(kid, 'child node present');
+    kid.querySelector('.toc-toggle').click();
+    assert(kid.querySelector(':scope > .toc-item > .toc-toggle').textContent === '\u25b8', 'arrow flips to ▸ when collapsed');
+    kid.querySelector('.toc-toggle').click();
+    assert(kid.querySelector(':scope > .toc-item > .toc-toggle').textContent === '\u25be', 'arrow back to ▾');
   });
 
   await runAll();
