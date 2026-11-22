@@ -48,10 +48,10 @@
         "ar_SA",
         "en_US"
       ],
-      "artifactName": "${productName}.Setup"
+      "artifactName": "${productName}.Setup.${ext}"
     },
     "portable": {
-      "artifactName": "${productName}"
+      "artifactName": "${productName}.${ext}"
     },
     "mac": {
       "target": "dmg"
