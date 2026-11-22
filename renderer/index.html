@@ -151,32 +151,44 @@
           <button class="set-tab" data-set="ai" data-i18n="setTabAi"></button>
         </div>
         <div id="setPaneSettings" class="set-pane">
-        <div class="settings-grid">
-          <label><span data-i18n="language"></span>
-            <select id="setLang"><option value="ar">العربية</option><option value="en">English</option></select>
-          </label>
-          <label><span data-i18n="theme"></span>
-            <select id="setTheme"><option value="dark" data-i18n="dark"></option><option value="light" data-i18n="light"></option></select>
-          </label>
-          <label class="wide"><span data-i18n="updateUrl"></span>
-            <input id="setUpdateUrl" type="url" />
-          </label>
-          <label><span data-i18n="checkUpdates"></span>
-            <button id="btnCheckUpdates" class="primary" data-i18n="checkUpdates"></button>
-            <span id="updateStatus" class="update-status"></span>
-          </label>
-          <label><span data-i18n="kbFolder"></span>
-            <button id="btnImportFolder" class="primary" data-i18n="importFolder"></button>
-            <span id="importStatus" class="update-status"></span>
-          </label>
-          <div class="wide sep" data-i18n="connectorsTitle"></div>
-          <p class="hint wide" data-i18n="connectorHint"></p>
-          <div id="connectorList" class="wide"></div>
-          <div class="wide">
-            <button id="btnAddConnector" class="primary" data-i18n="addConnector"></button>
+        <!-- v1.6.28: general settings restyled as agents-style cards (same .set-card language as the AI/agents window; no IDs or behavior changed) -->
+        <div class="settings-cards set-cards-settings">
+          <div class="set-card">
+            <div class="sc-head"><span class="sr-icon mono">◐</span><div class="sr-main"><div class="sr-name" data-i18n="appearance"></div></div></div>
+            <label><span data-i18n="language"></span>
+              <select id="setLang"><option value="ar">العربية</option><option value="en">English</option></select>
+            </label>
+            <label><span data-i18n="theme"></span>
+              <select id="setTheme"><option value="dark" data-i18n="dark"></option><option value="light" data-i18n="light"></option></select>
+            </label>
+          </div>
+          <div class="set-card">
+            <div class="sc-head"><span class="sr-icon mono">⟳</span><div class="sr-main"><div class="sr-name" data-i18n="checkUpdates"></div></div></div>
+            <label><span data-i18n="updateUrl"></span>
+              <input id="setUpdateUrl" type="url" />
+            </label>
+            <div class="sc-foot">
+              <span id="updateStatus" class="update-status"></span>
+              <button id="btnCheckUpdates" class="primary" data-i18n="checkUpdates"></button>
+            </div>
+          </div>
+          <div class="set-card">
+            <div class="sc-head"><span class="sr-icon mono">▦</span><div class="sr-main"><div class="sr-name" data-i18n="kbFolder"></div></div></div>
+            <p class="hint" data-i18n="connectorHint"></p>
+            <div class="sc-foot">
+              <span id="importStatus" class="update-status"></span>
+              <button id="btnImportFolder" class="primary" data-i18n="importFolder"></button>
+            </div>
+          </div>
+          <div class="set-card">
+            <div class="sc-head"><span class="sr-icon mono">⇄</span><div class="sr-main"><div class="sr-name" data-i18n="connectorsTitle"></div></div></div>
+            <div id="connectorList"></div>
+            <div class="sc-foot">
+              <button id="btnAddConnector" class="primary" data-i18n="addConnector"></button>
+              <button id="btnSaveSettings" class="primary" data-i18n="save"></button>
+            </div>
           </div>
         </div>
-        <button id="btnSaveSettings" class="primary" data-i18n="save"></button>
         </div>
         <div id="setPaneKbs" class="set-pane hidden">
           <p class="hint" data-i18n="kbPaneHint"></p>

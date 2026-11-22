@@ -1216,6 +1216,17 @@ function bootDom() {
     assert(ps.some(t => t.includes('نص عادي')), 'following text intact');
   });
 
+  console.log('\n— v1.6.28: agents-style cards across all windows —');
+  test('v1.6.28: general settings render as agents-style .set-card grid; all controls kept', () => {
+    App.fillSettings();
+    const pane = doc.getElementById('setPaneSettings');
+    assert(pane.querySelectorAll('.set-card').length >= 4, 'settings cards rendered (appearance/updates/kb/connectors)');
+    assert(!pane.querySelector('.settings-grid'), 'old two-column grid removed');
+    ['setLang', 'setTheme', 'setUpdateUrl', 'btnCheckUpdates', 'updateStatus', 'btnImportFolder', 'importStatus', 'connectorList', 'btnAddConnector', 'btnSaveSettings']
+      .forEach(id => assert(doc.getElementById(id), id + ' still present'));
+    assert(pane.querySelector('.set-card .sc-foot .primary'), 'actions live in card footers');
+  });
+
   await runAll();
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);
