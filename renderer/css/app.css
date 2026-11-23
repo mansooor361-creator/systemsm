@@ -199,6 +199,7 @@ html[lang="en"] #view-doc > * { direction: ltr; }
 .num-p { padding-inline-start: 6px; }
 .lit-p { padding-inline-start: 30px; }
 .num-p-num, .lit-p-num { flex: none; white-space: pre; font-weight: 700; color: var(--paper-text); }
+.lit-dot { color: var(--paper-text); }
 .lit-p-num { font-weight: 500; color: var(--paper-muted); }
 .num-p-text, .lit-p-text { flex: 1; }
 .doc-paper {
@@ -215,7 +216,7 @@ html[lang="en"] #view-doc > * { direction: ltr; }
 #docBody h1 { font-size: 21px; } #docBody h2 { font-size: 18px; } #docBody h3 { font-size: 16px; }
 #docBody h4 { font-size: 15.5px; margin: 18px 0 8px; color: #7a5c10; }
 #docBody h5 { font-size: 15px; margin: 16px 0 8px; color: #7a5c10; }
-#docBody h6 { font-size: 14.5px; margin: 14px 0 6px; color: #7a5c10; }
+#docBody h6 { font-family: var(--h-font6, inherit); font-size: var(--h-size6, 14.5px); margin: 14px 0 6px; color: var(--h-fg6, #7a5c10); }
 #docBody p { margin-bottom: 12px; }
 #docBody:focus { outline: none; }
 .article-card {
@@ -480,35 +481,40 @@ button.danger { background: transparent; border: 1px solid var(--danger); color:
 /* v1.6.37: explicit heading definitions — each level has a fixed, deliberate style;
    backgrounds are overridable per level via settings (--h-bg1 … --h-bg6) */
 .doc-body h1, .doc-paper h1 {
-  font-size: 24px; color: var(--text); font-weight: 800;
+  font-family: var(--h-font1, inherit);
+  font-size: var(--h-size1, 24px); color: var(--h-fg1, var(--text)); font-weight: 800;
   background: var(--h-bg1, transparent);
   border-bottom: 1px solid var(--border); padding-bottom: 8px; margin: 20px 0 12px;
   line-height: 1.5;
 }
 .doc-body h2 {
-  font-size: 20px; color: var(--text); font-weight: 800;
+  font-family: var(--h-font2, inherit);
+  font-size: var(--h-size2, 20px); color: var(--h-fg2, var(--text)); font-weight: 800;
   background: var(--h-bg2, transparent);
   padding: 4px 10px; margin: 18px 0 10px; line-height: 1.5; border-radius: 6px;
 }
 .doc-body h3 {
-  font-size: 17px; color: var(--text); font-weight: 700;
+  font-family: var(--h-font3, inherit);
+  font-size: var(--h-size3, 17px); color: var(--h-fg3, var(--text)); font-weight: 700;
   background: var(--h-bg3, transparent);
   padding: 4px 10px; margin: 16px 0 8px; line-height: 1.5; border-radius: 6px;
 }
 .doc-body h4 {
-  font-size: 16px; color: var(--h-fg, #7a5c10); background: var(--h-bg4, #fdf6dd);
+  font-family: var(--h-font4, inherit);
+  font-size: var(--h-size4, 16px); color: var(--h-fg4, var(--h-fg, #7a5c10)); background: var(--h-bg4, #fdf6dd);
   padding: 6px 12px; border-radius: 6px; margin: 14px 0 8px; font-weight: 700; line-height: 1.5;
 }
 /* v1.6.27: ##### is a real heading (soft yellow, slightly smaller) — only ###### folds */
 .doc-body h5 {
-  font-size: 15px; color: var(--h-fg, #7a5c10); background: var(--h-bg5, #fdf6dd);
+  font-family: var(--h-font5, inherit);
+  font-size: var(--h-size5, 15px); color: var(--h-fg5, var(--h-fg, #7a5c10)); background: var(--h-bg5, #fdf6dd);
   padding: 5px 12px; border-radius: 6px; margin: 12px 0 8px; font-weight: 700; line-height: 1.5;
 }
 body.theme-dark .doc-body h2 { background: var(--h-bg2, transparent); }
-body.theme-dark .doc-body h1, body.theme-dark .doc-paper h1 { color: var(--text); border-bottom-color: var(--border); }
+body.theme-dark .doc-paper h1 { color: var(--h-fg1, var(--text)); border-bottom-color: var(--border); }
 body.theme-dark .doc-body h4, body.theme-dark .doc-body h5,
 body.theme-dark #docBody h5, body.theme-dark #docBody h6 {
-  background: var(--h-bg4, rgba(212, 169, 78, .14)); color: #e8cd82;
+  background: var(--h-bg4, rgba(212, 169, 78, .14)); color: var(--h-fg4, #e8cd82);
 }
 body.theme-dark .doc-body h5 { background: var(--h-bg5, rgba(212, 169, 78, .12)); }
 body.theme-dark details.deep-fold > summary h6 { background: transparent; color: var(--text); }
@@ -993,7 +999,8 @@ mark.hl { background: var(--bg3); color: var(--text); font-weight: 600; padding:
   width: 1px; transform: translateX(-50%);
   background: var(--border); opacity: .55; transition: background 0.12s ease, opacity 0.12s ease;
 }
-.col-split:hover::after, .col-split.dragging::after { background: var(--muted); opacity: 1; }
+.col-split:hover { background: transparent; }
+.col-split:hover::after, .col-split.dragging::after { background: var(--text); opacity: .8; }
 #docProps.collapsed { display: none; }
 .props-toggle {
   align-self: flex-start; margin: 6px 2px;
@@ -1143,3 +1150,29 @@ body.theme-light .doc-body h4, body.theme-light .doc-body h5 { color: var(--h-fg
   padding: 8px 10px; font-size: 12.5px; line-height: 1.6;
   pointer-events: none;
 }
+
+/* ---------- v1.6.40: per-level typography tables + per-level content sections ---------- */
+/* classic, aligned settings tables: rows = levels, columns = font/size/color/bg */
+.typo-table { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.tt-title { font-size: 12.5px; color: var(--muted); letter-spacing: .03em; margin-top: 6px; }
+.tt-row {
+  display: grid; grid-template-columns: 52px minmax(110px, 1.3fr) 56px minmax(90px, 1fr) minmax(90px, 1fr);
+  gap: 6px; align-items: center;
+}
+.tt-head { font-size: 11.5px; color: var(--muted); padding-bottom: 2px; border-bottom: 1px solid var(--border); }
+.tt-row .mono { color: var(--muted); font-size: 12px; }
+.tt-row input[type="number"] { width: 100%; }
+.tt-row input[type="text"], .tt-row select {
+  width: 100%; background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 6px; color: var(--text); padding: 5px 8px; font-size: 12.5px;
+}
+.tt-row input[type="color"] { width: 40px; height: 30px; padding: 2px; }
+
+/* per-level content sections (nested by heading depth) */
+.doc-sec { border-radius: 6px; padding: 2px 8px; margin: 0 -8px; }
+.doc-sec.lvl-1 { background: var(--sec-bg1, transparent); color: var(--sec-fg1, inherit); font-family: var(--sec-font1, inherit); font-size: var(--sec-size1, inherit); }
+.doc-sec.lvl-2 { background: var(--sec-bg2, transparent); color: var(--sec-fg2, inherit); font-family: var(--sec-font2, inherit); font-size: var(--sec-size2, inherit); }
+.doc-sec.lvl-3 { background: var(--sec-bg3, transparent); color: var(--sec-fg3, inherit); font-family: var(--sec-font3, inherit); font-size: var(--sec-size3, inherit); }
+.doc-sec.lvl-4 { background: var(--sec-bg4, transparent); color: var(--sec-fg4, inherit); font-family: var(--sec-font4, inherit); font-size: var(--sec-size4, inherit); }
+.doc-sec.lvl-5 { background: var(--sec-bg5, transparent); color: var(--sec-fg5, inherit); font-family: var(--sec-font5, inherit); font-size: var(--sec-size5, inherit); }
+.doc-sec.lvl-6 { background: var(--sec-bg6, transparent); color: var(--sec-fg6, inherit); font-family: var(--sec-font6, inherit); font-size: var(--sec-size6, inherit); }

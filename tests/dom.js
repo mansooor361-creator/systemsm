@@ -1683,6 +1683,83 @@ function bootDom() {
     assert(/\.wiki-note:.*::after|content: attr\(data-note\)/.test(css), 'tooltip powered by data-note');
   });
 
+  /* ------------------------- v1.6.40 ------------------------- */
+  test('v1.6.40: literal paragraphs render the * as a bullet dot in reading view', () => {
+    const md = '\t* ب  . نص الفرع';
+    const block = window.eval('renderMarkdown')(md);
+    const num = block.querySelector('.lit-p .lit-p-num');
+    assert(num && num.textContent.includes('\u2022'), 'bullet dot shown');
+    assert(!num.textContent.includes('*'), 'raw asterisk removed from reading view');
+  });
+  test('v1.6.40: column splitter shows only the hairline \u2014 no gray zone on hover', () => {
+    const css = fs.readFileSync(path.join(root, 'renderer', 'css', 'app.css'), 'utf8');
+    assert(/\.col-split:hover \{ background: transparent; \}/.test(css), 'hover background stays transparent');
+    assert(/\.col-split:hover::after, \.col-split\.dragging::after \{ background: var\(--text\);/.test(css), 'only the 1px guide reacts');
+    assert(!/background: var\(--bg3\)[^}]*\}\n\.col-split/.test(css), 'no gray fill near the splitter');
+  });
+  test('v1.6.40: classic per-level typography tables present (headings + content)', () => {
+    for (let n = 1; n <= 6; n++) {
+      ['setHFont' + n, 'setHSize' + n, 'setHFg' + n, 'setHFg' + n + 'c', 'setHBg' + n,
+       'setSecFont' + n, 'setSecSize' + n, 'setSecFg' + n, 'setSecFg' + n + 'c', 'setSecBg' + n]
+        .forEach(id => assert(doc.getElementById(id), 'input ' + id));
+    }
+    assert(doc.querySelectorAll('.typo-table .tt-row.tt-head').length === 2, 'two aligned tables with headers');
+    assert(doc.querySelector('.tt-row.tt-head [data-i18n="typoFont"]'), 'header labels rendered');
+  });
+  test('v1.6.40: per-level heading typography persists and applies via CSS vars', async () => {
+    const f = doc.getElementById('setHFont3');
+    const sz = doc.getElementById('setHSize3');
+    const fg = doc.getElementById('setHFg3');
+    f.value = 'Amiri';
+    f.dispatchEvent(new window.Event('change'));
+    sz.value = '22';
+    sz.dispatchEvent(new window.Event('change'));
+    fg.value = '#ccb248';
+    fg.dispatchEvent(new window.Event('change'));
+    await new Promise(r => setTimeout(r, 10));
+    assert(App.settings.hFont3 === 'Amiri' && App.settings.hSize3 === '22' && App.settings.hFg3 === '#ccb248', 'values persisted');
+    assert(doc.body.style.getPropertyValue('--h-font3').includes('Amiri'), 'font var applied');
+    assert(doc.body.style.getPropertyValue('--h-size3') === '22px', 'size var applied');
+    assert(doc.body.style.getPropertyValue('--h-fg3') === '#ccb248', 'color var applied');
+  });
+  test('v1.6.40: per-level content (section) styling \u2014 font/size/color/background vars', async () => {
+    const bg = doc.getElementById('setSecBg2');
+    const ss = doc.getElementById('setSecSize2');
+    bg.value = '#101418';
+    bg.dispatchEvent(new window.Event('change'));
+    ss.value = '15';
+    ss.dispatchEvent(new window.Event('change'));
+    await new Promise(r => setTimeout(r, 10));
+    assert(App.settings.secBg2 === '#101418', 'section bg persisted');
+    assert(doc.body.style.getPropertyValue('--sec-bg2') === '#101418', '--sec-bg2 applied');
+    assert(doc.body.style.getPropertyValue('--sec-size2') === '15px', '--sec-size2 applied');
+    App.settings.secBg2 = 'oops';
+    App.applyTypographySettings();
+    assert(!doc.body.style.getPropertyValue('--sec-bg2'), 'invalid hex removed');
+    App.settings.secBg2 = '';
+  });
+  test('v1.6.40: reading view wraps content below headings into per-level sections', () => {
+    const ids = [...window.eval('KB').byId.keys()];
+    assert(ids.length > 0, 'a document exists');
+    App.openDocument(ids[0], true);
+    const secs = doc.querySelectorAll('#docBody .doc-sec');
+    assert(secs.length > 0, 'doc-sec wrappers created');
+    assert([...secs].some(x => x.classList.contains('lvl-1')) || [...secs].some(x => x.classList.contains('lvl-2')), 'levels tagged');
+    const h1 = doc.querySelector('#docBody h1');
+    if (h1) {
+      const sec = h1.nextElementSibling;
+      assert(sec && sec.classList.contains('doc-sec') && sec.classList.contains('lvl-1'), 'section starts right after the h1');
+    }
+  });
+  test('v1.6.40: typography inputs are refilled and factory reset clears the new keys', async () => {
+    App.fillTypography();
+    assert(doc.getElementById('setHFont3').value === 'Amiri', 'fillTypography refills values');
+    doc.getElementById('btnFactoryReset').click();
+    await new Promise(r => setTimeout(r, 30));
+    assert(App.settings.hFont3 === undefined && App.settings.hSize3 === undefined && App.settings.hFg3 === undefined, 'heading keys cleared');
+    assert(App.settings.secSize2 === undefined && App.settings.secBg2 === undefined, 'section keys cleared');
+  });
+
   await runAll();
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);

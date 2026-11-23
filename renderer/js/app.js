@@ -126,7 +126,7 @@ function renderMdLines(lines) {
     if (litm) {
       flushPara();
       if (inList) { html += '</ul>'; inList = false; }
-      html += `<div class="lit-p"><span class="lit-p-num">\u002a ${esc(litm[1])}  . </span><span class="lit-p-text">${inline(litm[2] || '')}</span></div>`;
+      html += `<div class="lit-p"><span class="lit-p-num"><span class="lit-dot">•</span> ${esc(litm[1])}  . </span><span class="lit-p-text">${inline(litm[2] || '')}</span></div>`;
       continue;
     }
 
@@ -367,6 +367,7 @@ const App = {
     document.body.classList.toggle('theme-light', theme === 'light');
     this.applyFontSettings();
     this.applyReadingVars();
+    this.applyTypographySettings();
   },
 
   /* v1.6.37: per-level heading backgrounds + content (paper) background */
@@ -433,6 +434,161 @@ const App = {
     if (t) t.value = this.settings.paperBg || '';
     const c = document.getElementById('setPaperBgC');
     if (c) c.value = this.settings.paperBg || '#000000';
+  },
+
+  /* v1.6.40: per-level heading typography + per-level content (section) styling */
+  applyTypographySettings() {
+    const root = document.body.style;
+    const okColor = (v) => /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test((v || '').trim());
+    const fam = (v) => v && v.trim() ? `'${v.trim().replace(/'/g, '')}', 'Segoe UI', Tahoma, 'Noto Naskh Arabic', system-ui, sans-serif` : null;
+    const px = (v, lo, hi) => { const n = parseInt(v, 10); return (n >= lo && n <= hi) ? n + 'px' : null; };
+    for (let i = 1; i <= 6; i++) {
+      const pairs = [
+        ['hFont' + i, '--h-font' + i, fam((this.settings || {})['hFont' + i])],
+        ['hSize' + i, '--h-size' + i, px((this.settings || {})['hSize' + i], 10, 48)],
+        ['hFg' + i, '--h-fg' + i, okColor((this.settings || {})['hFg' + i]) ? String((this.settings || {})['hFg' + i]).trim() : null],
+        ['secFont' + i, '--sec-font' + i, fam((this.settings || {})['secFont' + i])],
+        ['secSize' + i, '--sec-size' + i, px((this.settings || {})['secSize' + i], 10, 40)],
+        ['secFg' + i, '--sec-fg' + i, okColor((this.settings || {})['secFg' + i]) ? String((this.settings || {})['secFg' + i]).trim() : null],
+        ['secBg' + i, '--sec-bg' + i, okColor((this.settings || {})['secBg' + i]) ? String((this.settings || {})['secBg' + i]).trim() : null]
+      ];
+      pairs.forEach(([key, varName, val]) => {
+        if (val) root.setProperty(varName, val); else root.removeProperty(varName);
+      });
+    }
+  },
+
+  bindTypography() {
+    const fire = () => { this.applyTypographySettings(); };
+    for (let n = 1; n <= 6; n++) {
+      /* headings: font / size / text color (bg inputs are bound in bindReadingStyle) */
+      const hf = document.getElementById('setHFont' + n);
+      if (hf) hf.onchange = () => {
+        this.settings['hFont' + n] = hf.value.trim();
+        window.daaix.settingsSet({ ['hFont' + n]: this.settings['hFont' + n] });
+        fire();
+      };
+      const hs = document.getElementById('setHSize' + n);
+      if (hs) hs.onchange = () => {
+        this.settings['hSize' + n] = hs.value.trim();
+        window.daaix.settingsSet({ ['hSize' + n]: this.settings['hSize' + n] });
+        fire();
+      };
+      const hexFg = document.getElementById('setHFg' + n);
+      const colFg = document.getElementById('setHFg' + n + 'c');
+      if (hexFg && colFg) {
+        hexFg.onchange = () => {
+          this.settings['hFg' + n] = hexFg.value.trim();
+          colFg.value = hexFg.value.trim();
+          window.daaix.settingsSet({ ['hFg' + n]: this.settings['hFg' + n] });
+          fire();
+        };
+        colFg.onchange = () => {
+          this.settings['hFg' + n] = colFg.value;
+          hexFg.value = colFg.value;
+          window.daaix.settingsSet({ ['hFg' + n]: colFg.value });
+          fire();
+        };
+      }
+      /* content (section) below the heading: font / size / text color / background */
+      const sf = document.getElementById('setSecFont' + n);
+      if (sf) sf.onchange = () => {
+        this.settings['secFont' + n] = sf.value.trim();
+        window.daaix.settingsSet({ ['secFont' + n]: this.settings['secFont' + n] });
+        fire();
+      };
+      const ss = document.getElementById('setSecSize' + n);
+      if (ss) ss.onchange = () => {
+        this.settings['secSize' + n] = ss.value.trim();
+        window.daaix.settingsSet({ ['secSize' + n]: this.settings['secSize' + n] });
+        fire();
+      };
+      const hexSfg = document.getElementById('setSecFg' + n);
+      const colSfg = document.getElementById('setSecFg' + n + 'c');
+      if (hexSfg && colSfg) {
+        hexSfg.onchange = () => {
+          this.settings['secFg' + n] = hexSfg.value.trim();
+          colSfg.value = hexSfg.value.trim();
+          window.daaix.settingsSet({ ['secFg' + n]: this.settings['secFg' + n] });
+          fire();
+        };
+        colSfg.onchange = () => {
+          this.settings['secFg' + n] = colSfg.value;
+          hexSfg.value = colSfg.value;
+          window.daaix.settingsSet({ ['secFg' + n]: colSfg.value });
+          fire();
+        };
+      }
+      const hexSbg = document.getElementById('setSecBg' + n);
+      const colSbg = document.getElementById('setSecBg' + n + 'c');
+      if (hexSbg && colSbg) {
+        hexSbg.onchange = () => {
+          this.settings['secBg' + n] = hexSbg.value.trim();
+          colSbg.value = hexSbg.value.trim();
+          window.daaix.settingsSet({ ['secBg' + n]: this.settings['secBg' + n] });
+          fire();
+        };
+        colSbg.onchange = () => {
+          this.settings['secBg' + n] = colSbg.value;
+          hexSbg.value = colSbg.value;
+          window.daaix.settingsSet({ ['secBg' + n]: colSbg.value });
+          fire();
+        };
+      }
+    }
+  },
+
+  fillTypography() {
+    for (let n = 1; n <= 6; n++) {
+      const set = (id, val, def) => { const el = document.getElementById(id); if (el) el.value = val || def || ''; };
+      set('setHFont' + n, this.settings['hFont' + n]);
+      set('setHSize' + n, this.settings['hSize' + n]);
+      set('setHFg' + n, this.settings['hFg' + n]);
+      set('setHFg' + n + 'c', this.settings['hFg' + n], '#000000');
+      set('setSecFont' + n, this.settings['secFont' + n]);
+      set('setSecSize' + n, this.settings['secSize' + n]);
+      set('setSecFg' + n, this.settings['secFg' + n]);
+      set('setSecFg' + n + 'c', this.settings['secFg' + n], '#000000');
+      set('setSecBg' + n, this.settings['secBg' + n]);
+      set('setSecBg' + n + 'c', this.settings['secBg' + n], '#000000');
+    }
+  },
+
+  /* wrap the content that follows each heading of level n (until the next
+     heading of level <= n) into a per-level section div .doc-sec.lvl-n */
+  wrapReadingSections(bodyEl) {
+    const container = bodyEl && (bodyEl.querySelector(':scope > .doc-body') || bodyEl);
+    if (!container || !container.children) return;
+    const headLvl = (el) => {
+      if (!el || !el.matches) return 0;
+      if (/^H[1-6]$/.test(el.tagName)) return parseInt(el.tagName[1], 10);
+      if (el.classList && el.classList.contains('deep-fold')) {
+        const h = el.querySelector('summary h1, summary h2, summary h3, summary h4, summary h5, summary h6');
+        return h ? parseInt(h.tagName[1], 10) : 6;
+      }
+      return 0;
+    };
+    for (let n = 1; n <= 6; n++) {
+      const parents = [container, ...container.querySelectorAll('*')];
+      for (const parent of parents) {
+        let guard = 0;
+        while (guard++ < 500) {
+          const kids = [...(parent.children || [])];
+          const idx = kids.findIndex(k => k.matches && k.matches('h' + n));
+          if (idx === -1) break;
+          let j = idx + 1;
+          while (j < kids.length) {
+            const lvl = headLvl(kids[j]);
+            if (lvl && lvl <= n) break;
+            j++;
+          }
+          const sec = document.createElement('div');
+          sec.className = 'doc-sec lvl-' + n;
+          kids[idx].insertAdjacentElement('afterend', sec);
+          kids.slice(idx + 1, j).forEach(k => sec.appendChild(k));
+        }
+      }
+    }
   },
 
   /* v1.6.36: Obsidian-style font settings — family / size / text color as CSS vars */
@@ -1002,11 +1158,19 @@ const App = {
       this.fillSettings();
     };
     this.bindReadingStyle();
+    this.bindTypography();
     /* v1.6.38: restore factory appearance/layout in one click (side of the first card) */
     document.getElementById('btnFactoryReset').onclick = async () => {
       const resetKeys = {};
       ['fontFam', 'fontSize', 'fontColor', 'paperBg', 'tocW', 'propsW', 'propsCollapsed',
-       'hBg1', 'hBg2', 'hBg3', 'hBg4', 'hBg5', 'hBg6'].forEach(k => { delete this.settings[k]; resetKeys[k] = ''; });
+       'hBg1', 'hBg2', 'hBg3', 'hBg4', 'hBg5', 'hBg6',
+         'hFont1', 'hFont2', 'hFont3', 'hFont4', 'hFont5', 'hFont6',
+         'hSize1', 'hSize2', 'hSize3', 'hSize4', 'hSize5', 'hSize6',
+         'hFg1', 'hFg2', 'hFg3', 'hFg4', 'hFg5', 'hFg6',
+         'secFont1', 'secFont2', 'secFont3', 'secFont4', 'secFont5', 'secFont6',
+         'secSize1', 'secSize2', 'secSize3', 'secSize4', 'secSize5', 'secSize6',
+         'secFg1', 'secFg2', 'secFg3', 'secFg4', 'secFg5', 'secFg6',
+         'secBg1', 'secBg2', 'secBg3', 'secBg4', 'secBg5', 'secBg6'].forEach(k => { delete this.settings[k]; resetKeys[k] = ''; });
       resetKeys.theme = 'dark';
       this.settings.theme = 'dark';
       await window.daaix.settingsSet(resetKeys);
@@ -1575,6 +1739,7 @@ const App = {
     document.getElementById('setFontSize').value = parseInt(this.settings.fontSize, 10) || 16;
     document.getElementById('setFontColor').value = this.settings.fontColor || '#e6edf7';
     this.fillReadingStyle();
+    this.fillTypography();
     document.getElementById('setUpdateUrl').value = this.settings.updateUrl || '';
     const llm = this.settings.llm || {};
     document.getElementById('setLlmUrl').value = llm.baseUrl || '';
@@ -2314,6 +2479,7 @@ const App = {
       });
     }
     if (doc.body) bodyEl.appendChild(renderMarkdown(doc.body));
+    this.wrapReadingSections(bodyEl);
   },
 
   renderOriginal(doc) {

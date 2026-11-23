@@ -199,31 +199,90 @@
           <div class="set-card">
             <div class="sc-head"><span class="sr-icon mono">#</span><div class="sr-main"><div class="sr-name" data-i18n="readStyle"></div></div></div>
             <p class="hint"><span data-i18n="readStyleHint"></span></p>
+            <div class="typo-table">
+            <div class="tt-row tt-head">
+              <span data-i18n="typoLvl"></span><span data-i18n="typoFont"></span><span data-i18n="typoSize"></span><span data-i18n="typoColor"></span><span data-i18n="typoBg"></span>
+            </div>
+            <div class="tt-row"><span class="mono">#</span>
+              <input id="setHFont1" type="text" list="fontFamList" />
+              <input id="setHSize1" type="number" min="10" max="48" />
+              <span class="tt-pair"><input id="setHFg1" type="text" class="hbg-hex" placeholder="#ffffff" /><input id="setHFg1c" type="color" /></span>
+              <span class="tt-pair"><input id="setHBg1" type="text" class="hbg-hex" placeholder="#ffffff" /><input id="setHBg1c" type="color" /></span>
+            </div>
+            <div class="tt-row"><span class="mono">##</span>
+              <input id="setHFont2" type="text" list="fontFamList" />
+              <input id="setHSize2" type="number" min="10" max="48" />
+              <span class="tt-pair"><input id="setHFg2" type="text" class="hbg-hex" placeholder="#ffffff" /><input id="setHFg2c" type="color" /></span>
+              <span class="tt-pair"><input id="setHBg2" type="text" class="hbg-hex" placeholder="#ffffff" /><input id="setHBg2c" type="color" /></span>
+            </div>
+            <div class="tt-row"><span class="mono">###</span>
+              <input id="setHFont3" type="text" list="fontFamList" />
+              <input id="setHSize3" type="number" min="10" max="48" />
+              <span class="tt-pair"><input id="setHFg3" type="text" class="hbg-hex" placeholder="#ffffff" /><input id="setHFg3c" type="color" /></span>
+              <span class="tt-pair"><input id="setHBg3" type="text" class="hbg-hex" placeholder="#ffffff" /><input id="setHBg3c" type="color" /></span>
+            </div>
+            <div class="tt-row"><span class="mono">####</span>
+              <input id="setHFont4" type="text" list="fontFamList" />
+              <input id="setHSize4" type="number" min="10" max="48" />
+              <span class="tt-pair"><input id="setHFg4" type="text" class="hbg-hex" placeholder="#ffffff" /><input id="setHFg4c" type="color" /></span>
+              <span class="tt-pair"><input id="setHBg4" type="text" class="hbg-hex" placeholder="#ffffff" /><input id="setHBg4c" type="color" /></span>
+            </div>
+            <div class="tt-row"><span class="mono">#####</span>
+              <input id="setHFont5" type="text" list="fontFamList" />
+              <input id="setHSize5" type="number" min="10" max="48" />
+              <span class="tt-pair"><input id="setHFg5" type="text" class="hbg-hex" placeholder="#ffffff" /><input id="setHFg5c" type="color" /></span>
+              <span class="tt-pair"><input id="setHBg5" type="text" class="hbg-hex" placeholder="#ffffff" /><input id="setHBg5c" type="color" /></span>
+            </div>
+            <div class="tt-row"><span class="mono">######</span>
+              <input id="setHFont6" type="text" list="fontFamList" />
+              <input id="setHSize6" type="number" min="10" max="48" />
+              <span class="tt-pair"><input id="setHFg6" type="text" class="hbg-hex" placeholder="#ffffff" /><input id="setHFg6c" type="color" /></span>
+              <span class="tt-pair"><input id="setHBg6" type="text" class="hbg-hex" placeholder="#ffffff" /><input id="setHBg6c" type="color" /></span>
+            </div>
+            </div>
+            <div class="typo-table">
+              <div class="tt-title" data-i18n="typoContent"></div>
+            <div class="tt-row tt-head">
+              <span data-i18n="typoLvl"></span><span data-i18n="typoFont"></span><span data-i18n="typoSize"></span><span data-i18n="typoColor"></span><span data-i18n="typoBg"></span>
+            </div>
+            <div class="tt-row"><span class="mono">#</span><span class="tt-under" data-i18n="typoUnder"></span>
+              <input id="setSecFont1" type="text" list="fontFamList" />
+              <input id="setSecSize1" type="number" min="10" max="40" />
+              <span class="tt-pair"><input id="setSecFg1" type="text" class="hbg-hex" placeholder="#ffffff" /><input id="setSecFg1c" type="color" /></span>
+              <span class="tt-pair"><input id="setSecBg1" type="text" class="hbg-hex" placeholder="#ffffff" /><input id="setSecBg1c" type="color" /></span>
+            </div>
+            <div class="tt-row"><span class="mono">##</span><span class="tt-under" data-i18n="typoUnder"></span>
+              <input id="setSecFont2" type="text" list="fontFamList" />
+              <input id="setSecSize2" type="number" min="10" max="40" />
+              <span class="tt-pair"><input id="setSecFg2" type="text" class="hbg-hex" placeholder="#ffffff" /><input id="setSecFg2c" type="color" /></span>
+              <span class="tt-pair"><input id="setSecBg2" type="text" class="hbg-hex" placeholder="#ffffff" /><input id="setSecBg2c" type="color" /></span>
+            </div>
+            <div class="tt-row"><span class="mono">###</span><span class="tt-under" data-i18n="typoUnder"></span>
+              <input id="setSecFont3" type="text" list="fontFamList" />
+              <input id="setSecSize3" type="number" min="10" max="40" />
+              <span class="tt-pair"><input id="setSecFg3" type="text" class="hbg-hex" placeholder="#ffffff" /><input id="setSecFg3c" type="color" /></span>
+              <span class="tt-pair"><input id="setSecBg3" type="text" class="hbg-hex" placeholder="#ffffff" /><input id="setSecBg3c" type="color" /></span>
+            </div>
+            <div class="tt-row"><span class="mono">####</span><span class="tt-under" data-i18n="typoUnder"></span>
+              <input id="setSecFont4" type="text" list="fontFamList" />
+              <input id="setSecSize4" type="number" min="10" max="40" />
+              <span class="tt-pair"><input id="setSecFg4" type="text" class="hbg-hex" placeholder="#ffffff" /><input id="setSecFg4c" type="color" /></span>
+              <span class="tt-pair"><input id="setSecBg4" type="text" class="hbg-hex" placeholder="#ffffff" /><input id="setSecBg4c" type="color" /></span>
+            </div>
+            <div class="tt-row"><span class="mono">#####</span><span class="tt-under" data-i18n="typoUnder"></span>
+              <input id="setSecFont5" type="text" list="fontFamList" />
+              <input id="setSecSize5" type="number" min="10" max="40" />
+              <span class="tt-pair"><input id="setSecFg5" type="text" class="hbg-hex" placeholder="#ffffff" /><input id="setSecFg5c" type="color" /></span>
+              <span class="tt-pair"><input id="setSecBg5" type="text" class="hbg-hex" placeholder="#ffffff" /><input id="setSecBg5c" type="color" /></span>
+            </div>
+            <div class="tt-row"><span class="mono">######</span><span class="tt-under" data-i18n="typoUnder"></span>
+              <input id="setSecFont6" type="text" list="fontFamList" />
+              <input id="setSecSize6" type="number" min="10" max="40" />
+              <span class="tt-pair"><input id="setSecFg6" type="text" class="hbg-hex" placeholder="#ffffff" /><input id="setSecFg6c" type="color" /></span>
+              <span class="tt-pair"><input id="setSecBg6" type="text" class="hbg-hex" placeholder="#ffffff" /><input id="setSecBg6c" type="color" /></span>
+            </div>
+            </div>
             <div class="hbg-grid">
-              <label class="hbg-row"><span class="mono">#</span>
-                <input id="setHBg1" class="hbg-hex" type="text" placeholder="#ffffff" />
-                <input id="setHBg1c" type="color" />
-              </label>
-              <label class="hbg-row"><span class="mono">##</span>
-                <input id="setHBg2" class="hbg-hex" type="text" placeholder="#ffffff" />
-                <input id="setHBg2c" type="color" />
-              </label>
-              <label class="hbg-row"><span class="mono">###</span>
-                <input id="setHBg3" class="hbg-hex" type="text" placeholder="#ffffff" />
-                <input id="setHBg3c" type="color" />
-              </label>
-              <label class="hbg-row"><span class="mono">####</span>
-                <input id="setHBg4" class="hbg-hex" type="text" placeholder="#ffffff" />
-                <input id="setHBg4c" type="color" />
-              </label>
-              <label class="hbg-row"><span class="mono">#####</span>
-                <input id="setHBg5" class="hbg-hex" type="text" placeholder="#ffffff" />
-                <input id="setHBg5c" type="color" />
-              </label>
-              <label class="hbg-row"><span class="mono">######</span>
-                <input id="setHBg6" class="hbg-hex" type="text" placeholder="#ffffff" />
-                <input id="setHBg6c" type="color" />
-              </label>
               <label class="hbg-row"><span data-i18n="paperBg"></span>
                 <input id="setPaperBgT" class="hbg-hex" type="text" placeholder="#ffffff" />
                 <input id="setPaperBgC" type="color" />
