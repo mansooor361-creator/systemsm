@@ -1420,6 +1420,97 @@ function bootDom() {
     window.eval('KB').rebuild();
   });
 
+  console.log('\n\u2014 v1.6.36: Obsidian design \u2014 resizable columns, props toggle, home launcher, font settings \u2014');
+  test('v1.6.36: col-split handle markup exists between TOC/center and center/props', () => {
+    const tocSplit = doc.getElementById('tocSplit');
+    const propsSplit = doc.getElementById('propsSplit');
+    assert(tocSplit && tocSplit.classList.contains('col-split'), 'tocSplit handle present');
+    assert(propsSplit && propsSplit.classList.contains('col-split-props'), 'propsSplit handle present');
+  });
+  test('v1.6.36: saved column widths apply to the TOC and props panes (bounded)', () => {
+    App.settings.tocW = 320; App.settings.propsW = 400;
+    App.applyColumnWidths();
+    const toc = doc.getElementById('docToc');
+    const props = doc.getElementById('docProps');
+    assert(toc.style.width === '320px', 'TOC width from settings.tocW');
+    assert(props.style.minWidth === '400px', 'props width from settings.propsW');
+    App.settings.tocW = 5000;
+    App.applyColumnWidths();
+    assert(doc.getElementById('docToc').style.width === '420px', 'TOC width clamped to 420px');
+  });
+  test('v1.6.36: props column toggle collapses, persists and flips the arrow', async () => {
+    const btn = doc.getElementById('btnPropsToggle');
+    const props = doc.getElementById('docProps');
+    btn.onclick();
+    assert(props.classList.contains('collapsed'), 'props collapsed by toggle');
+    assert(App.settings.propsCollapsed === true, 'collapse persisted to settings');
+    assert(btn.textContent === '\u276e', 'arrow flipped when collapsed');
+    btn.onclick();
+    assert(!props.classList.contains('collapsed'), 'props expanded again');
+    assert(btn.textContent === '\u276f', 'arrow flipped back');
+  });
+  test('v1.6.36: font settings persist and set CSS vars; reset restores defaults', async () => {
+    const fam = doc.getElementById('setFontFam');
+    const size = doc.getElementById('setFontSize');
+    const color = doc.getElementById('setFontColor');
+    assert(fam && size && color, 'font controls present in appearance card');
+    fam.value = 'Cairo';
+    fam.dispatchEvent(new window.Event('change'));
+    await new Promise(r => setTimeout(r, 10));
+    assert(App.settings.fontFam === 'Cairo', 'font family persisted');
+    assert(doc.documentElement.style.getPropertyValue('--font-ui').includes('Cairo'), '--font-ui var applied');
+    size.value = '99';
+    size.dispatchEvent(new window.Event('change'));
+    await new Promise(r => setTimeout(r, 10));
+    assert(App.settings.fontSize === 22, 'font size clamped to 22');
+    assert(doc.documentElement.style.getPropertyValue('--font-size') === '22px', '--font-size var applied');
+    color.value = '#aabbee';
+    color.dispatchEvent(new window.Event('change'));
+    await new Promise(r => setTimeout(r, 10));
+    assert(App.settings.fontColor === '#aabbee', 'font color persisted');
+    assert(doc.documentElement.style.getPropertyValue('--text') === '#aabbee', '--text var applied');
+    doc.getElementById('btnFontResetHis').click();
+    await new Promise(r => setTimeout(r, 10));
+    assert(!App.settings.fontFam && !App.settings.fontSize && !App.settings.fontColor, 'font settings cleared');
+    assert(!doc.documentElement.style.getPropertyValue('--font-ui'), '--font-ui removed on reset');
+    assert(doc.getElementById('setFontSize').value === '16', 'size input refilled with default');
+  });
+  test('v1.6.36: home launcher lists only enabled tools as cards', () => {
+    App.renderHomeLauncher();
+    const total = window.eval('Tools').list().length;
+    const cards = doc.querySelectorAll('#homeTools .home-tool');
+    assert(cards.length === total, 'all tools enabled by default \u2192 all listed');
+    App.settings.toolEnabled = Object.assign({}, App.settings.toolEnabled, { ocr: false });
+    App.renderHomeLauncher();
+    const after = doc.querySelectorAll('#homeTools .home-tool');
+    assert(after.length === total - 1, 'disabled tool removed from launcher');
+  });
+  test('v1.6.36: recent documents tracked (deduped, capped at 8) and rendered as chips', () => {
+    const docs = window.eval('KB').index.slice(0, 12).map(e => e.doc.id);
+    docs.forEach(id => App.trackRecentDoc(id));
+    assert(App.settings.recentDocs.length === 8, 'recentDocs capped at 8');
+    App.trackRecentDoc(App.settings.recentDocs[1]);
+    assert(App.settings.recentDocs.length === 8, 're-adding dedupes and keeps cap');
+    assert(App.settings.recentDocs[0] === App.settings.recentDocs[1 - 1], 're-added doc moved to front');
+    App.renderHomeLauncher();
+    const chips = doc.querySelectorAll('#homeRecent .home-recent-chip');
+    assert(chips.length === 8, 'eight recent chips rendered');
+  });
+  test('v1.6.36: launcher quick search shows result rows; typing <2 chars closes', async () => {
+    const input = doc.getElementById('homeQuick');
+    const box = doc.getElementById('homeQuickResults');
+    input.value = '\u0645\u0643\u0627\u0641\u0623\u0629';
+    input.dispatchEvent(new window.Event('input', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 10));
+    assert(!box.classList.contains('hidden'), 'quick results opened');
+    const rows = box.querySelectorAll('.hqr-row');
+    assert(rows.length > 0, 'result rows listed');
+    input.value = '\u0645';
+    input.dispatchEvent(new window.Event('input', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 10));
+    assert(box.classList.contains('hidden'), 'short query hides results');
+  });
+
   await runAll();
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);

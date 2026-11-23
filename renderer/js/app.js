@@ -255,6 +255,7 @@ const App = {
 
     this.bindTopbar();
     this.bindQuickSwitcher();
+    this.bindHomeLauncher();
     this.bindDrawer();
     this.bindViews();
     this.bindSettingsTabs();
@@ -359,11 +360,38 @@ const App = {
   applyTheme(theme) {
     document.body.classList.toggle('theme-dark', theme === 'dark');
     document.body.classList.toggle('theme-light', theme === 'light');
+    this.applyFontSettings();
+  },
+
+  /* v1.6.36: Obsidian-style font settings — family / size / text color as CSS vars */
+  applyFontSettings() {
+    const root = document.documentElement.style;
+    const fam = (this.settings || {}).fontFam;
+    const size = parseInt((this.settings || {}).fontSize, 10);
+    const color = (this.settings || {}).fontColor;
+    if (fam && fam.trim()) root.setProperty('--font-ui', `'${fam.trim().replace(/'/g, '')}', 'Segoe UI', Tahoma, 'Noto Naskh Arabic', system-ui, sans-serif`);
+    else root.removeProperty('--font-ui');
+    if (size >= 12 && size <= 22) root.setProperty('--font-size', size + 'px');
+    else root.removeProperty('--font-size');
+    if (color && color.trim()) { root.setProperty('--text', color.trim()); root.setProperty('--paper-text', color.trim()); }
+    else { root.removeProperty('--text'); root.removeProperty('--paper-text'); }
+  },
+
+  /* v1.6.36: recent documents for the new-tab launcher */
+  trackRecentDoc(id) {
+    if (!id) return;
+    const list = Array.isArray(this.settings.recentDocs) ? this.settings.recentDocs.slice() : [];
+    const i = list.indexOf(id);
+    if (i >= 0) list.splice(i, 1);
+    list.unshift(id);
+    this.settings.recentDocs = list.slice(0, 8);
+    window.daaix.settingsSet({ recentDocs: this.settings.recentDocs });
   },
 
   renderAll() {
     this.renderKbPicker();
     this.renderToolRail();
+    this.renderHomeLauncher();
     this.renderFeed();
     this.renderAccount();
     this.renderAiSettings();
@@ -849,6 +877,34 @@ const App = {
       this.applyTheme(e.target.value);
       window.daaix.settingsSet({ theme: e.target.value });
     };
+    /* v1.6.36: Obsidian-style font settings */
+    document.getElementById('setFontFam').onchange = (e) => {
+      this.settings.fontFam = e.target.value.trim();
+      window.daaix.settingsSet({ fontFam: this.settings.fontFam });
+      this.applyFontSettings();
+    };
+    document.getElementById('setFontSize').onchange = (e) => {
+      let v = parseInt(e.target.value, 10);
+      if (isNaN(v)) v = 16;
+      v = Math.max(12, Math.min(22, v));
+      e.target.value = v;
+      this.settings.fontSize = v;
+      window.daaix.settingsSet({ fontSize: v });
+      this.applyFontSettings();
+    };
+    document.getElementById('setFontColor').onchange = (e) => {
+      this.settings.fontColor = e.target.value;
+      window.daaix.settingsSet({ fontColor: this.settings.fontColor });
+      this.applyFontSettings();
+    };
+    document.getElementById('btnFontResetHis').onclick = () => {
+      delete this.settings.fontFam;
+      delete this.settings.fontSize;
+      delete this.settings.fontColor;
+      window.daaix.settingsSet({ fontFam: '', fontSize: '', fontColor: '' });
+      this.applyFontSettings();
+      this.fillSettings();
+    };
   },
 
   saveSettingsForm() {
@@ -1185,6 +1241,9 @@ const App = {
   fillSettings() {
     document.getElementById('setLang').value = I18n.lang;
     document.getElementById('setTheme').value = this.settings.theme || 'dark';
+    document.getElementById('setFontFam').value = this.settings.fontFam || '';
+    document.getElementById('setFontSize').value = parseInt(this.settings.fontSize, 10) || 16;
+    document.getElementById('setFontColor').value = this.settings.fontColor || '#e6edf7';
     document.getElementById('setUpdateUrl').value = this.settings.updateUrl || '';
     const llm = this.settings.llm || {};
     document.getElementById('setLlmUrl').value = llm.baseUrl || '';
@@ -1530,6 +1589,17 @@ const App = {
       const hidden = toc.classList.toggle('collapsed');
       document.getElementById('btnTocToggle').textContent = hidden ? '❯' : '❮';
     };
+    /* v1.6.36: resizable TOC / props columns + props collapse toggle */
+    this.bindResizeCol(document.getElementById('tocSplit'), document.getElementById('docToc'), 180, 420, 1, 'tocW');
+    this.bindResizeCol(document.getElementById('propsSplit'), document.getElementById('docProps'), 240, 480, -1, 'propsW');
+    document.getElementById('btnPropsToggle').onclick = () => {
+      const props = document.getElementById('docProps');
+      const collapsed = props.classList.toggle('collapsed');
+      this.settings.propsCollapsed = collapsed;
+      window.daaix.settingsSet({ propsCollapsed: collapsed });
+      document.getElementById('btnPropsToggle').textContent = collapsed ? '❮' : '❯';
+    };
+    this.applyColumnWidths();
     document.getElementById('docChatSend').onclick = () => this.sendDocChat();
     document.getElementById('docChatInput').addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.sendDocChat(); }
@@ -1733,7 +1803,114 @@ const App = {
   },
 
   openDocument(id, forceNew) {
+    this.trackRecentDoc(id);
     this.openTab({ kind: 'doc', docId: id }, forceNew ? { forceNew: true } : undefined);
+  },
+
+  /* v1.6.36: new-tab launcher — activated tools, recent docs, inline KB search */
+  renderHomeLauncher() {
+    const toolsBox = document.getElementById('homeTools');
+    if (!toolsBox) return;
+    toolsBox.innerHTML = '';
+    Tools.list().filter(t => this.toolIsOn(t.id)).forEach(t => {
+      const card = document.createElement('button');
+      card.className = 'home-tool mono';
+      card.title = t.desc || '';
+      card.innerHTML = `<span class="ht-icon">${t.icon}</span><span class="ht-label">${esc(t.label)}</span>`;
+      card.onclick = () => this.openTab({ kind: 'tools', toolId: t.id }, { forceNew: true });
+      toolsBox.appendChild(card);
+    });
+    const recentBox = document.getElementById('homeRecent');
+    recentBox.innerHTML = '';
+    const recents = Array.isArray(this.settings.recentDocs) ? this.settings.recentDocs : [];
+    let shown = 0;
+    recents.forEach(id => {
+      const doc = KB.get(id);
+      if (!doc || shown >= 8) return;
+      shown++;
+      const title = doc.title[I18n.lang] || doc.title.ar || doc.title.en;
+      const chip = document.createElement('button');
+      chip.className = 'home-recent-chip';
+      chip.title = title;
+      chip.innerHTML = `<span class="hrc-icon mono">\u25a4</span><span class="hrc-title">${esc(title)}</span><span class="hrc-type">${esc(I18n.docTypeName(doc.type))}</span>`;
+      chip.onclick = () => this.openDocument(id);
+      recentBox.appendChild(chip);
+    });
+    if (!shown) recentBox.innerHTML = `<span class="hint">\u2014</span>`;
+  },
+
+  bindHomeLauncher() {
+    const input = document.getElementById('homeQuick');
+    if (!input) return;
+    const box = document.getElementById('homeQuickResults');
+    const close = () => { box.classList.add('hidden'); box.innerHTML = ''; };
+    input.addEventListener('input', () => {
+      const q = input.value.trim();
+      if (q.length < 2) { close(); return; }
+      const res = KB.search(q, 8);
+      box.innerHTML = '';
+      if (!res.length) { box.innerHTML = `<div class="hqr-row hqr-empty">${I18n.t('noResults')}</div>`; box.classList.remove('hidden'); return; }
+      res.forEach(r => {
+        const doc = r.doc || r;
+        const title = (doc.title && (doc.title[I18n.lang] || doc.title.ar || doc.title.en)) || '';
+        const row = document.createElement('div');
+        row.className = 'hqr-row';
+        row.innerHTML = `<span class="hqr-title">${esc(title)}</span>${r.articleNum ? `<span class="hqr-art mono">${esc(r.articleNum)}</span>` : ''}`;
+        row.onclick = () => { input.value = ''; close(); this.openDocument(doc.id); };
+        box.appendChild(row);
+      });
+      box.classList.remove('hidden');
+    });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { input.value = ''; close(); input.blur(); }
+      if (e.key === 'Enter') {
+        const first = box.querySelector('.hqr-row:not(.hqr-empty)');
+        if (first) first.click();
+      }
+    });
+    input.addEventListener('blur', () => setTimeout(close, 180));
+  },
+
+  /* v1.6.36: resizable columns (Obsidian-style drag splitters) */
+  bindResizeCol(handle, pane, min, max, sign, key) {
+    if (!handle || !pane) return;
+    handle.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      const startX = e.clientX, startW = pane.getBoundingClientRect().width;
+      handle.setPointerCapture(e.pointerId);
+      const move = (ev) => {
+        let w = Math.round(startW + sign * (ev.clientX - startX));
+        w = Math.max(min, Math.min(max, w));
+        pane.style.width = w + 'px';
+        pane.style.minWidth = w + 'px'; pane.style.maxWidth = w + 'px';
+      };
+      const up = (ev) => {
+        handle.removeEventListener('pointermove', move);
+        handle.removeEventListener('pointerup', up);
+        let w = Math.round(startW + sign * (ev.clientX - startX));
+        w = Math.max(min, Math.min(max, w));
+        this.settings[key] = w;
+        window.daaix.settingsSet({ [key]: w });
+      };
+      handle.addEventListener('pointermove', move);
+      handle.addEventListener('pointerup', up);
+    });
+  },
+
+  applyColumnWidths() {
+    const toc = document.getElementById('docToc');
+    const props = document.getElementById('docProps');
+    if (toc) {
+      const w = Math.max(180, Math.min(420, parseInt(this.settings.tocW, 10) || 250));
+      toc.style.width = w + 'px'; toc.style.minWidth = w + 'px'; toc.style.maxWidth = w + 'px';
+    }
+    if (props) {
+      const w = Math.max(240, Math.min(480, parseInt(this.settings.propsW, 10) || 255));
+      props.style.width = w + 'px'; props.style.minWidth = w + 'px'; props.style.maxWidth = w + 'px';
+    }
+    if (props) props.classList.toggle('collapsed', this.settings.propsCollapsed === true);
+    const btn = document.getElementById('btnPropsToggle');
+    if (btn) btn.textContent = this.settings.propsCollapsed === true ? '\u276e' : '\u276f';
   },
 
   renderDocument(id) {

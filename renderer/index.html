@@ -33,6 +33,17 @@
     <main id="main">
       <!-- Home -->
       <section id="view-home" class="view">
+        <div id="homeLauncher" class="home-launcher">
+          <div class="home-brand mono">DaAIx</div>
+          <div class="home-search-wrap">
+            <input id="homeQuick" type="text" data-i18n-ph="newTabPh" autocomplete="off" />
+            <div id="homeQuickResults" class="home-quick-results hidden"></div>
+          </div>
+          <div class="home-sec" data-i18n="homeTools"></div>
+          <div id="homeTools" class="home-tools"></div>
+          <div class="home-sec" data-i18n="homeRecent"></div>
+          <div id="homeRecent" class="home-recent"></div>
+        </div>
         <div id="searchResults" class="search-results"></div>
         <div class="feed-head" id="feedHead">
           <h2 class="feed-title" id="feedTitle" data-i18n="latestUpdates"></h2>
@@ -50,6 +61,7 @@
           </div>
           <div id="tocItems"></div>
         </aside>
+        <div id="tocSplit" class="col-split col-split-toc mono" data-i18n-title="colResize"></div>
         <button id="btnTocToggle" class="toc-toggle" data-i18n-title="tocHide">❮</button>
         <div id="docCenter" class="doc-center">
           <div class="center-tabs" id="centerTabs">
@@ -84,6 +96,8 @@
           </div>
           <div id="docStats" class="doc-stats"></div>
         </div>
+        <div id="propsSplit" class="col-split col-split-props mono" data-i18n-title="colResize"></div>
+        <button id="btnPropsToggle" class="toc-toggle props-toggle mono" data-i18n-title="propsHide">❯</button>
         <aside id="docProps" class="doc-props">
           <div class="right-tabs" id="rightTabs">
             <button class="rtab mono active" data-tab="amend" data-i18n-title="rightAmend" title="سجل التعديلات">🕒</button>
@@ -161,6 +175,28 @@
             <label><span data-i18n="theme"></span>
               <select id="setTheme"><option value="dark" data-i18n="dark"></option><option value="light" data-i18n="light"></option></select>
             </label>
+            <label><span data-i18n="fontFam"></span>
+              <input id="setFontFam" list="fontFamList" placeholder="Segoe UI / Tahoma…" />
+              <datalist id="fontFamList">
+                <option value="Segoe UI"></option>
+                <option value="Tahoma"></option>
+                <option value="Noto Naskh Arabic"></option>
+                <option value="Cairo"></option>
+                <option value="Amiri"></option>
+                <option value="Traditional Arabic"></option>
+                <option value="Sakkal Majalla"></option>
+                <option value="Georgia"></option>
+              </datalist>
+            </label>
+            <label><span data-i18n="fontSizeUi"></span>
+              <input id="setFontSize" type="number" min="12" max="22" step="1" value="16" />
+            </label>
+            <label><span data-i18n="fontColorHis"></span>
+              <input id="setFontColor" type="color" value="#e6edf7" />
+            </label>
+            <div class="sc-foot">
+              <button id="btnFontResetHis" class="ghost-btn" data-i18n="fontReset"></button>
+            </div>
           </div>
           <div class="set-card">
             <div class="sc-head"><span class="sr-icon mono">⟳</span><div class="sr-main"><div class="sr-name" data-i18n="checkUpdates"></div></div></div>
