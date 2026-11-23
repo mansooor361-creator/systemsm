@@ -263,6 +263,7 @@ const App = {
     this.bindDrawer();
     this.bindViews();
     this.bindSettingsTabs();
+    this.bindSkillsCtx();
     this.bindReaderTabs();
     this.bindLogin();
     this.renderAll();
@@ -1036,6 +1037,225 @@ const App = {
       window.daaixSettings = this.settings;
       this.toast(I18n.t('save') + ' ✓');
     })();
+  },
+
+/* ---------- v1.6.39: skills context menu on selection + run popup + margin notes ---------- */
+  bindSkillsCtx() {
+    document.addEventListener('contextmenu', (e) => {
+      const body = document.getElementById('docBody');
+      if (!body || !body.contains(e.target)) return;
+      const sel = window.getSelection ? window.getSelection() : null;
+      const text = sel ? String(sel.toString() || '').trim() : '';
+      if (!text) return; /* plain right-click stays default */
+      e.preventDefault();
+      this._selRange = (sel && sel.rangeCount) ? sel.getRangeAt(0).cloneRange() : null;
+      this._selText = text;
+      this.openSkillCtxMenu(e.clientX, e.clientY);
+    });
+  },
+
+  openSkillCtxMenu(x, y) {
+    this.closeSkillCtxMenu();
+    const menu = document.createElement('div');
+    menu.id = 'skillCtxMenu';
+    menu.className = 'ctx-menu';
+    const head = document.createElement('div');
+    head.className = 'ctx-head';
+    head.textContent = I18n.t('aiSkillsTitle');
+    menu.appendChild(head);
+    const skills = (typeof Agents !== 'undefined' && Agents.allSkills) ? Agents.allSkills() : [];
+    if (!skills.length) {
+      const empty = document.createElement('div');
+      empty.className = 'ctx-empty';
+      empty.textContent = '\u2014';
+      menu.appendChild(empty);
+    }
+    skills.forEach((sk) => {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'ctx-item';
+      const ico = document.createElement('span');
+      ico.className = 'ctx-ico mono';
+      ico.textContent = sk.icon || '\u2726';
+      const lbl = document.createElement('span');
+      lbl.textContent = sk.name || sk.id;
+      item.appendChild(ico);
+      item.appendChild(lbl);
+      item.onclick = () => { this.closeSkillCtxMenu(); this.runSkillOnSelection(sk, this._selText); };
+      menu.appendChild(item);
+    });
+    document.body.appendChild(menu);
+    const rect = menu.getBoundingClientRect();
+    menu.style.left = Math.max(8, Math.min(x, window.innerWidth - rect.width - 8)) + 'px';
+    menu.style.top = Math.max(8, Math.min(y, window.innerHeight - rect.height - 8)) + 'px';
+    setTimeout(() => {
+      this._ctxCloser = (ev) => { if (menu.contains(ev.target)) return; this.closeSkillCtxMenu(); };
+      document.addEventListener('mousedown', this._ctxCloser);
+      this._ctxEsc = (ev) => { if (ev.key === 'Escape') this.closeSkillCtxMenu(); };
+      document.addEventListener('keydown', this._ctxEsc);
+    }, 0);
+  },
+
+  closeSkillCtxMenu() {
+    const m = document.getElementById('skillCtxMenu');
+    if (m) m.remove();
+    if (this._ctxCloser) { document.removeEventListener('mousedown', this._ctxCloser); this._ctxCloser = null; }
+    if (this._ctxEsc) { document.removeEventListener('keydown', this._ctxEsc); this._ctxEsc = null; }
+  },
+
+  openRunModal(skill) {
+    this.closeRunModal();
+    const ov = document.createElement('div');
+    ov.id = 'skillRunModal';
+    ov.className = 'run-overlay';
+    ov.innerHTML = `
+      <div class="run-panel" role="dialog" aria-modal="true">
+        <div class="run-head"><span class="run-ico mono">${esc(skill.icon || '\u2726')}</span><span class="run-title">${esc(skill.name || skill.id)}</span></div>
+        <div class="run-progress">
+          <div class="run-stage">${esc(I18n.t('runPreparing'))}</div>
+          <div class="run-track"><div class="run-fill"></div></div>
+        </div>
+        <div class="run-result hidden"></div>
+        <div class="run-kb-choose hidden">
+          <label class="run-kb-row"><span>${esc(I18n.t('chooseKb'))}</span><select id="runKbSelect"></select></label>
+          <div class="run-kb-acts">
+            <button class="primary" id="btnKbInsertOk">${esc(I18n.t('confirmInsert'))}</button>
+            <button class="ghost-btn" id="btnKbInsertCancel">${esc(I18n.t('cancelInsert'))}</button>
+          </div>
+        </div>
+        <div class="run-actions hidden">
+          <button class="ghost-btn" id="btnRunSaveNotes">${esc(I18n.t('saveToNotes'))}</button>
+          <button class="ghost-btn" id="btnRunInsertKb">${esc(I18n.t('insertToKb'))}</button>
+          <button class="ghost-btn" id="btnRunMargin">${esc(I18n.t('marginNote'))}</button>
+          <button class="primary run-close" id="btnRunClose">${esc(I18n.t('runClose'))}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    ov.querySelector('#btnRunClose').onclick = () => this.closeRunModal();
+    ov.addEventListener('mousedown', (e) => { if (e.target === ov) this.closeRunModal(); });
+    return ov;
+  },
+
+  closeRunModal() {
+    const m = document.getElementById('skillRunModal');
+    if (m) m.remove();
+  },
+
+  async runSkillOnSelection(skill, selText) {
+    if (!skill || !selText) { this.toast(I18n.t('selFirst')); return; }
+    this._selText = selText;
+    const modal = this.openRunModal(skill);
+    const stage = modal.querySelector('.run-stage');
+    const fill = modal.querySelector('.run-fill');
+    let pct = 4;
+    const tick = setInterval(() => {
+      pct = Math.min(90, pct + 4);
+      fill.style.width = pct + '%';
+      stage.textContent = pct > 50 ? I18n.t('runExecuting') : I18n.t('runPreparing');
+    }, 180);
+
+    const agent = (typeof Agents !== 'undefined' && Agents.get)
+      ? (Agents.get(skill.agent) || Agents.get(Agents.current) || Agents.list()[0] || null)
+      : null;
+    const kbRes = Retrieval.extractiveAnswer(selText, { topK: 6 });
+    const llmBase = Agents.activeLlm();
+    const llm = skill.model ? Object.assign({}, llmBase, { model: skill.model }) : llmBase;
+    const brief = skill.instructions ? (skill.instructions + '\n\n' + selText) : selText;
+    let result;
+    if (llm.apiKey && llm.baseUrl) {
+      result = await Agents.llmRun(agent, { message: brief }, brief, kbRes, []);
+    } else {
+      result = Agents.extractiveRun(agent, { message: brief }, kbRes, []);
+    }
+
+    clearInterval(tick);
+    fill.style.width = '100%';
+    stage.textContent = I18n.t('runDone');
+    this._skillResult = result.markdown || '';
+    setTimeout(() => this.showRunResult(result.markdown || ''), 250);
+    return result;
+  },
+
+  showRunResult(markdown) {
+    const modal = document.getElementById('skillRunModal');
+    if (!modal) return;
+    modal.querySelector('.run-progress').classList.add('hidden');
+    const box = modal.querySelector('.run-result');
+    box.classList.remove('hidden');
+    box.innerHTML = '';
+    box.appendChild(renderMarkdown(markdown));
+    const acts = modal.querySelector('.run-actions');
+    acts.classList.remove('hidden');
+
+    modal.querySelector('#btnRunSaveNotes').onclick = async () => {
+      await window.daaix.notesSave({ id: 'note-' + Date.now(), markdown, modified: Date.now() });
+      this.toast(I18n.t('noteSaved') + ' \u2713');
+    };
+
+    const chooser = modal.querySelector('.run-kb-choose');
+    const chooseBtn = modal.querySelector('#btnRunInsertKb');
+    chooseBtn.onclick = () => {
+      if (!chooser.classList.contains('hidden')) { chooser.classList.add('hidden'); return; }
+      const sel = modal.querySelector('#runKbSelect');
+      sel.innerHTML = '';
+      KB.kbs.filter(kb => this.kbIsOn(kb.id)).forEach(kb => {
+        const o = document.createElement('option');
+        o.value = kb.id;
+        o.textContent = (kb.name && (kb.name.ar || kb.name.en)) || kb.id;
+        sel.appendChild(o);
+      });
+      chooser.classList.remove('hidden');
+      modal.querySelector('#btnKbInsertOk').onclick = () => this.insertSkillToKb(sel.value);
+      modal.querySelector('#btnKbInsertCancel').onclick = () => chooser.classList.add('hidden');
+    };
+
+    modal.querySelector('#btnRunMargin').onclick = () => {
+      this.addMarginNote(markdown);
+      this.toast(I18n.t('marginAdded') + ' \u2713');
+      this.closeRunModal();
+    };
+  },
+
+  async insertSkillToKb(kbId) {
+    const kb = (KB.kbs || []).find(k => k.id === kbId);
+    if (!kb || !this._skillResult) return;
+    kb.documents = kb.documents || [];
+    kb.documents.push({
+      id: 'doc-' + Date.now(),
+      title: { ar: I18n.t('insertedDoc') || '\u0645\u0646 \u0627\u0644\u0645\u0647\u0627\u0631\u0627\u062a', en: 'From skills' },
+      type: 'principle',
+      body: this._skillResult
+    });
+    KB.rebuild();
+    Retrieval.build();
+    await window.daaix.kbSaveDownloaded(kb);
+    this.renderAll();
+    this.closeRunModal();
+    this.toast(I18n.t('insertedInKb') + ' \u2713');
+  },
+
+  addMarginNote(markdown) {
+    const body = document.getElementById('docBody');
+    if (!body) return;
+    const span = document.createElement('span');
+    span.className = 'wiki-note';
+    span.setAttribute('data-note', String(markdown || '').replace(/\s+/g, ' ').trim().slice(0, 400));
+    span.textContent = String(this._selText || '').trim().slice(0, 80) || (I18n.t('marginNote'));
+    const range = this._selRange;
+    if (range && range.startContainer && body.contains(range.startContainer.nodeType === 3 ? range.startContainer.parentNode : range.startContainer)) {
+      try {
+        const frag = range.extractContents();
+        span.textContent = '';
+        span.appendChild(frag);
+        range.insertNode(span);
+        range.collapse(false);
+      } catch (e) {
+        try { range.insertNode(span); } catch (e2) { body.appendChild(span); }
+      }
+    } else {
+      body.appendChild(span);
+    }
+    return span;
   },
 
   agentIsOn(id) {

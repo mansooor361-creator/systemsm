@@ -1584,6 +1584,105 @@ function bootDom() {
     assert(/\.set-cards-settings \{ max-width: none;/.test(css), 'settings cards uncapped');
   });
 
+  /* ------------------------- v1.6.39 ------------------------- */
+  test('v1.6.39: settings tab renamed to \u0627\u0644\u0648\u0643\u0644\u0627\u0621 / Agents', () => {
+    assert(window.eval('I18n').t('setTabAi') === '\u0627\u0644\u0648\u0643\u0644\u0627\u0621', 'ar label renamed');
+  });
+  test('v1.6.39: Agents pane = two windows (agents+models / skills) and the connectors card moved into it', () => {
+    const pane = doc.getElementById('setPaneAi');
+    const grid = pane.querySelector('.ai-grid');
+    assert(grid, 'ai-grid two-window layout present');
+    const cols = grid.querySelectorAll(':scope > .set-card');
+    assert(cols.length === 3, 'three windows: agents, skills, connectors');
+    assert(pane.querySelector('#connectorList'), 'connectorList moved into the AI pane');
+    assert(!doc.getElementById('setPaneSettings').querySelector('#connectorList'), 'no duplicate connectors card in general settings');
+    assert(pane.querySelector('#btnAddConnector') && pane.querySelector('#btnAiSave'), 'ids preserved so bindings keep working');
+    App.renderCustomSkillBuilder();
+    assert(pane.querySelector('#customSkillBuilder'), 'skills window builder present');
+    assert(pane.querySelector('#skillList'), 'skills window list present');
+    assert(pane.querySelector('#skillAgentSelect'), 'custom builder keeps agent select');
+    assert(pane.querySelector('#skillModelInput'), 'custom builder keeps model input');
+  });
+  test('v1.6.39: right-click on a selection opens the skills context menu listing skills', () => {
+    App.closeSkillCtxMenu();
+    App._selText = '\u0646\u0635 \u0645\u062d\u062f\u062f \u0644\u0644\u062a\u062c\u0631\u0628\u0629';
+    App.openSkillCtxMenu(30, 30);
+    const menu = doc.getElementById('skillCtxMenu');
+    assert(menu && menu.classList.contains('ctx-menu'), 'ctx menu rendered');
+    const items = menu.querySelectorAll('.ctx-item');
+    assert(items.length === window.eval('Agents').allSkills().length, 'menu lists every enabled skill');
+    App.closeSkillCtxMenu();
+    assert(!doc.getElementById('skillCtxMenu'), 'menu closes');
+  });
+  test('v1.6.39: clicking a skill opens the run popup \u2014 progress then result with action buttons', async () => {
+    const firstSkill = window.eval('Agents').allSkills()[0];
+    App._selText = '\u0646\u0635 \u0645\u062d\u062f\u062f \u0644\u0644\u062a\u062c\u0631\u0628\u0629';
+    await App.runSkillOnSelection(firstSkill, App._selText);
+    await new Promise(r => setTimeout(r, 350));
+    const modal = doc.getElementById('skillRunModal');
+    assert(modal, 'run modal open');
+    assert(!modal.querySelector('.run-result').classList.contains('hidden'), 'result visible after run');
+    assert(modal.querySelector('.run-result').textContent.length > 0, 'result has content');
+    const acts = modal.querySelector('.run-actions');
+    assert(!acts.classList.contains('hidden'), 'actions row visible');
+    ['btnRunSaveNotes', 'btnRunInsertKb', 'btnRunMargin', 'btnRunClose'].forEach(id =>
+      assert(modal.querySelector('#' + id), 'action ' + id));
+  });
+  test('v1.6.39: save-to-notes action stores a copy via the bridge', async () => {
+    let saved = null;
+    window.daaix.notesSave = async (n) => { saved = n; return { ok: true }; };
+    const modal = doc.getElementById('skillRunModal');
+    assert(modal, 'modal still open from previous test');
+    modal.querySelector('#btnRunSaveNotes').click();
+    await new Promise(r => setTimeout(r, 30));
+    assert(saved && saved.markdown && String(saved.id).startsWith('note-'), 'note saved with markdown');
+    window.daaix.notesSave = async () => ({ ok: true });
+  });
+  test('v1.6.39: insert-to-KB action lists enabled KBs and inserts the result as a document', async () => {
+    const KBobj = window.eval('KB');
+    const modal = doc.getElementById('skillRunModal');
+    modal.querySelector('#btnRunInsertKb').click();
+    const chooser = modal.querySelector('.run-kb-choose');
+    assert(!chooser.classList.contains('hidden'), 'KB chooser appears');
+    const sel = modal.querySelector('#runKbSelect');
+    assert(sel.options.length === KBobj.kbs.filter(kb => App.kbIsOn(kb.id)).length, 'chooser lists enabled KBs only');
+    const kbId = sel.value;
+    const target = KBobj.kbs.find(k => k.id === kbId);
+    const before = (target.documents || []).length;
+    let saveCalled = null;
+    window.daaix.kbSaveDownloaded = async (kb) => { saveCalled = kb.id; return { ok: true }; };
+    modal.querySelector('#btnKbInsertOk').click();
+    await new Promise(r => setTimeout(r, 60));
+    const after = KBobj.kbs.find(k => k.id === kbId).documents.length;
+    assert(after === before + 1, 'document appended to the chosen KB');
+    const docObj = KBobj.kbs.find(k => k.id === kbId).documents[after - 1];
+    assert(docObj.type === 'principle' && docObj.body, 'inserted doc has type+body');
+    assert(KBobj.byId.has(docObj.id), 'index rebuilt with the new document');
+    assert(saveCalled === kbId, 'downloaded KB persisted');
+    window.daaix.kbSaveDownloaded = async () => ({ ok: true });
+  });
+  test('v1.6.39: margin note wraps the selection as a tidy wiki-note with hover tooltip', () => {
+    const KBobj = window.eval('KB');
+    const ids = [...KBobj.byId.keys()];
+    assert(ids.length > 0, 'a document exists');
+    App.openDocument(ids[0], true);
+    const first = doc.querySelector('#docBody p');
+    App._selRange = null; App._selText = '\u0645\u0642\u0637\u0639 \u0645\u062d\u062f\u062f';
+    App.addMarginNote('\u0647\u0627\u0645\u0634 \u0627\u0644\u0648\u0643\u064a\u0644 \u0627\u0644\u0645\u062e\u062a\u0628\u0631');
+    const note = doc.querySelector('#docBody .wiki-note');
+    assert(note, 'wiki-note span added to the document');
+    assert(note.getAttribute('data-note') === '\u0647\u0627\u0645\u0634 \u0627\u0644\u0648\u0643\u064a\u0644 \u0627\u0644\u0645\u062e\u062a\u0628\u0631', 'hover tooltip data attached');
+    if (first) {
+      const r = doc.createRange();
+      r.selectNodeContents(first);
+      App._selRange = r; App._selText = first.textContent.slice(0, 20);
+      App.addMarginNote('\u0647\u0627\u0645\u0634 \u062b\u0627\u0646\u064d');
+      assert(doc.querySelectorAll('#docBody .wiki-note').length >= 2, 'range-based wrap works');
+    }
+    const css = fs.readFileSync(path.join(root, 'renderer', 'css', 'app.css'), 'utf8');
+    assert(/\.wiki-note:.*::after|content: attr\(data-note\)/.test(css), 'tooltip powered by data-note');
+  });
+
   await runAll();
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);

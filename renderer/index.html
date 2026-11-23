@@ -243,14 +243,6 @@
               <button id="btnCheckUpdates" class="primary" data-i18n="checkUpdates"></button>
             </div>
           </div>
-          <div class="set-card">
-            <div class="sc-head"><span class="sr-icon mono">⇄</span><div class="sr-main"><div class="sr-name" data-i18n="connectorsTitle"></div></div></div>
-            <div id="connectorList"></div>
-            <div class="sc-foot">
-              <button id="btnAddConnector" class="primary" data-i18n="addConnector"></button>
-              <button id="btnSaveSettings" class="primary" data-i18n="save"></button>
-            </div>
-          </div>
         </div>
         </div>
         <div id="setPaneKbs" class="set-pane hidden">
@@ -279,33 +271,52 @@
           <input id="setToolSearch" type="search" class="tools-search" data-i18n-ph="toolsSearchPh" />
           <div id="toolSettingsList" class="settings-cards"></div>
         </div>
+        <!-- v1.6.39: the Agents pane is now two side-by-side windows (agents+models / skills) with the external connectors window below -->
         <div id="setPaneAi" class="set-pane hidden">
           <p class="hint" data-i18n="aiPaneHint"></p>
-          <div class="wide sep" data-i18n="providersTitle"></div>
-          <p class="hint wide" data-i18n="providerHint"></p>
-          <div id="providerList" class="settings-rows"></div>
-          <div class="wide sep" data-i18n="llmApi"></div>
-          <div class="settings-grid">
-            <label><span data-i18n="baseUrl"></span><input id="setLlmUrl" type="url" placeholder="https://api.openai.com/v1" /></label>
-            <label><span data-i18n="apiKey"></span><input id="setLlmKey" type="password" autocomplete="off" /></label>
-            <label><span data-i18n="model"></span><input id="setLlmModel" type="text" list="modelPresets" placeholder="gpt-4o-mini" /></label>
-            <datalist id="modelPresets">
-              <option value="gpt-4o-mini"></option>
-              <option value="gpt-4o"></option>
-              <option value="claude-sonnet-4"></option>
-              <option value="gemini-2.0-flash"></option>
-              <option value="mistral-large-latest"></option>
-            </datalist>
-            <p class="hint wide" data-i18n="llmHint"></p>
+          <div class="ai-grid">
+            <div class="set-card ai-col">
+              <div class="sc-head"><span class="sr-icon mono">◈</span><div class="sr-main"><div class="sr-name" data-i18n="agentsWin"></div></div></div>
+              <div class="wide sep" data-i18n="providersTitle"></div>
+              <p class="hint" data-i18n="providerHint"></p>
+              <div id="providerList" class="settings-rows"></div>
+              <div class="wide sep" data-i18n="llmApi"></div>
+              <div class="settings-grid">
+                <label><span data-i18n="baseUrl"></span><input id="setLlmUrl" type="url" placeholder="https://api.openai.com/v1" /></label>
+                <label><span data-i18n="apiKey"></span><input id="setLlmKey" type="password" autocomplete="off" /></label>
+                <label><span data-i18n="model"></span><input id="setLlmModel" type="text" list="modelPresets" placeholder="gpt-4o-mini" /></label>
+              </div>
+              <datalist id="modelPresets">
+                <option value="gpt-4o-mini"></option>
+                <option value="gpt-4o"></option>
+                <option value="claude-sonnet-4"></option>
+                <option value="gemini-2.0-flash"></option>
+                <option value="mistral-large-latest"></option>
+              </datalist>
+              <p class="hint" data-i18n="llmHint"></p>
+              <div class="wide sep" data-i18n="memoryTitle"></div>
+              <div id="memoryList" class="cmd-list"></div>
+              <div class="sc-foot">
+                <button id="btnAiSave" class="primary" data-i18n="save"></button>
+              </div>
+            </div>
+            <div class="set-card ai-col">
+              <div class="sc-head"><span class="sr-icon mono">✦</span><div class="sr-main"><div class="sr-name" data-i18n="skillsWin"></div></div></div>
+              <div class="wide sep" data-i18n="customSkillsTitle"></div>
+              <div id="customSkillBuilder"></div>
+              <div id="customSkillList" class="cmd-list"></div>
+              <div class="wide sep" data-i18n="aiSkillsTitle"></div>
+              <div id="skillList" class="cmd-list"></div>
+            </div>
+            <div class="set-card ai-col ai-connectors">
+              <div class="sc-head"><span class="sr-icon mono">⇄</span><div class="sr-main"><div class="sr-name" data-i18n="connectorsTitle"></div></div></div>
+              <div id="connectorList"></div>
+              <div class="sc-foot">
+                <button id="btnAddConnector" class="primary" data-i18n="addConnector"></button>
+                <button id="btnSaveSettings" class="primary" data-i18n="save"></button>
+              </div>
+            </div>
           </div>
-          <div class="wide sep" data-i18n="customSkillsTitle"></div>
-          <div id="customSkillBuilder"></div>
-          <div id="customSkillList" class="cmd-list"></div>
-          <div class="wide sep" data-i18n="aiSkillsTitle"></div>
-          <div id="skillList" class="cmd-list"></div>
-          <div class="wide sep" data-i18n="memoryTitle"></div>
-          <div id="memoryList" class="cmd-list"></div>
-          <button id="btnAiSave" class="primary" data-i18n="save"></button>
         </div>
       </section>
     </main>
