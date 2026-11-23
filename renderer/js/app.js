@@ -248,8 +248,13 @@ const App = {
 
     const sample = await fetch('data/kb-sample.json').then(r => r.json());
     KB.load(sample);
+    /* v1.6.37: respect user-deleted sample KBs */
+    if (Array.isArray(this.settings.deletedSampleKbs) && this.settings.deletedSampleKbs.length) {
+      KB.kbs = KB.kbs.filter(k => !this.settings.deletedSampleKbs.includes(k.id));
+    }
     const downloaded = await window.daaix.kbLoadDownloaded();
     KB.addDownloaded(downloaded);
+    this._downloadedKbIds = new Set((downloaded || []).map(k => k.id));
     Retrieval.build();
 
 
@@ -361,11 +366,78 @@ const App = {
     document.body.classList.toggle('theme-dark', theme === 'dark');
     document.body.classList.toggle('theme-light', theme === 'light');
     this.applyFontSettings();
+    this.applyReadingVars();
+  },
+
+  /* v1.6.37: per-level heading backgrounds + content (paper) background */
+  applyReadingVars() {
+    const root = document.body.style;
+    const ok = (v) => /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test((v || '').trim());
+    for (let i = 1; i <= 6; i++) {
+      const v = ((this.settings || {})['hBg' + i] || '').trim();
+      if (ok(v)) root.setProperty('--h-bg' + i, v); else root.removeProperty('--h-bg' + i);
+    }
+    const p = ((this.settings || {}).paperBg || '').trim();
+    if (ok(p)) { root.setProperty('--paper', p); root.setProperty('--paper-override', p); }
+    else { root.removeProperty('--paper'); root.removeProperty('--paper-override'); }
+  },
+
+  bindReadingStyle() {
+    for (let i = 1; i <= 6; i++) {
+      const hex = document.getElementById('setHBg' + i);
+      const col = document.getElementById('setHBg' + i + 'c');
+      if (!hex || !col) continue;
+      hex.onchange = () => {
+        this.settings['hBg' + i] = hex.value.trim();
+        window.daaix.settingsSet({ ['hBg' + i]: this.settings['hBg' + i] });
+        this.applyReadingVars();
+      };
+      col.onchange = () => {
+        this.settings['hBg' + i] = col.value;
+        hex.value = col.value;
+        window.daaix.settingsSet({ ['hBg' + i]: col.value });
+        this.applyReadingVars();
+      };
+    }
+    const pt = document.getElementById('setPaperBgT');
+    const pc = document.getElementById('setPaperBgC');
+    pt.onchange = () => {
+      this.settings.paperBg = pt.value.trim();
+      window.daaix.settingsSet({ paperBg: this.settings.paperBg });
+      this.applyReadingVars();
+    };
+    pc.onchange = () => {
+      this.settings.paperBg = pc.value;
+      pt.value = pc.value;
+      window.daaix.settingsSet({ paperBg: pc.value });
+      this.applyReadingVars();
+    };
+    document.getElementById('btnReadStyleReset').onclick = async () => {
+      for (let i = 1; i <= 6; i++) { delete this.settings['hBg' + i]; await window.daaix.settingsSet({ ['hBg' + i]: '' }); }
+      delete this.settings.paperBg;
+      await window.daaix.settingsSet({ paperBg: '' });
+      this.applyReadingVars();
+      this.fillSettings();
+    };
+  },
+
+  fillReadingStyle() {
+    for (let i = 1; i <= 6; i++) {
+      const v = this.settings['hBg' + i] || '';
+      const hexEl = document.getElementById('setHBg' + i);
+      const colEl = document.getElementById('setHBg' + i + 'c');
+      if (hexEl) hexEl.value = v;
+      if (colEl) colEl.value = v || '#000000';
+    }
+    const t = document.getElementById('setPaperBgT');
+    if (t) t.value = this.settings.paperBg || '';
+    const c = document.getElementById('setPaperBgC');
+    if (c) c.value = this.settings.paperBg || '#000000';
   },
 
   /* v1.6.36: Obsidian-style font settings — family / size / text color as CSS vars */
   applyFontSettings() {
-    const root = document.documentElement.style;
+    const root = document.body.style;
     const fam = (this.settings || {}).fontFam;
     const size = parseInt((this.settings || {}).fontSize, 10);
     const color = (this.settings || {}).fontColor;
@@ -690,6 +762,7 @@ const App = {
         <div class="sc-foot">
           ${kb.sourcePath ? `<button class="ghost-btn kb-rescan">${I18n.t('refreshKb')}</button>` : ''}
           <label class="switch"><input type="checkbox" ${this.kbIsOn(kb.id) ? 'checked' : ''} /><span class="sl"></span></label>
+          <button class="danger kb-del">${I18n.t('kbDelete')}</button>
         </div>`;
       row.querySelector('input').onchange = async (e) => {
         this.settings.kbEnabled[kb.id] = e.target.checked;
@@ -710,6 +783,29 @@ const App = {
           } else this.toast((res && res.error) || '\u2014');
         };
       }
+      /* v1.6.37: delete a KB — two-step confirm; downloaded/local KBs are removed
+         from disk, sample KBs are remembered as deleted and filtered at boot */
+      const delBtn = row.querySelector('.kb-del');
+      delBtn.onclick = async () => {
+        if (delBtn.dataset.armed !== '1') {
+          delBtn.dataset.armed = '1';
+          delBtn.textContent = I18n.t('kbDeleteConfirm');
+          setTimeout(() => { delBtn.dataset.armed = ''; delBtn.textContent = I18n.t('kbDelete'); }, 3500);
+          return;
+        }
+        const isDownloaded = (this._downloadedKbIds || new Set()).has(kb.id) || !!kb.sourcePath;
+        if (isDownloaded && window.daaix.kbDeleteDownloaded) await window.daaix.kbDeleteDownloaded(kb.id);
+        else {
+          const del = new Set(this.settings.deletedSampleKbs || []);
+          del.add(kb.id);
+          this.settings.deletedSampleKbs = [...del];
+          await window.daaix.settingsSet({ deletedSampleKbs: this.settings.deletedSampleKbs });
+        }
+        KB.kbs = KB.kbs.filter(k => k.id !== kb.id);
+        KB.rebuild();
+        this.renderAll();
+        this.toast(I18n.t('kbDeleted'));
+      };
       list.appendChild(row);
     });
   },
@@ -905,6 +1001,7 @@ const App = {
       this.applyFontSettings();
       this.fillSettings();
     };
+    this.bindReadingStyle();
   },
 
   saveSettingsForm() {
@@ -1244,6 +1341,7 @@ const App = {
     document.getElementById('setFontFam').value = this.settings.fontFam || '';
     document.getElementById('setFontSize').value = parseInt(this.settings.fontSize, 10) || 16;
     document.getElementById('setFontColor').value = this.settings.fontColor || '#e6edf7';
+    this.fillReadingStyle();
     document.getElementById('setUpdateUrl').value = this.settings.updateUrl || '';
     const llm = this.settings.llm || {};
     document.getElementById('setLlmUrl').value = llm.baseUrl || '';
@@ -1813,12 +1911,15 @@ const App = {
     if (!toolsBox) return;
     toolsBox.innerHTML = '';
     Tools.list().filter(t => this.toolIsOn(t.id)).forEach(t => {
-      const card = document.createElement('button');
-      card.className = 'home-tool mono';
-      card.title = t.desc || '';
-      card.innerHTML = `<span class="ht-icon">${t.icon}</span><span class="ht-label">${esc(t.label)}</span>`;
-      card.onclick = () => this.openTab({ kind: 'tools', toolId: t.id }, { forceNew: true });
-      toolsBox.appendChild(card);
+      const row = document.createElement('button');
+      row.className = 'home-tool';
+      row.title = t.desc || '';
+      row.innerHTML = `<span class="ht-icon mono">${t.icon}</span>` +
+        `<span class="ht-main"><span class="ht-label">${esc(t.label)}</span>` +
+        `<span class="ht-desc">${esc(t.desc || '')}</span></span>` +
+        `<span class="ht-chip cat-chip ${t.cat}">${esc(I18n.t('cat_' + t.cat))}</span>`;
+      row.onclick = () => this.openTab({ kind: 'tools', toolId: t.id }, { forceNew: true });
+      toolsBox.appendChild(row);
     });
     const recentBox = document.getElementById('homeRecent');
     recentBox.innerHTML = '';
@@ -1842,6 +1943,8 @@ const App = {
   bindHomeLauncher() {
     const input = document.getElementById('homeQuick');
     if (!input) return;
+    const lens = document.getElementById('homeLens');
+    if (lens && typeof LENS_SVG !== 'undefined') lens.innerHTML = LENS_SVG;
     const box = document.getElementById('homeQuickResults');
     const close = () => { box.classList.add('hidden'); box.innerHTML = ''; };
     input.addEventListener('input', () => {
@@ -1878,6 +1981,7 @@ const App = {
       e.preventDefault();
       const startX = e.clientX, startW = pane.getBoundingClientRect().width;
       handle.setPointerCapture(e.pointerId);
+      handle.classList.add('dragging');
       const move = (ev) => {
         let w = Math.round(startW + sign * (ev.clientX - startX));
         w = Math.max(min, Math.min(max, w));
@@ -1885,6 +1989,7 @@ const App = {
         pane.style.minWidth = w + 'px'; pane.style.maxWidth = w + 'px';
       };
       const up = (ev) => {
+        handle.classList.remove('dragging');
         handle.removeEventListener('pointermove', move);
         handle.removeEventListener('pointerup', up);
         let w = Math.round(startW + sign * (ev.clientX - startX));

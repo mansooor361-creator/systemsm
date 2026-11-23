@@ -34,10 +34,13 @@
       <!-- Home -->
       <section id="view-home" class="view">
         <div id="homeLauncher" class="home-launcher">
-          <div class="home-brand mono">DaAIx</div>
-          <div class="home-search-wrap">
-            <input id="homeQuick" type="text" data-i18n-ph="newTabPh" autocomplete="off" />
-            <div id="homeQuickResults" class="home-quick-results hidden"></div>
+          <div class="home-topbar">
+            <div class="home-brand mono">DaAIx</div>
+            <div class="home-search-wrap">
+              <span id="homeLens" class="home-lens mono"></span>
+              <input id="homeQuick" type="text" data-i18n-ph="newTabPh" autocomplete="off" />
+              <div id="homeQuickResults" class="home-quick-results hidden"></div>
+            </div>
           </div>
           <div class="home-sec" data-i18n="homeTools"></div>
           <div id="homeTools" class="home-tools"></div>
@@ -196,6 +199,43 @@
             </label>
             <div class="sc-foot">
               <button id="btnFontResetHis" class="ghost-btn" data-i18n="fontReset"></button>
+            </div>
+          </div>
+          <div class="set-card">
+            <div class="sc-head"><span class="sr-icon mono">#</span><div class="sr-main"><div class="sr-name" data-i18n="readStyle"></div></div></div>
+            <p class="hint"><span data-i18n="readStyleHint"></span></p>
+            <div class="hbg-grid">
+              <label class="hbg-row"><span class="mono">#</span>
+                <input id="setHBg1" class="hbg-hex" type="text" placeholder="#ffffff" />
+                <input id="setHBg1c" type="color" />
+              </label>
+              <label class="hbg-row"><span class="mono">##</span>
+                <input id="setHBg2" class="hbg-hex" type="text" placeholder="#ffffff" />
+                <input id="setHBg2c" type="color" />
+              </label>
+              <label class="hbg-row"><span class="mono">###</span>
+                <input id="setHBg3" class="hbg-hex" type="text" placeholder="#ffffff" />
+                <input id="setHBg3c" type="color" />
+              </label>
+              <label class="hbg-row"><span class="mono">####</span>
+                <input id="setHBg4" class="hbg-hex" type="text" placeholder="#ffffff" />
+                <input id="setHBg4c" type="color" />
+              </label>
+              <label class="hbg-row"><span class="mono">#####</span>
+                <input id="setHBg5" class="hbg-hex" type="text" placeholder="#ffffff" />
+                <input id="setHBg5c" type="color" />
+              </label>
+              <label class="hbg-row"><span class="mono">######</span>
+                <input id="setHBg6" class="hbg-hex" type="text" placeholder="#ffffff" />
+                <input id="setHBg6c" type="color" />
+              </label>
+              <label class="hbg-row"><span data-i18n="paperBg"></span>
+                <input id="setPaperBgT" class="hbg-hex" type="text" placeholder="#ffffff" />
+                <input id="setPaperBgC" type="color" />
+              </label>
+            </div>
+            <div class="sc-foot">
+              <button id="btnReadStyleReset" class="ghost-btn" data-i18n="fontReset"></button>
             </div>
           </div>
           <div class="set-card">

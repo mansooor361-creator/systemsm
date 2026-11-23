@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('daaix', {
   notesLoad: () => ipcRenderer.invoke('notes:load'),
   notesDelete: (id) => ipcRenderer.invoke('notes:delete', id),
   kbSaveDownloaded: (kb) => ipcRenderer.invoke('kb:saveDownloaded', kb),
+  kbDeleteDownloaded: (kbId) => ipcRenderer.invoke('kb:deleteDownloaded', kbId),
   kbLoadDownloaded: () => ipcRenderer.invoke('kb:loadDownloaded'),
   kbCheckUpdates: () => ipcRenderer.invoke('kb:checkUpdates'),
   kbFetchRemote: (url) => ipcRenderer.invoke('kb:fetchRemote', url),

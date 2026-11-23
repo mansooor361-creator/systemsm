@@ -24,6 +24,7 @@ const stubBridge = {
   notesLoad: async () => [{ id: 'n1', markdown: '# ملاحظة تجريبية\n\nنص', modified: Date.now() }],
   notesDelete: async () => ({ ok: true }),
   kbSaveDownloaded: async () => ({ ok: true }),
+  kbDeleteDownloaded: async () => ({ ok: true }),
   kbLoadDownloaded: async () => [],
   kbCheckUpdates: async () => ({ ok: true, updates: [] }),
   kbFetchRemote: async () => ({ ok: false }),
@@ -1458,21 +1459,21 @@ function bootDom() {
     fam.dispatchEvent(new window.Event('change'));
     await new Promise(r => setTimeout(r, 10));
     assert(App.settings.fontFam === 'Cairo', 'font family persisted');
-    assert(doc.documentElement.style.getPropertyValue('--font-ui').includes('Cairo'), '--font-ui var applied');
+    assert(doc.body.style.getPropertyValue('--font-ui').includes('Cairo'), '--font-ui var applied');
     size.value = '99';
     size.dispatchEvent(new window.Event('change'));
     await new Promise(r => setTimeout(r, 10));
     assert(App.settings.fontSize === 22, 'font size clamped to 22');
-    assert(doc.documentElement.style.getPropertyValue('--font-size') === '22px', '--font-size var applied');
+    assert(doc.body.style.getPropertyValue('--font-size') === '22px', '--font-size var applied');
     color.value = '#aabbee';
     color.dispatchEvent(new window.Event('change'));
     await new Promise(r => setTimeout(r, 10));
     assert(App.settings.fontColor === '#aabbee', 'font color persisted');
-    assert(doc.documentElement.style.getPropertyValue('--text') === '#aabbee', '--text var applied');
+    assert(doc.body.style.getPropertyValue('--text') === '#aabbee', '--text var applied');
     doc.getElementById('btnFontResetHis').click();
     await new Promise(r => setTimeout(r, 10));
     assert(!App.settings.fontFam && !App.settings.fontSize && !App.settings.fontColor, 'font settings cleared');
-    assert(!doc.documentElement.style.getPropertyValue('--font-ui'), '--font-ui removed on reset');
+    assert(!doc.body.style.getPropertyValue('--font-ui'), '--font-ui removed on reset');
     assert(doc.getElementById('setFontSize').value === '16', 'size input refilled with default');
   });
   test('v1.6.36: home launcher lists only enabled tools as cards', () => {
@@ -1509,6 +1510,64 @@ function bootDom() {
     input.dispatchEvent(new window.Event('input', { bubbles: true }));
     await new Promise(r => setTimeout(r, 10));
     assert(box.classList.contains('hidden'), 'short query hides results');
+  });
+
+  console.log('\n\u2014 v1.6.37: top search, hairline separators, full-width settings, KB delete, reading styles \u2014');
+  test('v1.6.37: home search sits in the top bar with lens, tools render as rows with desc + chip', () => {
+    const top = doc.querySelector('#homeLauncher .home-topbar');
+    assert(top, 'home top bar exists');
+    assert(top.querySelector('#homeQuick'), 'search input is inside the top bar');
+    assert(top.querySelector('#homeQuick ~ #homeQuickResults'), 'quick results anchored to the top search');
+    App.renderHomeLauncher();
+    const rows = doc.querySelectorAll('#homeTools .home-tool');
+    assert(rows.length > 0, 'tool rows rendered');
+    const r0 = rows[0];
+    assert(r0.querySelector('.ht-desc'), 'row shows description');
+    assert(r0.querySelector('.ht-chip'), 'row shows category chip');
+    assert(r0.querySelector('.ht-label'), 'row shows label');
+  });
+  test('v1.6.37: reading-style settings \u2014 per-level heading backgrounds + paper background persist and apply', async () => {
+    const h4 = doc.getElementById('setHBg4');
+    const h4c = doc.getElementById('setHBg4c');
+    assert(h4 && h4c, 'heading background inputs present');
+    h4.value = '#876786';
+    h4.dispatchEvent(new window.Event('change'));
+    await new Promise(r => setTimeout(r, 10));
+    assert(App.settings.hBg4 === '#876786', 'hex value accepted for h4 background');
+    assert(doc.body.style.getPropertyValue('--h-bg4') === '#876786', '--h-bg4 var applied');
+    h4c.value = '#ffcc00';
+    h4c.dispatchEvent(new window.Event('change'));
+    await new Promise(r => setTimeout(r, 10));
+    assert(App.settings.hBg4 === '#ffcc00' && h4.value === '#ffcc00', 'picker syncs the hex field');
+    App.settings.paperBg = '#eef2f8';
+    App.applyReadingVars();
+    assert(doc.body.style.getPropertyValue('--paper') === '#eef2f8', 'paper background override');
+    App.settings.hBg4 = 'not-a-color';
+    App.applyReadingVars();
+    assert(!doc.body.style.getPropertyValue('--h-bg4'), 'invalid hex ignored');
+    App.settings.hBg4 = '';
+    doc.getElementById('btnReadStyleReset').click();
+    await new Promise(r => setTimeout(r, 30));
+    assert(!App.settings.paperBg && !doc.body.style.getPropertyValue('--paper'), 'reading styles reset');
+  });
+  test('v1.6.37: every KB card has a delete button \u2014 two-step confirm removes the KB', async () => {
+    App.renderKbSettings();
+    const del = doc.querySelector('#kbSettingsList .kb-del');
+    assert(del, 'delete button present on KB card');
+    const before = window.eval('KB').kbs.length;
+    del.click();
+    assert(del.textContent.includes('\u062a\u0623\u0643\u064a\u062f') || del.textContent.includes('Confirm'), 'first click arms the confirm');
+    del.click();
+    await new Promise(r => setTimeout(r, 30));
+    assert(window.eval('KB').kbs.length === before - 1, 'KB removed after confirm');
+    assert((App.settings.deletedSampleKbs || []).length >= 1, 'sample KB deletion remembered');
+    App.settings.deletedSampleKbs = [];
+  });
+  test('v1.6.37: settings panes run full window width (no 860px cap computed in CSS source)', () => {
+    const css = fs.readFileSync(path.join(root, 'renderer', 'css', 'app.css'), 'utf8');
+    assert(/\.set-pane \{ max-width: none; \}/.test(css), 'set-pane uncapped');
+    assert(/\.tool-panel \{ max-width: none; \}/.test(css), 'tool panel uncapped');
+    assert(/\.set-cards-settings \{ max-width: none;/.test(css), 'settings cards uncapped');
   });
 
   await runAll();

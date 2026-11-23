@@ -247,6 +247,12 @@ ipcMain.handle('kb:saveDownloaded', (_e, kb) => {
   fs.writeFileSync(file, JSON.stringify(kb), 'utf8');
   return { ok: true, file };
 });
+ipcMain.handle('kb:deleteDownloaded', (_e, kbId) => {
+  const dir = path.join(app.getPath('userData'), 'kb');
+  const file = path.join(dir, `${kbId}.json`);
+  try { if (fs.existsSync(file)) fs.rmSync(file); return { ok: true }; }
+  catch (err) { return { ok: false, error: String(err && err.message || err) }; }
+});
 ipcMain.handle('kb:loadDownloaded', () => {
   const dir = path.join(app.getPath('userData'), 'kb');
   if (!fs.existsSync(dir)) return [];
