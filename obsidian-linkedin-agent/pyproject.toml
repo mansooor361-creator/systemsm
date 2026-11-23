@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "obsidian-linkedin-agent"
+version = "0.1.0"
+description = "Obsidian-linked LinkedIn drafting agent: drafts from your vault into a human approval queue. Never auto-posts."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "mansooor361-creator" }]
+dependencies = []
+
+[project.scripts]
+liagent = "liagent.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["liagent*"]
+
+[tool.setuptools.package-data]
+liagent = ["data/*.json"]
