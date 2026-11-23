@@ -169,9 +169,12 @@ html[lang="en"] #view-doc > * { direction: ltr; }
 .toc-item.lvl1 { font-weight: 700; color: var(--text); }
 .toc-item.lvl2 { font-weight: 600; }
 .toc-item .toc-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.toc-toggle { flex: none; width: 14px; text-align: center; color: var(--muted); font-size: 10px; cursor: pointer; user-select: none; transition: transform .12s ease; }
+.toc-toggle { flex: none; width: 12px; text-align: center; color: var(--muted); font-size: 10px; cursor: pointer; user-select: none; }
 .toc-toggle:hover { color: var(--text); }
 .toc-toggle.leaf { cursor: default; opacity: .3; }
+/* v1.6.38: unified chevron — rotated down when open, right when folded */
+.toc-node .toc-toggle.rot { display: inline-flex; justify-content: center; transform: rotate(90deg); transition: transform .12s ease; }
+.toc-node .toc-toggle.rot.folded { transform: rotate(0deg); }
 /* v1.6.37: Obsidian file-explorer guides — continuous vertical rail per depth,
    horizontal stub into each row, chevron rotates when folded */
 .toc-node { position: relative; }
@@ -997,43 +1000,6 @@ mark.hl { background: var(--bg3); color: var(--text); font-weight: 600; padding:
 }
 
 /* ---------- v1.6.36: new-tab home launcher ---------- */
-/* v1.6.37: search sits at the top of the first page, tools as tidy full-width rows */
-.home-launcher {
-  max-width: 900px; width: 100%; margin: 0 auto; padding: 26px 32px 10px;
-}
-.home-topbar { margin-bottom: 28px; }
-.home-brand {
-  font-size: 20px; font-weight: 700; letter-spacing: 2px;
-  color: var(--text); margin-bottom: 12px; user-select: none;
-}
-.home-search-wrap {
-  position: relative;
-}
-.home-lens {
-  position: absolute; inset-inline-start: 12px; top: 50%; transform: translateY(-50%);
-  display: flex; color: var(--muted); pointer-events: none;
-}
-.home-lens svg { width: 16px; height: 16px; display: block; }
-#homeQuick {
-  width: 100%; box-sizing: border-box; padding: 12px 16px; padding-inline-start: 38px;
-  font-size: 15px; background: var(--bg2); border: 1px solid var(--border);
-  border-radius: 8px; color: var(--text); outline: none; transition: border-color 0.12s ease;
-}
-#homeQuick:focus { border-color: var(--accent); }
-.home-quick-results {
-  position: absolute; inset-inline: 0; top: calc(100% + 4px); z-index: 60;
-  background: var(--bg2); border: 1px solid var(--border); border-radius: 8px;
-  max-height: 320px; overflow-y: auto; box-shadow: 0 8px 26px rgba(0,0,0,.35);
-}
-.hqr-row {
-  display: flex; align-items: center; gap: 10px; padding: 9px 14px;
-  border-bottom: 1px solid var(--border); cursor: pointer; font-size: 14px;
-}
-.hqr-row:last-child { border-bottom: none; }
-.hqr-row:hover { background: var(--bg3); }
-.hqr-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hqr-art { color: var(--muted); font-size: 12px; }
-.hqr-empty { color: var(--muted); cursor: default; }
 .home-sec {
   font-size: 13px; color: var(--muted); text-transform: uppercase;
   letter-spacing: .8px; margin: 0 0 10px;
@@ -1090,3 +1056,12 @@ mark.hl { background: var(--bg3); color: var(--text); font-weight: 600; padding:
 body.theme-dark { --h-fg: #e8cd82; }
 body.theme-light { --h-fg: #7a5c10; }
 body.theme-light .doc-body h4, body.theme-light .doc-body h5 { color: var(--h-fg); }
+
+/* ---------- v1.6.38: factory reset + calmer reading-style architecture ---------- */
+.factory-foot {
+  justify-content: flex-start;
+  border-top: 1px solid var(--border);
+  margin: 2px 0 12px;
+  padding-top: 8px;
+}
+#btnFactoryReset { font-size: 13px; }

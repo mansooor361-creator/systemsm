@@ -260,7 +260,6 @@ const App = {
 
     this.bindTopbar();
     this.bindQuickSwitcher();
-    this.bindHomeLauncher();
     this.bindDrawer();
     this.bindViews();
     this.bindSettingsTabs();
@@ -1002,6 +1001,20 @@ const App = {
       this.fillSettings();
     };
     this.bindReadingStyle();
+    /* v1.6.38: restore factory appearance/layout in one click (side of the first card) */
+    document.getElementById('btnFactoryReset').onclick = async () => {
+      const resetKeys = {};
+      ['fontFam', 'fontSize', 'fontColor', 'paperBg', 'tocW', 'propsW', 'propsCollapsed',
+       'hBg1', 'hBg2', 'hBg3', 'hBg4', 'hBg5', 'hBg6'].forEach(k => { delete this.settings[k]; resetKeys[k] = ''; });
+      resetKeys.theme = 'dark';
+      this.settings.theme = 'dark';
+      await window.daaix.settingsSet(resetKeys);
+      this.applyTheme('dark');
+      this.applyColumnWidths();
+      this.fillSettings();
+      this.toast('\u2713 ' + I18n.t('factoryResetDone'));
+      document.getElementById('setTheme').value = 'dark';
+    };
   },
 
   saveSettingsForm() {
@@ -1940,39 +1953,6 @@ const App = {
     if (!shown) recentBox.innerHTML = `<span class="hint">\u2014</span>`;
   },
 
-  bindHomeLauncher() {
-    const input = document.getElementById('homeQuick');
-    if (!input) return;
-    const lens = document.getElementById('homeLens');
-    if (lens && typeof LENS_SVG !== 'undefined') lens.innerHTML = LENS_SVG;
-    const box = document.getElementById('homeQuickResults');
-    const close = () => { box.classList.add('hidden'); box.innerHTML = ''; };
-    input.addEventListener('input', () => {
-      const q = input.value.trim();
-      if (q.length < 2) { close(); return; }
-      const res = KB.search(q, 8);
-      box.innerHTML = '';
-      if (!res.length) { box.innerHTML = `<div class="hqr-row hqr-empty">${I18n.t('noResults')}</div>`; box.classList.remove('hidden'); return; }
-      res.forEach(r => {
-        const doc = r.doc || r;
-        const title = (doc.title && (doc.title[I18n.lang] || doc.title.ar || doc.title.en)) || '';
-        const row = document.createElement('div');
-        row.className = 'hqr-row';
-        row.innerHTML = `<span class="hqr-title">${esc(title)}</span>${r.articleNum ? `<span class="hqr-art mono">${esc(r.articleNum)}</span>` : ''}`;
-        row.onclick = () => { input.value = ''; close(); this.openDocument(doc.id); };
-        box.appendChild(row);
-      });
-      box.classList.remove('hidden');
-    });
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') { input.value = ''; close(); input.blur(); }
-      if (e.key === 'Enter') {
-        const first = box.querySelector('.hqr-row:not(.hqr-empty)');
-        if (first) first.click();
-      }
-    });
-    input.addEventListener('blur', () => setTimeout(close, 180));
-  },
 
   /* v1.6.36: resizable columns (Obsidian-style drag splitters) */
   bindResizeCol(handle, pane, min, max, sign, key) {
@@ -2315,14 +2295,16 @@ const App = {
         item.className = 'toc-node';
         const row = document.createElement('div');
         row.className = 'toc-item lvl' + n.level;
+        /* v1.6.38: unified chevron — same ❯ symbol as the column toggles;
+           rotated down when the branch is open, right when folded */
         const tg = document.createElement('span');
-        tg.className = 'toc-toggle' + (n.children.length ? '' : ' leaf');
-        tg.textContent = n.children.length ? '\u25be' : '\u00b7';
+        tg.className = 'toc-toggle' + (n.children.length ? ' rot' : ' leaf rot');
+        tg.textContent = '\u276f';
         tg.onclick = (e) => {
           e.stopPropagation();
           if (!n.children.length) return;
           const collapsed = kids.classList.toggle('collapsed');
-          tg.textContent = collapsed ? '\u25b8' : '\u25be';
+          tg.classList.toggle('folded', collapsed);
         };
         row.appendChild(tg);
         const label = document.createElement('span');

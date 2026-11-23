@@ -34,14 +34,6 @@
       <!-- Home -->
       <section id="view-home" class="view">
         <div id="homeLauncher" class="home-launcher">
-          <div class="home-topbar">
-            <div class="home-brand mono">DaAIx</div>
-            <div class="home-search-wrap">
-              <span id="homeLens" class="home-lens mono"></span>
-              <input id="homeQuick" type="text" data-i18n-ph="newTabPh" autocomplete="off" />
-              <div id="homeQuickResults" class="home-quick-results hidden"></div>
-            </div>
-          </div>
           <div class="home-sec" data-i18n="homeTools"></div>
           <div id="homeTools" class="home-tools"></div>
           <div class="home-sec" data-i18n="homeRecent"></div>
@@ -172,6 +164,9 @@
         <div class="settings-cards set-cards-settings">
           <div class="set-card">
             <div class="sc-head"><span class="sr-icon mono">◐</span><div class="sr-main"><div class="sr-name" data-i18n="appearance"></div></div></div>
+            <div class="sc-foot factory-foot">
+              <button id="btnFactoryReset" class="ghost-btn" data-i18n="factoryReset"></button>
+            </div>
             <label><span data-i18n="language"></span>
               <select id="setLang"><option value="ar">العربية</option><option value="en">English</option></select>
             </label>

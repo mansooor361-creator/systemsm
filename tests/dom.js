@@ -650,10 +650,10 @@ function bootDom() {
     const nested = kids.querySelector(':scope > .toc-node > .toc-children');
     assert(nested && nested.querySelectorAll(':scope > .toc-node').length === 1, 'h3 nested under h2');
     const tg = first.querySelector(':scope > .toc-item > .toc-toggle');
-    assert(tg.textContent !== '', 'toggle mark present');
+    assert(tg.textContent === '\u276f', 'unified chevron present');
     tg.click();
     assert(kids.classList.contains('collapsed'), 'collapsing h1 hides its subtree');
-    assert(tg.textContent === '\u25b8', 'toggle flipped to collapsed arrow');
+    assert(tg.classList.contains('folded'), 'toggle flipped to folded state');
     tg.click();
     assert(!kids.classList.contains('collapsed'), 'expanding restores subtree');
   });
@@ -1243,15 +1243,15 @@ function bootDom() {
     const first = doc.querySelector('#tocItems > .toc-node');
     assert(first, 'root toc node');
     const tg = first.querySelector(':scope > .toc-item > .toc-toggle');
-    assert(tg && tg.textContent === '\u25be', 'open arrow ▾ on expanded node with children');
+    assert(tg && tg.textContent === '\u276f', 'open arrow ▾ on expanded node with children');
     const kids = first.querySelector(':scope > .toc-children');
     assert(kids && kids.querySelector(':scope > .toc-node'), 'children nested under parent');
     const kid = kids.querySelector(':scope > .toc-node > .toc-item > .toc-toggle') ? kids.querySelector(':scope > .toc-node') : null;
     assert(kid, 'child node present');
     kid.querySelector('.toc-toggle').click();
-    assert(kid.querySelector(':scope > .toc-item > .toc-toggle').textContent === '\u25b8', 'arrow flips to ▸ when collapsed');
+    assert(kid.querySelector(':scope > .toc-item > .toc-toggle').classList .contains('folded'), 'chevron folds ▸ when collapsed');
     kid.querySelector('.toc-toggle').click();
-    assert(kid.querySelector(':scope > .toc-item > .toc-toggle').textContent === '\u25be', 'arrow back to ▾');
+    assert(!kid.querySelector(':scope > .toc-item > .toc-toggle').classList.contains('folded'), 'chevron unfolds again');
   });
 
   console.log('\n— v1.6.30: OCR engine — سحب صور الوثائق (AI agents) —');
@@ -1497,27 +1497,8 @@ function bootDom() {
     const chips = doc.querySelectorAll('#homeRecent .home-recent-chip');
     assert(chips.length === 8, 'eight recent chips rendered');
   });
-  test('v1.6.36: launcher quick search shows result rows; typing <2 chars closes', async () => {
-    const input = doc.getElementById('homeQuick');
-    const box = doc.getElementById('homeQuickResults');
-    input.value = '\u0645\u0643\u0627\u0641\u0623\u0629';
-    input.dispatchEvent(new window.Event('input', { bubbles: true }));
-    await new Promise(r => setTimeout(r, 10));
-    assert(!box.classList.contains('hidden'), 'quick results opened');
-    const rows = box.querySelectorAll('.hqr-row');
-    assert(rows.length > 0, 'result rows listed');
-    input.value = '\u0645';
-    input.dispatchEvent(new window.Event('input', { bubbles: true }));
-    await new Promise(r => setTimeout(r, 10));
-    assert(box.classList.contains('hidden'), 'short query hides results');
-  });
-
   console.log('\n\u2014 v1.6.37: top search, hairline separators, full-width settings, KB delete, reading styles \u2014');
-  test('v1.6.37: home search sits in the top bar with lens, tools render as rows with desc + chip', () => {
-    const top = doc.querySelector('#homeLauncher .home-topbar');
-    assert(top, 'home top bar exists');
-    assert(top.querySelector('#homeQuick'), 'search input is inside the top bar');
-    assert(top.querySelector('#homeQuick ~ #homeQuickResults'), 'quick results anchored to the top search');
+  test('v1.6.37: tools render as rows with desc + chip; home search removed in v1.6.38', () => {
     App.renderHomeLauncher();
     const rows = doc.querySelectorAll('#homeTools .home-tool');
     assert(rows.length > 0, 'tool rows rendered');
@@ -1525,6 +1506,39 @@ function bootDom() {
     assert(r0.querySelector('.ht-desc'), 'row shows description');
     assert(r0.querySelector('.ht-chip'), 'row shows category chip');
     assert(r0.querySelector('.ht-label'), 'row shows label');
+  });
+  test('v1.6.38: no second search box or brand on home \u2014 only the topbar search remains', () => {
+    assert(!doc.getElementById('homeQuick'), 'home launcher search input removed');
+    assert(!doc.getElementById('homeQuickResults'), 'home launcher quick results removed');
+    assert(!doc.querySelector('.home-topbar'), 'home top bar removed');
+    assert(!doc.querySelector('.home-brand'), 'home brand removed');
+    assert(doc.getElementById('globalSearch'), 'topbar search remains');
+    assert(doc.querySelector('#homeTools') && doc.querySelector('#homeRecent'), 'tools + recent sections remain');
+  });
+  test('v1.6.38: factory reset restores defaults for appearance/layout', async () => {
+    App.settings.fontFam = 'Cairo'; App.settings.fontSize = 20; App.settings.paperBg = '#eef2f8';
+    App.settings.hBg4 = '#876786'; App.settings.tocW = 400; App.settings.propsCollapsed = true;
+    App.applyReadingVars(); App.applyFontSettings();
+    assert(doc.body.style.getPropertyValue('--h-bg4') === '#876786', 'precondition: vars applied');
+    doc.getElementById('btnFactoryReset').click();
+    await new Promise(r => setTimeout(r, 30));
+    assert(!App.settings.hBg4 && !App.settings.fontFam && !App.settings.paperBg, 'appearance keys cleared');
+    assert(!doc.body.style.getPropertyValue('--h-bg4') && !doc.body.style.getPropertyValue('--paper'), 'reading vars removed');
+    assert(!doc.body.style.getPropertyValue('--font-ui') && !doc.body.style.getPropertyValue('--paper'), 'font vars removed');
+    assert(App.settings.tocW === undefined && App.settings.propsCollapsed === undefined, 'layout keys cleared');
+    assert(doc.getElementById('docToc').style.width === '250px', 'column widths back to defaults');
+    assert(doc.body.classList.contains('theme-dark'), 'theme back to dark');
+  });
+  test('v1.6.38: TOC tree uses the unified chevron \u276f (rotates when folded)', () => {
+    App.buildToc();
+    const nodes = doc.querySelectorAll('#tocItems .toc-node .toc-toggle.rot');
+    assert(nodes.length > 0, 'tree toggles rendered with unified chevron');
+    nodes.forEach(n => { assert(n.textContent === '\u276f', 'chevron symbol unified'); });
+    const withKids = [...nodes].find(n => !n.classList.contains('leaf'));
+    assert(withKids, 'a branch toggle exists');
+    assert(withKids.classList.contains('folded') === false, 'open branch not folded by default');
+    withKids.onclick(new window.Event('click', { bubbles: true }));
+    assert(withKids.classList.contains('folded'), 'clicking folds and toggles the arrow state');
   });
   test('v1.6.37: reading-style settings \u2014 per-level heading backgrounds + paper background persist and apply', async () => {
     const h4 = doc.getElementById('setHBg4');
