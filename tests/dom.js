@@ -1890,6 +1890,68 @@ function bootDom() {
     assert(prevBtn.disabled && nextBtn.disabled, 'both disabled at history tip');
   });
 
+  /* ------------------------- v1.6.43 ------------------------- */
+  console.log('\n\u2014 v1.6.43 precise search + real counts + uninstall-size cache fix \u2014');
+  test('v1.6.43: ranking \u2014 title phrase first, full body phrase before partial match', () => {
+    KB.kbs.push({ id: 'k43', name: { ar: '\u062a\u062c\u0631\u0628\u0629 \u0627\u0644\u0628\u062d\u062b', en: 'search test' }, documents: [
+      { id: 'd43-title', title: { ar: '\u0646\u0638\u0627\u0645 \u0627\u0644\u0639\u0645\u0644 \u0627\u0644\u062c\u062f\u064a\u062f', en: 'x' }, type: 'law', body: '\u0646\u0635 \u0639\u0627\u0645 \u0644\u0627 \u0639\u0644\u0627\u0642\u0629 \u0644\u0647.' },
+      { id: 'd43-body', title: { ar: '\u0644\u0627\u0626\u062d\u0629 \u0625\u062c\u0631\u0627\u0626\u064a\u0629', en: 'x' }, type: 'law', body: '\u0648\u064a\u062a\u0636\u0645\u0646 \u0646\u0635 \u0646\u0638\u0627\u0645 \u0627\u0644\u0639\u0645\u0644 \u062a\u0641\u0627\u0635\u064a\u0644 \u0627\u0644\u062a\u0646\u0641\u064a\u0630.' },
+      { id: 'd43-partial', title: { ar: '\u0644\u0627\u0626\u062d\u0629 \u0623\u062e\u0631\u0649', en: 'x' }, type: 'law', body: '\u0630\u0643\u0631\u062a \u0643\u0644\u0645\u0629 \u0646\u0638\u0627\u0645 \u0641\u064a \u0633\u064a\u0627\u0642 \u0645\u062e\u062a\u0644\u0641 \u0641\u0642\u0637.' }
+    ] });
+    KB.rebuild();
+    const res = KB.search('\u0646\u0638\u0627\u0645 \u0627\u0644\u0639\u0645\u0644');
+    const ids = res.map(r => r.doc.id);
+    assert(ids[0] === 'd43-title', 'title-phrase document ranks FIRST');
+    assert(ids.includes('d43-body') && ids.includes('d43-partial'), 'body-phrase and partial docs appear');
+    assert(ids.indexOf('d43-body') < ids.indexOf('d43-partial'), 'full literal match ranks before the partial one');
+    assert(typeof res.total === 'number' && res.total >= 3, 'real total reported on the result list');
+    // tier annotation available for UI/debug
+    assert(res[0].tier === 1, 'title-phrase = tier 1');
+  });
+  test('v1.6.43: real result count in the dropdown \u2014 never a fixed 60', async () => {
+    KB.kbs.push({ id: 'k43b', name: { ar: 'x', en: 'x' }, documents: [
+      ...Array.from({ length: 63 }, (_, i) => ({ id: 'k43x-' + i, title: { ar: '\u0648\u062b\u064a\u0642\u0629 \u062a\u062c\u0631\u064a\u0628\u064a\u0629 ' + i, en: 'test doc ' + i }, type: 'law', body: '\u0627\u0644\u0645\u0646\u062a\u0638\u063143 \u0641\u064a \u0627\u0644\u0645\u062d\u062a\u0648\u0649 ' + i }))
+    ] });
+    KB.rebuild();
+    const res = KB.search('\u0627\u0644\u0645\u0646\u062a\u0638\u063143');
+    assert(res.length === 63, 'all 63 matching documents returned (old cap was 60)');
+    App.activateTab('home');
+    App.setSearchMode('text');
+    const input = doc.getElementById('globalSearch');
+    input.value = '\u0627\u0644\u0645\u0646\u062a\u0638\u063143';
+    App.search(input.value);
+    const count = doc.querySelector('#searchResults .sr-count');
+    assert(count && count.textContent.includes('63'), 'count line shows the real total  63');
+    const items = doc.querySelectorAll('#searchResults .sr-item');
+    assert(items.length === 40, 'first page renders 40 rows');
+    const moreBtn = doc.querySelector('#searchResults .sr-more');
+    assert(moreBtn, 'show-more button present');
+    moreBtn.click();
+    assert(doc.querySelectorAll('#searchResults .sr-item').length === 63, 'show-more loads the rest');
+    App.search('');
+    // cleanup test KBs and rebuild the real index
+    KB.kbs = KB.kbs.filter(k => !['k43', 'k43b'].includes(k.id));
+    KB.rebuild();
+  });
+  test('v1.6.43: search runs live \u2014 no button press required to see results', () => {
+    App.activateTab('home');
+    App.setSearchMode('text');
+    const input = doc.getElementById('globalSearch');
+    input.value = '\u0627\u0644\u0639\u0645\u0644';
+    App.search(input.value);
+    const box = doc.getElementById('searchResults');
+    assert(!box.classList.contains('hidden') && box.querySelectorAll('.sr-item').length > 0, 'results shown directly from the input (no button)');
+    input.value = '';
+    App.search('');
+  });
+  test('v1.6.43: installer include clears the Windows size cache so uninstall size updates', () => {
+    const fs = require('fs');
+    const nsh = fs.readFileSync('build/installer-include.nsh', 'utf-8');
+    assert(nsh.includes('ARPCache'), 'ARPCache delete present in the NSIS include');
+    const pkg = JSON.parse(fs.readFileSync('package.json', 'utf-8'));
+    assert(pkg.build.nsis.include === 'build/installer-include.nsh', 'nsis include configured in package.json');
+  });
+
   await runAll();
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);

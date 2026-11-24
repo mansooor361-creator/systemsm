@@ -674,7 +674,16 @@ const App = {
     document.getElementById('globalSearch').addEventListener('input', (e) => {
       clearTimeout(this._searchTimer);
       const v = e.target.value;
+      /* v1.6.43: results appear LIVE while typing (no button press needed);
+         Enter just runs the search immediately. */
       this._searchTimer = setTimeout(() => this.search(v), 160);
+    });
+    document.getElementById('globalSearch').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        clearTimeout(this._searchTimer);
+        this.search(document.getElementById('globalSearch').value);
+      }
     });
   },
 
@@ -2012,7 +2021,9 @@ const App = {
 
   search(q) {
     /* v1.6.42: search now acts on the CURRENT page — results open in a top-level
-       dropdown instead of forcing a jump back to the home window. */
+       dropdown instead of forcing a jump back to the home window.
+       v1.6.43: precise literal ranking (title phrase -> title words -> body phrase ->
+       all words -> partial), REAL result count (no fixed cap), and paged rendering. */
     const box = document.getElementById('searchResults');
     const feed = document.getElementById('updatesFeed');
     const feedHead = document.getElementById('feedHead');
@@ -2025,8 +2036,11 @@ const App = {
     box.innerHTML = '';
     box.classList.toggle('hidden', !active);
     if (!active) return;
-    const all = this.searchMode === 'semantic' ? KB.searchSemantic(query, 60) : KB.search(query, 60);
+    const all = this.searchMode === 'semantic' ? KB.searchSemantic(query, 2000) : KB.search(query, 2000);
+    this._srTotal = (all && all.total != null) ? all.total : all.length;
     const results = this.searchCat === 'all' ? all : all.filter(r => r.doc.type === this.searchCat);
+    this._srFull = results;
+    this._srQT = query.split(/\s+/);
 
     const kbName = this.currentKbId && KB.kbs.find(k => k.id === this.currentKbId)
       ? KB.kbs.find(k => k.id === this.currentKbId).name[I18n.lang] || KB.kbs.find(k => k.id === this.currentKbId).name.ar
@@ -2038,7 +2052,7 @@ const App = {
       ['decision', 'type_decision_pl'], ['agreement', 'type_agreement_pl'],
       ['ruling', 'type_ruling_pl'], ['principle', 'type_principle_pl'], ['circular', 'type_circular_pl']];
     head.innerHTML = `
-      <div class="sr-kbname">📚 ${esc(kbName)}</div>
+      <div class="sr-kbname">\ud83d\udcda ${esc(kbName)}</div>
       <div class="sr-cats">${cats.map(([c, key]) =>
         `<button class="sr-cat ${this.searchCat === c ? 'active' : ''}" data-cat="${c}">${I18n.t(key)}</button>`).join('')}</div>
       <div class="sr-count">${results.length} ${I18n.t('resultsCount')}</div>`;
@@ -2051,38 +2065,66 @@ const App = {
       box.innerHTML += `<p class="hint" style="text-align:center;padding:20px">${I18n.t('noResults')}</p>`;
       return;
     }
-    results.forEach(r => {
-      const doc = r.doc;
-      const title = doc.title[I18n.lang] || doc.title.ar || doc.title.en;
-      const issueTool = doc.issueTool
-        ? (doc.issueTool.tool || doc.issueTool.ar || doc.issueTool)
-        : (doc.issuer ? (doc.issuer[I18n.lang] || doc.issuer.ar || doc.issuer.en) : '—');
-      const item = document.createElement('div');
-      item.className = 'sr-item';
-      item.innerHTML = `
-        <div class="sr-top"><div class="t">${esc(title)}</div><span class="chip type t-${doc.type}">${I18n.docTypeName(doc.type)}</span>${r.articleNum ? `<span class="chip art">${esc(I18n.t('articleChip'))} ${esc(r.articleNum)}</span>` : ''}</div>
-        ${r.excerptHtml ? `<div class="sr-snippet">${r.excerptHtml}</div>` : (r.snippet ? `<div class="sr-snippet">${esc(r.snippet)}</div>` : '')}
-        <a class="sr-open" href="#">${I18n.t('viewDetails')} ←</a>
-        <div class="sr-props">
-          <div><span>${I18n.t('docType')}:</span> ${I18n.docTypeName(doc.type)}</div>
-          <div><span>${I18n.t('issueTool')}:</span> ${esc(issueTool)}</div>
-          <div><span>${I18n.t('docNumber')}:</span> ${esc(doc.issueTool ? doc.issueTool.number : (doc.number || '—'))}</div>
-          <div><span>${I18n.t('issueToolDate')}:</span> ${esc(doc.issueTool ? doc.issueTool.date : (doc.date || '—'))}</div>
-          <div><span>${I18n.t('legislativeStatus')}:</span> ${I18n.t('status_' + (doc.status || 'in_force'))}</div>
-        </div>`;
-      const open = () => {
-        const box2 = document.getElementById('searchResults');
-        if (box2) box2.classList.add('hidden');
-        document.getElementById('globalSearch').value = '';
-        this.search(''); this._lastQuery = '';
-        /* v1.6.42: pick a result → the CURRENT page becomes the document (back ‹ returns) */
-        this.navInTab({ kind: 'doc', docId: doc.id });
-        if (r.articleNum) setTimeout(() => this.scrollToArticle(r.articleNum), 80);
-      };
-      item.querySelector('.sr-open').onclick = (e) => { e.preventDefault(); open(); };
-      item.onclick = (e) => { if (e.target.tagName !== 'A') open(); };
-      box.appendChild(item);
-    });
+    this.renderSearchChunk(box, 0);
+  },
+
+  /* v1.6.43: paged result rendering — first 40 rows, then «عرض المزيد» */
+  renderSearchChunk(box, start) {
+    const results = this._srFull || [];
+    const page = 40;
+    if (start === 0) {
+      this._srShown = 0;
+      [...box.querySelectorAll('.sr-item')].forEach(x => x.remove());
+      const more = box.querySelector('.sr-more');
+      if (more) more.remove();
+    }
+    const from = start === 0 ? 0 : this._srShown;
+    const to = Math.min(results.length, from + page);
+    results.slice(from, to).forEach(r => box.appendChild(this.buildSearchItem(r)));
+    this._srShown = to;
+    let moreBtn = box.querySelector('.sr-more');
+    if (to < results.length) {
+      if (!moreBtn) {
+        moreBtn = document.createElement('button');
+        moreBtn.className = 'sr-more';
+        moreBtn.onclick = (e) => { e.preventDefault(); this.renderSearchChunk(box, 1); };
+        box.appendChild(moreBtn);
+      }
+      moreBtn.textContent = `${I18n.t('showMore')} (${results.length - to})`;
+    } else if (moreBtn) moreBtn.remove();
+  },
+
+  buildSearchItem(r) {
+    const doc = r.doc;
+    const title = doc.title[I18n.lang] || doc.title.ar || doc.title.en;
+    const issueTool = doc.issueTool
+      ? (doc.issueTool.tool || doc.issueTool.ar || doc.issueTool)
+      : (doc.issuer ? (doc.issuer[I18n.lang] || doc.issuer.ar || doc.issuer.en) : '\u2014');
+    const item = document.createElement('div');
+    item.className = 'sr-item';
+    item.innerHTML = `
+      <div class="sr-top"><div class="t">${esc(title)}</div><span class="chip type t-${doc.type}">${I18n.docTypeName(doc.type)}</span>${r.articleNum ? `<span class="chip art">${esc(I18n.t('articleChip'))} ${esc(r.articleNum)}</span>` : ''}</div>
+      ${r.excerptHtml ? `<div class="sr-snippet">${r.excerptHtml}</div>` : (r.snippet ? `<div class="sr-snippet">${esc(r.snippet)}</div>` : '')}
+      <a class="sr-open" href="#">${I18n.t('viewDetails')} \u2190</a>
+      <div class="sr-props">
+        <div><span>${I18n.t('docType')}:</span> ${I18n.docTypeName(doc.type)}</div>
+        <div><span>${I18n.t('issueTool')}:</span> ${esc(issueTool)}</div>
+        <div><span>${I18n.t('docNumber')}:</span> ${esc(doc.issueTool ? doc.issueTool.number : (doc.number || '\u2014'))}</div>
+        <div><span>${I18n.t('issueToolDate')}:</span> ${esc(doc.issueTool ? doc.issueTool.date : (doc.date || '\u2014'))}</div>
+        <div><span>${I18n.t('legislativeStatus')}:</span> ${I18n.t('status_' + (doc.status || 'in_force'))}</div>
+      </div>`;
+    const open = () => {
+      const box2 = document.getElementById('searchResults');
+      if (box2) box2.classList.add('hidden');
+      document.getElementById('globalSearch').value = '';
+      this.search(''); this._lastQuery = '';
+      /* v1.6.42: pick a result -> the CURRENT page becomes the document (back returns) */
+      this.navInTab({ kind: 'doc', docId: doc.id });
+      if (r.articleNum) setTimeout(() => this.scrollToArticle(r.articleNum), 80);
+    };
+    item.querySelector('.sr-open').onclick = (e) => { e.preventDefault(); open(); };
+    item.onclick = (e) => { if (e.target.tagName !== 'A') open(); };
+    return item;
   },
 
   /* ---------- document reader (tabbed: TOC | center tabs | right tabs) ---------- */

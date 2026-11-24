@@ -1208,3 +1208,12 @@ body.theme-light .doc-body h4, body.theme-light .doc-body h5 { color: var(--h-fg
   .set-layout { grid-template-columns: 1fr; }
   .set-nav { position: static; max-height: none; flex-direction: row; flex-wrap: wrap; }
 }
+
+/* ---------- v1.6.43: paged search results — «show more» button ---------- */
+.sr-more {
+  display: block; width: 100%; margin: 10px 0 4px; padding: 10px;
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 8px;
+  color: var(--text); font-size: 14px; cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.sr-more:hover { background: var(--bg3); border-color: var(--accent); }

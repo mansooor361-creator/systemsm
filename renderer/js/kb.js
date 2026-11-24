@@ -41,6 +41,7 @@ const KB = {
           kbName: kb.name,
           raw: text,
           text: text.toLowerCase(),
+          normText: this.normChars(text),
           tokens,
           tokenSet: new Set(tokens),
           tokenFreq: freq,
@@ -290,33 +291,66 @@ const KB = {
     return '';
   },
 
-  search(query, limit = 40) {
+  /* v1.6.43: precise literal matching — every wording variant normalized (أ/ا, ة/ه …),
+     then a deterministic ranking like desktop apps (Obsidian-style):
+     tier 1 = full searched phrase in the TITLE
+     tier 2 = every search word in the title
+     tier 3 = full searched phrase in the CONTENT
+     tier 4 = every search word in the content
+     tier 5 = some words present
+     tier 6 = weak (prefix) matches only */
+  searchTier(entry, qTokens, phrase) {
+    const titleNorm = entry.titleNorm != null ? entry.titleNorm
+      : this.tokenize((entry.doc.title && (entry.doc.title.ar || entry.doc.title.en)) || '').join(' ');
+    const titlePhrase = titleNorm.includes(phrase);
+    let titleWords = 0;
+    for (const q of qTokens) if (entry.titleTokens && entry.titleTokens.includes(q)) titleWords++;
+    const ntext = entry.normText || entry.text || '';
+    const bodyPhrase = ntext.includes(phrase);
+    const occ = bodyPhrase ? ntext.split(phrase).length - 1 : 0;
+    let words = 0;
+    for (const q of qTokens) if (entry.tokenSet && entry.tokenSet.has(q)) words++;
+    if (titlePhrase) return { tier: 1, words, occ };
+    if (titleWords === qTokens.length) return { tier: 2, words, occ };
+    if (bodyPhrase) return { tier: 3, words, occ };
+    if (words === qTokens.length) return { tier: 4, words, occ };
+    if (titleWords > 0 || words > 0) return { tier: 5, words, occ };
+    /* keep the old lenient (prefix) behavior only as the last rank */
+    const bmm = this.bm25(qTokens, entry);
+    if (bmm.matched > 0) return { tier: 6, words, occ };
+    return null;
+  },
+
+  search(query, limit = 2000) {
     const qTokens = this.tokenize(query);
     if (!qTokens.length) return [];
     const phrase = qTokens.join(' ');
-    /* pass 1: score only (cheap); excerpts/articles built lazily in pass 2
-       for the survivors of the relative noise threshold */
     const scored = [];
     for (const entry of this.index) {
-      const r = this.searchScore(entry, qTokens, phrase);
-      if (!r || r.score <= 0) continue;
-      scored.push({ entry, r });
+      const st = this.searchTier(entry, qTokens, phrase);
+      if (!st) continue;
+      const bm = this.bm25(qTokens, entry);
+      scored.push({ entry, st, bm });
     }
-    scored.sort((a, b) => b.r.score - a.r.score);
-    const bestBase = scored.reduce((mx, x) => Math.max(mx, x.r.base || 0), 0);
-    const cut = bestBase * 0.3;
-    const hits = [];
-    for (const { entry, r } of scored) {
-      if ((r.base || 0) < cut && r.score <= bestBase + 100) continue;
+    const n = qTokens.length || 1;
+    scored.sort((a, b) => {
+      if (a.st.tier !== b.st.tier) return a.st.tier - b.st.tier;
+      const ra = a.st.words / n, rb = b.st.words / n;
+      if (rb !== ra) return rb - ra;
+      if (b.bm.score !== a.bm.score) return b.bm.score - a.bm.score;
+      return (b.st.occ || 0) - (a.st.occ || 0);
+    });
+    const hits = scored.slice(0, limit).map(({ entry, st, bm }) => {
       const excerpt = this.makeExcerpt(entry.raw, qTokens);
-      hits.push({
-        doc: entry.doc, kbName: entry.kbName, score: r.score, base: r.base,
+      return {
+        doc: entry.doc, kbName: entry.kbName, score: bm.score, base: st.tier, tier: st.tier,
         excerpt, snippet: excerpt || this.snippetFor(entry.text, qTokens),
         excerptHtml: this.highlightExcerpt(excerpt, qTokens),
         articleNum: this.findArticle(entry, qTokens)
-      });
-      if (hits.length >= limit) break;
-    }
+      };
+    });
+    /* v1.6.43: the REAL total of matches — the result count is no longer a fixed number */
+    hits.total = scored.length;
     return hits;
   },
 
@@ -348,6 +382,7 @@ const KB = {
       results.push({ doc: entry.doc, kbName: entry.kbName, score: score * 10, excerpt, snippet: excerpt || this.snippetFor(entry.text, qTokens), excerptHtml: this.highlightExcerpt(excerpt, qTokens), articleNum: this.findArticle(entry, qTokens) });
     }
     results.sort((a, b) => b.score - a.score);
+    results.total = results.length;
     return results.slice(0, limit);
   },
 
