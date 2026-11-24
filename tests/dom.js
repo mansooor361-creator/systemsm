@@ -1486,16 +1486,12 @@ function bootDom() {
     const after = doc.querySelectorAll('#homeTools .home-tool');
     assert(after.length === total - 1, 'disabled tool removed from launcher');
   });
-  test('v1.6.36: recent documents tracked (deduped, capped at 8) and rendered as chips', () => {
-    const docs = window.eval('KB').index.slice(0, 12).map(e => e.doc.id);
-    docs.forEach(id => App.trackRecentDoc(id));
-    assert(App.settings.recentDocs.length === 8, 'recentDocs capped at 8');
-    App.trackRecentDoc(App.settings.recentDocs[1]);
-    assert(App.settings.recentDocs.length === 8, 're-adding dedupes and keeps cap');
-    assert(App.settings.recentDocs[0] === App.settings.recentDocs[1 - 1], 're-added doc moved to front');
+  test('v1.6.41 keeps home to tools + feed — recent-docs section removed', () => {
+    assert(!doc.getElementById('homeRecent'), 'homeRecent section removed');
+    assert(!doc.querySelector('.home-recent-chip'), 'no recent chips anywhere');
+    assert(App.trackRecentDoc === undefined, 'tracker removed');
     App.renderHomeLauncher();
-    const chips = doc.querySelectorAll('#homeRecent .home-recent-chip');
-    assert(chips.length === 8, 'eight recent chips rendered');
+    assert(doc.querySelectorAll('#homeTools .home-tool').length > 0, 'tools section still renders');
   });
   console.log('\n\u2014 v1.6.37: top search, hairline separators, full-width settings, KB delete, reading styles \u2014');
   test('v1.6.37: tools render as rows with desc + chip; home search removed in v1.6.38', () => {
@@ -1513,7 +1509,8 @@ function bootDom() {
     assert(!doc.querySelector('.home-topbar'), 'home top bar removed');
     assert(!doc.querySelector('.home-brand'), 'home brand removed');
     assert(doc.getElementById('globalSearch'), 'topbar search remains');
-    assert(doc.querySelector('#homeTools') && doc.querySelector('#homeRecent'), 'tools + recent sections remain');
+    assert(doc.querySelector('#homeTools'), 'tools section remains');
+    assert(!doc.querySelector('[data-i18n="homeRecent"]') && !doc.getElementById('homeRecent'), 'recent section gone since v1.6.41');
   });
   test('v1.6.38: factory reset restores defaults for appearance/layout', async () => {
     App.settings.fontFam = 'Cairo'; App.settings.fontSize = 20; App.settings.paperBg = '#eef2f8';
@@ -1758,6 +1755,23 @@ function bootDom() {
     await new Promise(r => setTimeout(r, 30));
     assert(App.settings.hFont3 === undefined && App.settings.hSize3 === undefined && App.settings.hFg3 === undefined, 'heading keys cleared');
     assert(App.settings.secSize2 === undefined && App.settings.secBg2 === undefined, 'section keys cleared');
+  });
+
+  /* ------------------------- v1.6.41 ------------------------- */
+  test('v1.6.41: home launcher has no \u0623\u062d\u062f\u062b \u0627\u0644\u0648\u062b\u0627\u0626\u0642 section and opens docs without tracking', async () => {
+    assert(!doc.getElementById('homeRecent'), 'no recent container');
+    assert(!doc.querySelector('.home-sec[data-i18n="homeRecent"]'), 'no recent section label');
+    const ids = [...window.eval('KB').byId.keys()];
+    assert(ids.length > 0, 'a document exists');
+    App.openDocument(ids[0], true);
+    await new Promise(r => setTimeout(r, 30));
+    assert(App.settings.recentDocs === undefined || (App.settings.recentDocs || []).length === 0, 'no recentDocs tracking');
+  });
+  test('v1.6.41: feed title is \u0622\u062e\u0631 \u0627\u0644\u062a\u062d\u062f\u064a\u062b\u0627\u062a \u0641\u064a \u0627\u0644\u0648\u062b\u0627\u0626\u0642 and the feed still renders', () => {
+    const I18n = window.eval('I18n');
+    assert(I18n.t('latestUpdates') === '\u0622\u062e\u0631 \u0627\u0644\u062a\u062d\u062f\u064a\u062b\u0627\u062a \u0641\u064a \u0627\u0644\u0648\u062b\u0627\u0626\u0642', 'feed title renamed');
+    assert(doc.getElementById('feedTitle').textContent === '\u0622\u062e\u0631 \u0627\u0644\u062a\u062d\u062f\u064a\u062b\u0627\u062a \u0641\u064a \u0627\u0644\u0648\u062b\u0627\u0626\u0642', 'feed head shows the new title');
+    assert(doc.getElementById('updatesFeed').children.length > 0, 'updates feed still populated');
   });
 
   await runAll();

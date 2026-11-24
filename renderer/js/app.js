@@ -605,17 +605,6 @@ const App = {
     else { root.removeProperty('--text'); root.removeProperty('--paper-text'); }
   },
 
-  /* v1.6.36: recent documents for the new-tab launcher */
-  trackRecentDoc(id) {
-    if (!id) return;
-    const list = Array.isArray(this.settings.recentDocs) ? this.settings.recentDocs.slice() : [];
-    const i = list.indexOf(id);
-    if (i >= 0) list.splice(i, 1);
-    list.unshift(id);
-    this.settings.recentDocs = list.slice(0, 8);
-    window.daaix.settingsSet({ recentDocs: this.settings.recentDocs });
-  },
-
   renderAll() {
     this.renderKbPicker();
     this.renderToolRail();
@@ -2299,7 +2288,6 @@ const App = {
   },
 
   openDocument(id, forceNew) {
-    this.trackRecentDoc(id);
     this.openTab({ kind: 'doc', docId: id }, forceNew ? { forceNew: true } : undefined);
   },
 
@@ -2319,23 +2307,6 @@ const App = {
       row.onclick = () => this.openTab({ kind: 'tools', toolId: t.id }, { forceNew: true });
       toolsBox.appendChild(row);
     });
-    const recentBox = document.getElementById('homeRecent');
-    recentBox.innerHTML = '';
-    const recents = Array.isArray(this.settings.recentDocs) ? this.settings.recentDocs : [];
-    let shown = 0;
-    recents.forEach(id => {
-      const doc = KB.get(id);
-      if (!doc || shown >= 8) return;
-      shown++;
-      const title = doc.title[I18n.lang] || doc.title.ar || doc.title.en;
-      const chip = document.createElement('button');
-      chip.className = 'home-recent-chip';
-      chip.title = title;
-      chip.innerHTML = `<span class="hrc-icon mono">\u25a4</span><span class="hrc-title">${esc(title)}</span><span class="hrc-type">${esc(I18n.docTypeName(doc.type))}</span>`;
-      chip.onclick = () => this.openDocument(id);
-      recentBox.appendChild(chip);
-    });
-    if (!shown) recentBox.innerHTML = `<span class="hint">\u2014</span>`;
   },
 
 
