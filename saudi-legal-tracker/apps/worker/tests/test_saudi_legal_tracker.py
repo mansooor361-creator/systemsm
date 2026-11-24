@@ -69,6 +69,27 @@ def test_extract_html_links_filters_and_finds_dates() -> None:
     assert dated.published_at == "2026/04/05"
 
 
+HTML_WITH_DATES = """
+<html><body>
+<a href="/news">اخر الاخبار</a>
+<a href="/decisions">القرارات</a>
+<a href="/articles/1">مرسوم ملكي رقم 10 لسنة 2026</a> <span>2026/04/06</span>
+<a href="/articles/2">قرار مجلس الوزراء رقم 20</a> <span>2026/04/05</span>
+<a href="/articles/3">تعميم وزارة المالية رقم 5</a> <span>2026-04-04</span>
+<a href="/articles/4">نظام جديد</a> <span>2026/04/03</span>
+</body></html>
+"""
+
+
+def test_extract_html_links_drops_nav_when_dated_items_exist() -> None:
+    items = tracker.extract_html_links(
+        HTML_WITH_DATES, "https://www.uqn.gov.sa/", SPEC, 15
+    )
+    urls = [item.url for item in items]
+    assert "https://www.uqn.gov.sa/articles/1" in urls
+    assert not any(url.endswith("/news") or url.endswith("/decisions") for url in urls)
+
+
 def test_parse_date_to_epoch() -> None:
     assert tracker._parse_date_to_epoch("2026-04-05") is not None
     assert tracker._parse_date_to_epoch("05/04/2026") is not None

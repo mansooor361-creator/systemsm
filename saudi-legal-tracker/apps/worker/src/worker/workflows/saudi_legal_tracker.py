@@ -202,6 +202,7 @@ class TrackerOutput(BaseModel):
     items_new: int
     digest_markdown: str
     items: list[ClassifiedItem]
+    source_errors: dict[str, str]
     delivery_status: str
 
 
@@ -305,7 +306,8 @@ def extract_html_links(
     text: str, base_url: str, spec: SourceSpec, max_items: int
 ) -> list[LegalItem]:
     items: list[LegalItem] = []
-    for match in _ANCHOR_RE.finditer(text):
+    matches = list(_ANCHOR_RE.finditer(text))
+    for i, match in enumerate(matches):
         href, inner = match.group(1), match.group(2)
         if href.startswith(("#", "javascript:", "mailto:", "tel:")):
             continue
@@ -315,7 +317,8 @@ def extract_html_links(
         title = _clean_text(inner)
         if len(title) < 8:
             continue
-        window = text[match.end() : match.end() + 400]
+        next_start = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        window = text[match.end() : min(next_start, match.end() + 400)]
         date_match = _DATE_RE.search(window)
         published = date_match.group(0) if date_match else None
         snippet = _clean_text(window)[:300]
@@ -331,6 +334,9 @@ def extract_html_links(
         )
         if len(items) >= max_items:
             break
+    dated = [item for item in items if item.published_at]
+    if len(dated) >= 3:
+        return dated[:max_items]
     return items
 
 
@@ -462,7 +468,7 @@ async def filter_new_items(
 
 @workflows.activity(
     name="classify_items",
-    start_to_close_timeout=timedelta(minutes=6),
+    start_to_close_timeout=timedelta(minutes=10),
     retry_policy_max_attempts=2,
     heartbeat_timeout=timedelta(seconds=90),
 )
@@ -771,5 +777,8 @@ class SaudiLegalUpdatesWorkflow:
             items_new=len(classified),
             digest_markdown=digest,
             items=classified,
+            source_errors={
+                r.source_key: (r.error or "no items") for r in results if not r.ok
+            },
             delivery_status=delivery_status,
         )
