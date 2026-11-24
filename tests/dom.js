@@ -421,18 +421,18 @@ function bootDom() {
   });
 
   console.log('\n— Settings: 3 windows (v1.5) —');
-  test('settings tabs: four windows switch panes', () => {
+  test('settings tabs: six category windows switch panes (v1.6.42 sidebar)', () => {
     App.showView('settings');
     const tabs = doc.querySelectorAll('#setTabs .set-tab');
-    assert(tabs.length === 4, 'four settings windows');
+    assert(tabs.length === 6, 'six settings categories');
     assert(!doc.getElementById('setPaneSettings').classList.contains('hidden'), 'settings pane visible first');
     assert(doc.getElementById('setPaneKbs').classList.contains('hidden'));
     assert(doc.getElementById('setPaneTools').classList.contains('hidden'));
     assert(doc.getElementById('setPaneAi').classList.contains('hidden'));
-    tabs[1].click();
+    tabs[3].click();
     assert(!doc.getElementById('setPaneKbs').classList.contains('hidden'), 'KB pane opens');
     assert(doc.getElementById('setPaneSettings').classList.contains('hidden'));
-    tabs[2].click();
+    tabs[4].click();
     assert(!doc.getElementById('setPaneTools').classList.contains('hidden'), 'tools pane opens');
     tabs[0].click();
     assert(!doc.getElementById('setPaneSettings').classList.contains('hidden'));
@@ -489,6 +489,7 @@ function bootDom() {
 
   console.log('\n— Search: text + semantic (v1.6) —');
   test('typing in search shows detailed result cards with mode tabs; feed hidden', () => {
+    App.activateTab('home');
     App.showView('home');
     const input = doc.getElementById('globalSearch');
     input.value = 'العمل';
@@ -593,7 +594,7 @@ function bootDom() {
     App.showView('settings');
     App.fillSettings();
     const tabs = doc.querySelectorAll('#setTabs .set-tab');
-    assert(tabs.length === 4, 'four settings windows');
+    assert(tabs.length === 6, 'six settings categories');
     doc.querySelector('#setTabs [data-set=ai]').click();
     assert(!doc.getElementById('setPaneAi').classList.contains('hidden'), 'AI pane visible');
     assert(doc.getElementById('setLlmUrl') && doc.getElementById('setLlmKey') && doc.getElementById('setLlmModel'), 'LLM fields moved to AI pane');
@@ -833,6 +834,7 @@ function bootDom() {
   });
   console.log('\n— v1.6.9 search fixes —');
   test('feed-head with view toggle hides during search and returns after clearing', () => {
+    App.activateTab('home');
     const inp = doc.getElementById('globalSearch');
     inp.value = 'نظام العمل';
     inp.dispatchEvent(new window.Event('input', { bubbles: true }));
@@ -1219,14 +1221,15 @@ function bootDom() {
   });
 
   console.log('\n— v1.6.28: agents-style cards across all windows —');
-  test('v1.6.28: general settings render as agents-style .set-card grid; all controls kept', () => {
+  test('v1.6.42: settings cards are split across category panes; all controls kept', () => {
     App.fillSettings();
-    const pane = doc.getElementById('setPaneSettings');
-    assert(pane.querySelectorAll('.set-card').length >= 3, 'settings cards rendered (appearance/updates/connectors)');
-    assert(!pane.querySelector('.settings-grid'), 'old two-column grid removed');
+    assert(doc.getElementById('setPaneSettings').querySelectorAll('.set-card').length >= 1, 'appearance card in the appearance pane');
+    assert(doc.getElementById('setPaneReading').querySelectorAll('.set-card').length >= 1, 'read-style card in the reading pane');
+    assert(doc.getElementById('setPaneUpdates').querySelectorAll('.set-card').length >= 1, 'updates card in the updates pane');
+    assert(!doc.getElementById('setPaneSettings').querySelector('.settings-grid'), 'old two-column grid removed');
     ['setLang', 'setTheme', 'setUpdateUrl', 'btnCheckUpdates', 'updateStatus', 'connectorList', 'btnAddConnector', 'btnSaveSettings']
       .forEach(id => assert(doc.getElementById(id), id + ' still present'));
-    assert(pane.querySelector('.set-card .sc-foot .primary'), 'actions live in card footers');
+    assert(doc.querySelector('#setPaneUpdates .set-card .sc-foot .primary'), 'actions live in card footers');
   });
   test('v1.6.32: folder-import card removed from the settings page (import stays in KB management)', () => {
     App.fillSettings();
@@ -1772,6 +1775,119 @@ function bootDom() {
     assert(I18n.t('latestUpdates') === '\u0622\u062e\u0631 \u0627\u0644\u062a\u062d\u062f\u064a\u062b\u0627\u062a \u0641\u064a \u0627\u0644\u0648\u062b\u0627\u0626\u0642', 'feed title renamed');
     assert(doc.getElementById('feedTitle').textContent === '\u0622\u062e\u0631 \u0627\u0644\u062a\u062d\u062f\u064a\u062b\u0627\u062a \u0641\u064a \u0627\u0644\u0648\u062b\u0627\u0626\u0642', 'feed head shows the new title');
     assert(doc.getElementById('updatesFeed').children.length > 0, 'updates feed still populated');
+  });
+
+  /* ------------------------- v1.6.42 ------------------------- */
+  console.log('\n\u2014 v1.6.42 Obsidian-style settings sidebar + in-place search + back everywhere \u2014');
+  test('v1.6.42: settings is a sidebar of 6 categories with split detail panes', () => {
+    App.showView('settings');
+    const nav = doc.getElementById('setTabs');
+    assert(nav.classList.contains('set-nav'), 'categories render as a vertical sidebar');
+    assert(doc.querySelectorAll('#setTabs .set-tab').length === 6, 'six categories in the sidebar');
+    const labels = [...doc.querySelectorAll('#setTabs .set-tab')].map(b => b.dataset.set);
+    assert(labels.join(',') === 'settings,reading,updates,kbs,tools,ai', 'category order matches request');
+    doc.querySelector('#setTabs [data-set=reading]').click();
+    assert(!doc.getElementById('setPaneReading').classList.contains('hidden'), 'reading pane shown');
+    assert(doc.getElementById('setHFg1') && doc.getElementById('setSecBg6'), 'typography inputs live in the reading pane');
+    assert(doc.getElementById('setPaneSettings').classList.contains('hidden'), 'appearance pane hidden while reading open');
+    doc.querySelector('#setTabs [data-set=updates]').click();
+    assert(!doc.getElementById('setPaneUpdates').classList.contains('hidden'), 'updates pane shown');
+    assert(doc.getElementById('setUpdateUrl'), 'manifest field lives in the updates pane');
+    assert(doc.getElementById('setPaneSettings').classList.contains('hidden'), 'other panes hide');
+    doc.querySelector('#setTabs [data-set=settings]').click();
+    assert(doc.getElementById('setLang'), 'appearance controls back in the settings pane');
+  });
+  test('v1.6.42: the chosen settings category is persisted and restored', () => {
+    App.settings.settingsNav = undefined;
+    doc.querySelector('#setTabs [data-set=kbs]').click();
+    assert(App.settings.settingsNav === 'kbs', 'settingsNav stored on click');
+    App.applySettingsNav('settings');
+    assert(!doc.getElementById('setPaneSettings').classList.contains('hidden'), 'reset to appearance first');
+    App.bindSettingsTabs();
+    assert(!doc.getElementById('setPaneKbs').classList.contains('hidden'), 'saved category restored on bind');
+    App.settings.settingsNav = undefined;
+    doc.querySelector('#setTabs [data-set=settings]').click();
+  });
+  test('v1.6.42: search results live in a top-level dropdown with dropdown styles', async () => {
+    const fs = require('fs');
+    const css = fs.readFileSync('renderer/css/app.css', 'utf-8');
+    const i = css.indexOf('.search-results {');
+    assert(i >= 0 && css.slice(i, i + 300).includes('position: fixed'), 'dropdown styles are fixed-position');
+    const j = css.indexOf('.set-layout {');
+    assert(j >= 0, 'settings sidebar layout styles present');
+    App.tabs = [{ id: 'home', kind: 'home' }];
+    App.activeTab = 'home';
+    App.setSearchMode('text');
+    const input = doc.getElementById('globalSearch');
+    input.value = '\u0627\u0644\u0639\u0645\u0644';
+    App.search(input.value);
+    const box = doc.getElementById('searchResults');
+    assert(!box.classList.contains('hidden'), 'dropdown shown while searching');
+    const items = box.querySelectorAll('.sr-item');
+    assert(items.length >= 1, 'results render in the dropdown');
+    input.value = '';
+    App.search('');
+    assert(box.classList.contains('hidden'), 'dropdown hides on clear');
+  });
+  test('v1.6.42: picking a result from home converts the CURRENT page, back returns home', () => {
+    App.tabs = [{ id: 'home', kind: 'home', hist: [{ kind: 'home', docId: undefined, toolId: undefined }], hIdx: 0 }];
+    App.activeTab = 'home';
+    App.renderTabBar();
+    App.setSearchMode('text');
+    const input = doc.getElementById('globalSearch');
+    input.value = '\u0627\u0644\u0639\u0645\u0644';
+    App.search(input.value);
+    const before = App.tabs.length;
+    doc.querySelector('#searchResults .sr-item').click();
+    const at = App.tabs.find(x => x.id === App.activeTab);
+    assert(at.kind === 'doc', 'the current page becomes the document');
+    assert(App.tabs.length === before, 'no extra window opened');
+    assert(App.activeTab === 'home', 'navigation stayed inside the same window');
+    const bar = doc.getElementById('tabBar');
+    const prevBtn = bar.querySelector('.tab-nav-btn');
+    assert(prevBtn && !prevBtn.disabled, 'back available');
+    prevBtn.click();
+    assert(App.tabs.find(x => x.id === App.activeTab).kind === 'home', 'back returns to the home page');
+  });
+  test('v1.6.42: searching while a document is open keeps the current page and navigates in place', () => {
+    App.tabs = [{ id: 'home', kind: 'home' }];
+    App.activeTab = 'home';
+    App.renderTabBar();
+    App.openDocument(KB.index[1].doc.id);
+    const tab = App.tabs.find(x => x.id === App.activeTab);
+    const docIdBefore = tab.docId;
+    const before = tab.hist.length;
+    const input = doc.getElementById('globalSearch');
+    input.value = '\u0627\u0644\u0639\u0645\u0644';
+    App.search(input.value);
+    const box = doc.getElementById('searchResults');
+    assert(!box.classList.contains('hidden'), 'dropdown shown over the document page');
+    assert(App.activeTab === tab.id, 'no forced jump to the home window');
+    const first = box.querySelector('.sr-item');
+    first.querySelector('.sr-open').click();
+    const at = App.tabs.find(x => x.id === App.activeTab);
+    assert(at.id === tab.id, 'same window still active');
+    assert(at.kind === 'doc', 'still a document page');
+    assert(doc.getElementById('searchResults').classList.contains('hidden'), 'dropdown closed after opening');
+    const prevBtn = doc.getElementById('tabBar').querySelector('.tab-nav-btn');
+    if (at.docId !== docIdBefore) {
+      assert(at.hist.length === before + 1, 'history pushed for a different document');
+      assert(prevBtn && !prevBtn.disabled, 'back available');
+      prevBtn.click();
+      assert(App.tabs.find(x => x.id === App.activeTab).docId === docIdBefore, 'back returns to the previous document');
+    } else {
+      assert(at.docId === docIdBefore, 'same document opens in place');
+    }
+  });
+  test('v1.6.42: the back/forward bar is always visible — single window too', () => {
+    App.tabs = [{ id: 'home', kind: 'home' }];
+    App.activeTab = 'home';
+    App.renderTabBar();
+    const bar = doc.getElementById('tabBar');
+    assert(!bar.classList.contains('hidden'), 'tab bar visible with a single window');
+    const [prevBtn, nextBtn] = bar.querySelectorAll('.tab-nav-btn');
+    assert(prevBtn && nextBtn, 'back/forward buttons present on the first page');
+    assert(prevBtn.disabled && nextBtn.disabled, 'both disabled at history tip');
   });
 
   await runAll();

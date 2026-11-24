@@ -287,6 +287,8 @@ const App = {
       } else if (e.key === 'Escape') {
         const qs = document.getElementById('quickSwitcher');
         if (qs && !qs.classList.contains('hidden')) this.closeQuickSwitcher();
+        const sr = document.getElementById('searchResults');
+        if (sr && !sr.classList.contains('hidden')) sr.classList.add('hidden');
       }
     });
   },
@@ -356,7 +358,8 @@ const App = {
       const b = document.createElement('button');
       b.className = 'qs-item' + (i === 0 ? ' active' : '');
       b.innerHTML = `<span class="qs-doc-icon mono">▤</span><span class="qs-doc-title">${esc(title)}</span><span class="qs-doc-type">${esc(I18n.docTypeName(doc.type))}</span>`;
-      b.onclick = () => { this.closeQuickSwitcher(); this.openDocument(doc.id); };
+      /* v1.6.42: quick-switcher results open in the CURRENT window (back ‹ returns) */
+      b.onclick = () => { this.closeQuickSwitcher(); this.navInTab({ kind: 'doc', docId: doc.id }); };
       box.appendChild(b);
     });
     if (!docs.length) box.innerHTML = `<p class="hint qs-empty">${I18n.t('noResults')}</p>`;
@@ -626,7 +629,8 @@ const App = {
   bindTopbar() {
     const modeBtn = document.getElementById('btnSearchMode');
     if (modeBtn) modeBtn.innerHTML = LENS_SVG;
-    document.getElementById('btnRailHome').onclick = () => this.activateTab('home');
+    /* v1.6.42: home button — home behaves like any page (goHome) */
+    document.getElementById('btnRailHome').onclick = () => this.goHome();
     document.getElementById('btnSearchMode').onclick = (e) => {
       e.stopPropagation();
       this.renderSearchModeMenu();
@@ -639,6 +643,14 @@ const App = {
           menu.classList.add('hidden');
         }
       });
+      /* v1.6.42: click outside the search box/results closes the results dropdown */
+      const sr = document.getElementById('searchResults');
+      if (sr && !sr.classList.contains('hidden')) {
+        const tgt = e.target;
+        const inside = sr.contains(tgt) || tgt === document.getElementById('globalSearch') ||
+          (tgt && tgt.closest && tgt.closest('#globalSearch'));
+        if (!inside) sr.classList.add('hidden');
+      }
     });
     document.getElementById('btnKbPicker').onclick = (e) => {
       e.stopPropagation();
@@ -787,7 +799,7 @@ const App = {
       menu.classList.add('hidden');
       this.currentKbId = null;
       this.currentCat = 'all';
-      this.activateTab('home');
+      this.goHome();
     };
     menu.appendChild(all);
     KB.kbs.filter(kb => this.kbIsOn(kb.id)).forEach(kb => {
@@ -798,7 +810,7 @@ const App = {
         menu.classList.add('hidden');
         this.currentKbId = kb.id;
         this.currentCat = 'all';
-        this.activateTab('home');
+        this.goHome();
         this.toast(`${kb.icon || '\ud83d\udcda'} ${kb.name[I18n.lang] || kb.name.ar}`);
       };
       menu.appendChild(b);
@@ -1002,14 +1014,34 @@ const App = {
     });
   },
 
+  /* v1.6.42: Obsidian-style settings — sidebar categories on the start side (right in RTL),
+     detail area beside them; the chosen category is persisted like an opened tool. */
+  setNavPanes: ['settings', 'reading', 'updates', 'kbs', 'tools', 'ai'],
+
+  applySettingsNav(id) {
+    document.querySelectorAll('#setTabs .set-tab').forEach(b => b.classList.toggle('active', b.dataset.set === id));
+    this.setNavPanes.forEach(p => {
+      const pane = document.getElementById('setPane' + p.charAt(0).toUpperCase() + p.slice(1));
+      if (pane) pane.classList.toggle('hidden', p !== id);
+    });
+  },
+
   bindSettingsTabs() {
-    document.querySelectorAll('#setTabs .set-tab').forEach(btn => {
+    const btns = [...document.querySelectorAll('#setTabs .set-tab')];
+    btns.forEach(btn => {
       btn.onclick = () => {
-        document.querySelectorAll('#setTabs .set-tab').forEach(b => b.classList.toggle('active', b === btn));
-        ['settings', 'kbs', 'tools', 'ai'].forEach(p =>
-          document.getElementById('setPane' + p.charAt(0).toUpperCase() + p.slice(1)).classList.toggle('hidden', p !== btn.dataset.set));
+        this.applySettingsNav(btn.dataset.set);
+        this.settings.settingsNav = btn.dataset.set;
+        window.daaix.settingsSet({ settingsNav: btn.dataset.set });
       };
     });
+    const navSearch = document.getElementById('setNavSearch');
+    if (navSearch) navSearch.oninput = () => {
+      const q = (navSearch.value || '').trim().toLowerCase();
+      btns.forEach(b => { b.classList.toggle('hide-nav', !!q && !(I18n.t(b.dataset.i18n) || b.textContent).toLowerCase().includes(q)); });
+    };
+    const saved = this.settings.settingsNav;
+    if (saved && this.setNavPanes.includes(saved) && btns.some(b => b.dataset.set === saved)) this.applySettingsNav(saved);
   },
 
   async doImportFolder(statusEl) {
@@ -1943,7 +1975,8 @@ const App = {
           <div class="feed-meta">${I18n.docTypeName(it.doc.type)} · ${I18n.t('version')} ${it.version} · ${esc(it.date)}${it.by ? ' · ' + esc(it.by) : ''}</div>
           ${it.change ? `<div class="feed-change">${esc(it.change)}</div>` : ''}
         </div>`;
-      card.onclick = () => this.openDocument(it.doc.id);
+      /* v1.6.42: feed items open inside the current window with history */
+      card.onclick = () => this.navInTab({ kind: 'doc', docId: it.doc.id });
       feed.appendChild(card);
     });
   },
@@ -1978,16 +2011,19 @@ const App = {
   },
 
   search(q) {
+    /* v1.6.42: search now acts on the CURRENT page — results open in a top-level
+       dropdown instead of forcing a jump back to the home window. */
     const box = document.getElementById('searchResults');
     const feed = document.getElementById('updatesFeed');
     const feedHead = document.getElementById('feedHead');
     const query = (q || '').trim();
     if (query !== this._lastQuery) { this.searchCat = 'all'; this._lastQuery = query; }
-    if (this.activeTab !== 'home') this.activateTab('home');
     const active = query.length >= 2;
-    feed.classList.toggle('hidden', !!active);
-    if (feedHead) feedHead.classList.toggle('hidden', !!active);
+    const onHome = this.activeTab === 'home';
+    feed.classList.toggle('hidden', onHome && !!active);
+    if (feedHead) feedHead.classList.toggle('hidden', onHome && !!active);
     box.innerHTML = '';
+    box.classList.toggle('hidden', !active);
     if (!active) return;
     const all = this.searchMode === 'semantic' ? KB.searchSemantic(query, 60) : KB.search(query, 60);
     const results = this.searchCat === 'all' ? all : all.filter(r => r.doc.type === this.searchCat);
@@ -2034,7 +2070,15 @@ const App = {
           <div><span>${I18n.t('issueToolDate')}:</span> ${esc(doc.issueTool ? doc.issueTool.date : (doc.date || '—'))}</div>
           <div><span>${I18n.t('legislativeStatus')}:</span> ${I18n.t('status_' + (doc.status || 'in_force'))}</div>
         </div>`;
-      const open = () => { document.getElementById('globalSearch').value = ''; this.search(''); this.openDocument(doc.id); if (r.articleNum) setTimeout(() => this.scrollToArticle(r.articleNum), 80); };
+      const open = () => {
+        const box2 = document.getElementById('searchResults');
+        if (box2) box2.classList.add('hidden');
+        document.getElementById('globalSearch').value = '';
+        this.search(''); this._lastQuery = '';
+        /* v1.6.42: pick a result → the CURRENT page becomes the document (back ‹ returns) */
+        this.navInTab({ kind: 'doc', docId: doc.id });
+        if (r.articleNum) setTimeout(() => this.scrollToArticle(r.articleNum), 80);
+      };
       item.querySelector('.sr-open').onclick = (e) => { e.preventDefault(); open(); };
       item.onclick = (e) => { if (e.target.tagName !== 'A') open(); };
       box.appendChild(item);
@@ -2170,8 +2214,18 @@ const App = {
     this.activateTab(t.id);
   },
 
+  /* v1.6.42: shared "go home" — open home view like any page, honoring history */
+  goHome() {
+    const cur = this.tabs.find(x => x.id === this.activeTab);
+    const homeTab = this.tabs.find(x => x.kind === 'home');
+    if (homeTab) return this.activateTab(homeTab.id);
+    if (cur) this.navInTab({ kind: 'home', docId: undefined, toolId: undefined });
+    else this.openTab({ kind: 'home' });
+  },
+
   closeTab(id) {
-    if (id === 'home') return;
+    const homeTab = this.tabs.find(x => x.id === id);
+    if (homeTab && id === 'home' && homeTab.kind === 'home') return;
     const idx = this.tabs.findIndex(x => x.id === id);
     if (idx < 0) return;
     this.tabs.splice(idx, 1);
@@ -2198,11 +2252,22 @@ const App = {
 
   navInTab(view) {
     const t = this.tabs.find(x => x.id === this.activeTab);
-    if (!t || t.id === 'home') {
+    /* v1.6.42: every page — including home — navigates in place with history,
+       so the back button ‹ always returns to the previous page (Obsidian-style). */
+    if (!t) {
       if (view.kind === 'doc') this.openDocument(view.docId);
       return;
     }
-    t.hist = (t.hist || []).slice(0, (t.hIdx || 0) + 1);
+    const cur = (t.hist && t.hist[t.hIdx]) || { kind: t.kind, docId: t.docId, toolId: t.toolId };
+    if (t.hIdx === undefined) t.hIdx = 0;
+    if (!t.hist) { t.hist = [cur]; t.hIdx = 0; }
+    if (cur.kind === view.kind && cur.docId === view.docId && cur.toolId === view.toolId) {
+      this.renderView(t);
+      if (view.kind === 'doc' && view.article) this.scrollToArticle(view.article);
+      return;
+    }
+    if (!t.hist.length) { t.hist = [cur]; t.hIdx = 0; }
+    t.hist = t.hist.slice(0, t.hIdx + 1);
     t.hist.push({ kind: view.kind, docId: view.docId, toolId: view.toolId });
     t.hIdx = t.hist.length - 1;
     t.kind = view.kind; t.docId = view.docId; t.toolId = view.toolId;
@@ -2228,24 +2293,23 @@ const App = {
   },
 
   renderTabBar() {
+    /* v1.6.42: the back/forward bar is ALWAYS visible — even with a single window. */
     const bar = document.getElementById('tabBar');
     if (!bar) return;
-    bar.classList.toggle('hidden', this.tabs.length <= 1);
+    bar.classList.remove('hidden');
     bar.innerHTML = '';
-    if (this.tabs.length > 1) {
-      const t = this.tabs.find(x => x.id === this.activeTab);
-      const hist = (t && t.hist) || [];
-      const hi = (t && t.hIdx) || 0;
-      const prev = document.createElement('button');
-      prev.className = 'tab-nav-btn'; prev.textContent = '\u2039'; prev.title = I18n.t('tabPrev');
-      prev.disabled = hi <= 0;
-      prev.onclick = (e) => { e.stopPropagation(); this.stepTab(-1); };
-      const next = document.createElement('button');
-      next.className = 'tab-nav-btn'; next.textContent = '\u203a'; next.title = I18n.t('tabNext');
-      next.disabled = hi >= hist.length - 1;
-      next.onclick = (e) => { e.stopPropagation(); this.stepTab(1); };
-      bar.appendChild(prev); bar.appendChild(next);
-    }
+    const t = this.tabs.find(x => x.id === this.activeTab);
+    const hist = (t && t.hist) || [];
+    const hi = (t && t.hIdx) || 0;
+    const prev = document.createElement('button');
+    prev.className = 'tab-nav-btn'; prev.textContent = '\u2039'; prev.title = I18n.t('tabPrev');
+    prev.disabled = hi <= 0;
+    prev.onclick = (e) => { e.stopPropagation(); this.stepTab(-1); };
+    const next = document.createElement('button');
+    next.className = 'tab-nav-btn'; next.textContent = '\u203a'; next.title = I18n.t('tabNext');
+    next.disabled = hi >= hist.length - 1;
+    next.onclick = (e) => { e.stopPropagation(); this.stepTab(1); };
+    bar.appendChild(prev); bar.appendChild(next);
     this.tabs.forEach(t => {
       const el = document.createElement('div');
       el.className = 'app-tab' + (t.id === this.activeTab ? ' active' : '');
@@ -2253,7 +2317,7 @@ const App = {
       span.className = 'tab-title';
       span.textContent = this.tabLabel(t);
       el.appendChild(span);
-      if (t.id !== 'home') {
+      if (!(t.id === 'home' && t.kind === 'home')) {
         const x = document.createElement('button');
         x.className = 'tab-close';
         x.textContent = '\u00d7';

@@ -18,6 +18,9 @@
     <div id="kbPickerMenu" class="kb-menu kb-picker hidden"></div>
   </header>
 
+  <!-- v1.6.42: search results live in a top-level dropdown under the topbar so searching works from ANY page -->
+  <div id="searchResults" class="search-results hidden"></div>
+
   <div id="tabBar" class="tab-bar hidden"></div>
 
   <div id="layout">
@@ -37,7 +40,6 @@
           <div class="home-sec" data-i18n="homeTools"></div>
           <div id="homeTools" class="home-tools"></div>
         </div>
-        <div id="searchResults" class="search-results"></div>
         <div class="feed-head" id="feedHead">
           <h2 class="feed-title" id="feedTitle" data-i18n="latestUpdates"></h2>
           <button id="btnFeedView" class="tb-btn mono" data-i18n-title="feedListView">☰</button>
@@ -151,12 +153,18 @@
       <!-- Settings -->
       <section id="view-settings" class="view hidden">
         <h2 data-i18n="settings"></h2>
-        <div class="set-tabs" id="setTabs">
-          <button class="set-tab active" data-set="settings" data-i18n="setTabSettings"></button>
+        <!-- v1.6.42: Obsidian-style settings — vertical category sidebar on the start side (right in RTL), detail area beside it -->
+        <div class="set-layout">
+        <nav class="set-tabs set-nav" id="setTabs">
+          <input id="setNavSearch" class="set-nav-search" type="search" data-i18n-ph="search" autocomplete="off" />
+          <button class="set-tab active" data-set="settings" data-i18n="setNavAppearance"></button>
+          <button class="set-tab" data-set="reading" data-i18n="readStyle"></button>
+          <button class="set-tab" data-set="updates" data-i18n="setNavUpdates"></button>
           <button class="set-tab" data-set="kbs" data-i18n="setTabKbs"></button>
           <button class="set-tab" data-set="tools" data-i18n="setTabTools"></button>
           <button class="set-tab" data-set="ai" data-i18n="setTabAi"></button>
-        </div>
+        </nav>
+        <div class="set-detail">
         <div id="setPaneSettings" class="set-pane">
         <!-- v1.6.28: general settings restyled as agents-style cards (same .set-card language as the AI/agents window; no IDs or behavior changed) -->
         <div class="settings-cards set-cards-settings">
@@ -194,6 +202,11 @@
               <button id="btnFontResetHis" class="ghost-btn" data-i18n="fontReset"></button>
             </div>
           </div>
+        </div>
+        </div>
+        <!-- v1.6.42: read-style card got its own category window -->
+        <div id="setPaneReading" class="set-pane hidden">
+        <div class="settings-cards set-cards-settings">
           <div class="set-card">
             <div class="sc-head"><span class="sr-icon mono">#</span><div class="sr-main"><div class="sr-name" data-i18n="readStyle"></div></div></div>
             <p class="hint"><span data-i18n="readStyleHint"></span></p>
@@ -290,6 +303,11 @@
               <button id="btnReadStyleReset" class="ghost-btn" data-i18n="fontReset"></button>
             </div>
           </div>
+        </div>
+        </div>
+        <!-- v1.6.42: updates got its own category window -->
+        <div id="setPaneUpdates" class="set-pane hidden">
+        <div class="settings-cards set-cards-settings">
           <div class="set-card">
             <div class="sc-head"><span class="sr-icon mono">⟳</span><div class="sr-main"><div class="sr-name" data-i18n="checkUpdates"></div></div></div>
             <label><span data-i18n="updateUrl"></span>
@@ -375,6 +393,8 @@
             </div>
           </div>
         </div>
+        </div><!-- /.set-detail -->
+        </div><!-- /.set-layout -->
       </section>
     </main>
   </div>
