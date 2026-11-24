@@ -92,7 +92,10 @@ SOURCES: list[SourceSpec] = [
         key="boe_laws",
         name_ar="بوابة البحث في الأنظمة واللوائح — هيئة الخبراء بمجلس الوزراء",
         kind="page",
-        urls=["https://laws.boe.gov.sa/boelaws/laws/"],
+        urls=[
+            "https://laws.boe.gov.sa/boelaws/laws/",
+            "https://laws.boe.gov.sa/BoeLaws/Laws/Search",
+        ],
         hint="الأنظمة واللوائح والقرارات النافذة",
     ),
     SourceSpec(
@@ -318,10 +321,12 @@ def extract_html_links(
         if len(title) < 8:
             continue
         next_start = matches[i + 1].start() if i + 1 < len(matches) else len(text)
-        window = text[match.end() : min(next_start, match.end() + 400)]
-        date_match = _DATE_RE.search(window)
+        prev_end = matches[i - 1].end() if i > 0 else 0
+        after = text[match.end() : min(next_start, match.end() + 300)]
+        before = text[max(prev_end, match.start() - 300) : match.start()]
+        date_match = _DATE_RE.search(after) or _DATE_RE.search(before)
         published = date_match.group(0) if date_match else None
-        snippet = _clean_text(window)[:300]
+        snippet = _clean_text(after or before)[:300]
         items.append(
             LegalItem(
                 source_key=spec.key,
@@ -334,6 +339,15 @@ def extract_html_links(
         )
         if len(items) >= max_items:
             break
+    urls = {item.url for item in items}
+    items = [
+        item
+        for item in items
+        if not any(
+            other != item.url and other.startswith(item.url.rstrip("/") + "/")
+            for other in urls
+        )
+    ]
     dated = [item for item in items if item.published_at]
     if len(dated) >= 3:
         return dated[:max_items]
