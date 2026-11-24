@@ -18,9 +18,6 @@
     <div id="kbPickerMenu" class="kb-menu kb-picker hidden"></div>
   </header>
 
-  <!-- v1.6.42: search results live in a top-level dropdown under the topbar so searching works from ANY page -->
-  <div id="searchResults" class="search-results hidden"></div>
-
   <div id="tabBar" class="tab-bar hidden"></div>
 
   <div id="layout">
@@ -45,6 +42,8 @@
           <button id="btnFeedView" class="tb-btn mono" data-i18n-title="feedListView">☰</button>
         </div>
         <div id="updatesFeed" class="updates-feed"></div>
+        <!-- v1.6.44: search results are a PAGE now — they replace the updates feed in the CURRENT window -->
+        <div id="searchResults" class="search-results hidden"></div>
       </section>
 
       <!-- Document reader: TOC | center tabs | right tabbed panel -->

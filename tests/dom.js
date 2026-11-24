@@ -493,11 +493,12 @@ function bootDom() {
     App.showView('home');
     const input = doc.getElementById('globalSearch');
     input.value = 'العمل';
-    input.dispatchEvent(new window.Event('input', { bubbles: true }));
-    clearTimeout(App._searchTimer); App.search(input.value);
+    App.navInTab({ kind: 'search', docId: undefined, toolId: undefined, query: input.value.trim() });
+    assert(App.tabs.find(x => x.id === App.activeTab).kind === 'search', 'results page active');
     const items = doc.querySelectorAll('#searchResults .sr-item');
-    assert(items.length >= 3, 'results visible under search');
-    assert(doc.getElementById('updatesFeed').classList.contains('hidden'), 'feed hidden while searching');
+    assert(items.length >= 3, 'results visible in the in-page results block');
+    assert(doc.getElementById('updatesFeed').classList.contains('hidden'), 'updates feed hidden while the results page is open');
+    assert(doc.getElementById('homeLauncher').classList.contains('hidden'), 'launcher hidden while the results page is open');
     assert(doc.querySelector('#searchResults .sr-kbname'), 'searched KB name in results header');
     assert(doc.querySelectorAll('#searchResults .sr-cat').length === 8, '8 classification chips centered');
     assert(doc.querySelector('#searchResults .sr-cat.active').dataset.cat === 'all', 'all chip active by default');
@@ -510,9 +511,8 @@ function bootDom() {
     assert(props.includes('مرسوم ملكي') || props.includes('أداة الإصدار'), 'issuing tool in result');
     assert(props.includes('ساري'), 'legislative status in result');
     input.value = '';
-    input.dispatchEvent(new window.Event('input', { bubbles: true }));
-    clearTimeout(App._searchTimer); App.search('');
-    assert(!doc.getElementById('updatesFeed').classList.contains('hidden'), 'feed restored on clear');
+    App.navInTab({ kind: 'home', docId: undefined, toolId: undefined });
+    assert(!doc.getElementById('updatesFeed').classList.contains('hidden'), 'feed restored on the regular home page');
   });
   test('semantic search mode returns ranked results', () => {
     App.setSearchMode('semantic');
@@ -837,15 +837,13 @@ function bootDom() {
     App.activateTab('home');
     const inp = doc.getElementById('globalSearch');
     inp.value = 'نظام العمل';
-    inp.dispatchEvent(new window.Event('input', { bubbles: true }));
-    clearTimeout(App._searchTimer); App.search(inp.value);
+    App.navInTab({ kind: 'search', docId: undefined, toolId: undefined, query: inp.value.trim() });
     assert(doc.querySelectorAll('#searchResults .sr-item').length > 0, 'results render');
     assert(doc.getElementById('feedHead').classList.contains('hidden'), 'feed head hidden during search');
     assert(doc.getElementById('updatesFeed').classList.contains('hidden'), 'feed hidden during search');
     inp.value = '';
-    inp.dispatchEvent(new window.Event('input', { bubbles: true }));
-    clearTimeout(App._searchTimer); App.search('');
-    assert(!doc.getElementById('feedHead').classList.contains('hidden'), 'feed head visible again after clearing');
+    App.navInTab({ kind: 'home', docId: undefined, toolId: undefined });
+    assert(!doc.getElementById('feedHead').classList.contains('hidden'), 'feed head visible again on the home page');
   });
   test('category filter resets when a NEW query is typed; kept for chip clicks', () => {
     const inp = doc.getElementById('globalSearch');
@@ -1808,26 +1806,30 @@ function bootDom() {
     App.settings.settingsNav = undefined;
     doc.querySelector('#setTabs [data-set=settings]').click();
   });
-  test('v1.6.42: search results live in a top-level dropdown with dropdown styles', async () => {
+  test('v1.6.42: search results block lives INSIDE the home page (no fixed dropdown)', async () => {
     const fs = require('fs');
+    const html = fs.readFileSync('renderer/index.html', 'utf-8');
+    const homeI = html.indexOf('<section id="view-home"');
+    const resultsI = html.indexOf('id="searchResults"');
+    assert(homeI >= 0 && resultsI > homeI, 'results block sits inside the home section, not a popup');
     const css = fs.readFileSync('renderer/css/app.css', 'utf-8');
     const i = css.indexOf('.search-results {');
-    assert(i >= 0 && css.slice(i, i + 300).includes('position: fixed'), 'dropdown styles are fixed-position');
+    assert(i >= 0 && !css.slice(i, i + 300).includes('position: fixed'), 'no fixed dropdown positioning anymore');
     const j = css.indexOf('.set-layout {');
     assert(j >= 0, 'settings sidebar layout styles present');
-    App.tabs = [{ id: 'home', kind: 'home' }];
+    App.tabs = [{ id: 'home', kind: 'home', hist: [{ kind: 'home', docId: undefined, toolId: undefined }], hIdx: 0 }];
     App.activeTab = 'home';
     App.setSearchMode('text');
     const input = doc.getElementById('globalSearch');
     input.value = '\u0627\u0644\u0639\u0645\u0644';
-    App.search(input.value);
+    App.navInTab({ kind: 'search', docId: undefined, toolId: undefined, query: input.value.trim() });
     const box = doc.getElementById('searchResults');
-    assert(!box.classList.contains('hidden'), 'dropdown shown while searching');
-    const items = box.querySelectorAll('.sr-item');
-    assert(items.length >= 1, 'results render in the dropdown');
-    input.value = '';
+    assert(!box.classList.contains('hidden'), 'results page shown');
+    assert(box.querySelectorAll('.sr-item').length >= 1, 'results render in the page');
     App.search('');
-    assert(box.classList.contains('hidden'), 'dropdown hides on clear');
+    assert(box.querySelectorAll('.sr-item').length === 0, 'items cleared on empty');
+    App.navInTab({ kind: 'home', docId: undefined, toolId: undefined });
+    assert(box.classList.contains('hidden'), 'results block hidden on the home page');
   });
   test('v1.6.42: picking a result from home converts the CURRENT page, back returns home', () => {
     App.tabs = [{ id: 'home', kind: 'home', hist: [{ kind: 'home', docId: undefined, toolId: undefined }], hIdx: 0 }];
@@ -1859,16 +1861,15 @@ function bootDom() {
     const before = tab.hist.length;
     const input = doc.getElementById('globalSearch');
     input.value = '\u0627\u0644\u0639\u0645\u0644';
-    App.search(input.value);
+    App.navInTab({ kind: 'search', docId: undefined, toolId: undefined, query: input.value.trim() });
     const box = doc.getElementById('searchResults');
-    assert(!box.classList.contains('hidden'), 'dropdown shown over the document page');
+    assert(!box.classList.contains('hidden'), 'results page shown in the document window');
     assert(App.activeTab === tab.id, 'no forced jump to the home window');
     const first = box.querySelector('.sr-item');
     first.querySelector('.sr-open').click();
     const at = App.tabs.find(x => x.id === App.activeTab);
     assert(at.id === tab.id, 'same window still active');
     assert(at.kind === 'doc', 'still a document page');
-    assert(doc.getElementById('searchResults').classList.contains('hidden'), 'dropdown closed after opening');
     const prevBtn = doc.getElementById('tabBar').querySelector('.tab-nav-btn');
     if (at.docId !== docIdBefore) {
       assert(at.hist.length === before + 1, 'history pushed for a different document');
@@ -1917,9 +1918,7 @@ function bootDom() {
     assert(res.length === 63, 'all 63 matching documents returned (old cap was 60)');
     App.activateTab('home');
     App.setSearchMode('text');
-    const input = doc.getElementById('globalSearch');
-    input.value = '\u0627\u0644\u0645\u0646\u062a\u0638\u063143';
-    App.search(input.value);
+    App.navInTab({ kind: 'search', docId: undefined, toolId: undefined, query: '\u0627\u0644\u0645\u0646\u062a\u0638\u063143' });
     const count = doc.querySelector('#searchResults .sr-count');
     assert(count && count.textContent.includes('63'), 'count line shows the real total  63');
     const items = doc.querySelectorAll('#searchResults .sr-item');
@@ -1928,21 +1927,74 @@ function bootDom() {
     assert(moreBtn, 'show-more button present');
     moreBtn.click();
     assert(doc.querySelectorAll('#searchResults .sr-item').length === 63, 'show-more loads the rest');
-    App.search('');
     // cleanup test KBs and rebuild the real index
     KB.kbs = KB.kbs.filter(k => !['k43', 'k43b'].includes(k.id));
     KB.rebuild();
   });
-  test('v1.6.43: search runs live \u2014 no button press required to see results', () => {
+  test('v1.6.44: no popup while typing \u2014 Enter turns the current window into the results page', () => {
+    App.tabs = [{ id: 'home', kind: 'home', hist: [{ kind: 'home', docId: undefined, toolId: undefined }], hIdx: 0 }];
+    App.activeTab = 'home';
     App.activateTab('home');
     App.setSearchMode('text');
     const input = doc.getElementById('globalSearch');
-    input.value = '\u0627\u0644\u0639\u0645\u0644';
-    App.search(input.value);
     const box = doc.getElementById('searchResults');
-    assert(!box.classList.contains('hidden') && box.querySelectorAll('.sr-item').length > 0, 'results shown directly from the input (no button)');
-    input.value = '';
-    App.search('');
+    input.value = '\u0627\u0644\u0639\u0645\u0644';
+    input.dispatchEvent(new window.Event('input', { bubbles: true }));
+    assert(box.classList.contains('hidden'), 'NO popup while typing on the home page');
+    assert(!doc.getElementById('updatesFeed').classList.contains('hidden'), 'updates feed stays visible while typing');
+    input.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+    const t = App.tabs.find(x => x.id === App.activeTab);
+    assert(t.kind === 'search', 'Enter makes the current window the results page');
+    assert(!box.classList.contains('hidden') && box.querySelectorAll('.sr-item').length > 0, 'results page populated');
+    assert(doc.getElementById('updatesFeed').classList.contains('hidden'), 'updates feed replaced by the results');
+    /* typing refines the open results page live (no popup, no navigation) */
+    input.value = '\u0627\u0644\u0639\u0645\u0644';
+    input.dispatchEvent(new window.Event('input', { bubbles: true }));
+    assert(App.tabs.find(x => x.id === App.activeTab).kind === 'search', 'no navigation jump while refining');
+    App.navInTab({ kind: 'home', docId: undefined, toolId: undefined });
+    input.value = '\u0627\u0644\u0639\u0645\u0644';
+    input.dispatchEvent(new window.Event('input', { bubbles: true }));
+    assert(App.tabs.find(x => x.id === App.activeTab).kind === 'home', 'no navigation while typing on a normal page');
+    assert(box.classList.contains('hidden'), 'results block stays hidden when leaving it');
+  });
+  test('v1.6.44: picking a result opens the doc in the SAME page; back returns to the results page', () => {
+    App.tabs = [{ id: 'home', kind: 'home', hist: [{ kind: 'home', docId: undefined, toolId: undefined }], hIdx: 0 }];
+    App.activeTab = 'home';
+    App.renderTabBar();
+    const input = doc.getElementById('globalSearch');
+    input.value = '\u0627\u0644\u0639\u0645\u0644';
+    input.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+    const at = App.tabs.find(x => x.id === App.activeTab);
+    assert(at.hist[at.hIdx].kind === 'search', 'results page pushed into history');
+    doc.querySelector('#searchResults .sr-item').click();
+    assert(App.tabs.find(x => x.id === App.activeTab).kind === 'doc', 'document opens in the same window');
+    const prevBtn = doc.getElementById('tabBar').querySelector('.tab-nav-btn');
+    assert(prevBtn && !prevBtn.disabled, 'back available');
+    prevBtn.click();
+    assert(App.tabs.find(x => x.id === App.activeTab).kind === 'search', 'back returns to the SAME results page');
+    assert(doc.getElementById('searchResults').querySelectorAll('.sr-item').length > 0, 'results re-rendered after back');
+    prevBtn.click();
+    assert(App.tabs.find(x => x.id === App.activeTab).kind === 'home', 'back again returns to the page before the search');
+  });
+  test('v1.6.44: search precision \u2014 docs that never contain the searched words do not appear; titles highlight', () => {
+    KB.kbs.push({ id: 'k44', name: { ar: '\u0627\u062e\u062a\u0628\u0627\u0631 \u062f\u0642\u0629', en: 'precision' }, documents: [
+      { id: 'd44-noise', title: { ar: '\u0644\u0627\u0626\u062d\u0629 \u0645\u062d\u062a\u0631\u0645\u0629 \u0645\u0646\u0637\u0642\u064a\u0629', en: 'x' }, type: 'law', body: '\u0645\u0648\u0627\u062f \u0623\u062d\u0643\u0627\u0645 \u0644\u0627 \u0635\u0644\u0629 \u0644\u0647\u0627 \u0628\u0627\u0644\u0645\u0628\u062d\u0648\u062b \u0639\u0646\u0647 \u0623\u0628\u062f\u0627\u064b \u0647\u0646\u0627.' }
+    ] });
+    KB.rebuild();
+    const res = KB.search('\u0646\u0638\u0627\u0645 \u0627\u0644\u0639\u0645\u0644');
+    assert(!res.some(r => r.doc.id === 'd44-noise'), 'unrelated doc never appears (no weak prefix tier)');
+    assert(typeof res.total === 'number' && res.total === res.length, 'total equals shown matches');
+    const kw = res.find(r => r.doc.id === 'd43-title');
+    if (kw) assert(kw.titleHtml.includes('hl'), 'matched words highlighted in the title');
+    KB.kbs = KB.kbs.filter(k => k.id !== 'k44');
+    KB.rebuild();
+  });
+  test('v1.6.44: the search label + query appear on the window tab', () => {
+    App.tabs = [{ id: 'home', kind: 'home', hist: [{ kind: 'home', docId: undefined, toolId: undefined }], hIdx: 0 }];
+    App.activeTab = 'home';
+    App.navInTab({ kind: 'search', docId: undefined, toolId: undefined, query: '\u0646\u0638\u0627\u0645 \u0627\u0644\u0639\u0645\u0644' });
+    const t = App.tabs.find(x => x.id === App.activeTab);
+    assert(App.tabLabel(t).includes('\u0646\u0638\u0627\u0645'), 'window label carries the query');
   });
   test('v1.6.43: installer include clears the Windows size cache so uninstall size updates', () => {
     const fs = require('fs');

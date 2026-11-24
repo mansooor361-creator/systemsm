@@ -315,9 +315,9 @@ const KB = {
     if (bodyPhrase) return { tier: 3, words, occ };
     if (words === qTokens.length) return { tier: 4, words, occ };
     if (titleWords > 0 || words > 0) return { tier: 5, words, occ };
-    /* keep the old lenient (prefix) behavior only as the last rank */
-    const bmm = this.bm25(qTokens, entry);
-    if (bmm.matched > 0) return { tier: 6, words, occ };
+    /* v1.6.44: the weak lenient (prefix-only) rank is REMOVED — documents that
+       never contain the searched words (not even as a word start) no longer
+       appear; only real matches are displayed. */
     return null;
   },
 
@@ -342,8 +342,11 @@ const KB = {
     });
     const hits = scored.slice(0, limit).map(({ entry, st, bm }) => {
       const excerpt = this.makeExcerpt(entry.raw, qTokens);
+      const lang = (typeof I18n !== 'undefined' && I18n.lang) || 'ar';
+      const title = entry.doc.title[lang] || entry.doc.title.ar || entry.doc.title.en || '';
       return {
         doc: entry.doc, kbName: entry.kbName, score: bm.score, base: st.tier, tier: st.tier,
+        titleHtml: this.highlightExcerpt(title, qTokens),
         excerpt, snippet: excerpt || this.snippetFor(entry.text, qTokens),
         excerptHtml: this.highlightExcerpt(excerpt, qTokens),
         articleNum: this.findArticle(entry, qTokens)
@@ -379,7 +382,9 @@ const KB = {
       if (entry.text.includes(phrase)) boost += 3;
       const score = ((hits / qTokens.length) + boost) / Math.sqrt(entry.tokens.length || 1);
       const excerpt = this.makeExcerpt(entry.raw, qTokens);
-      results.push({ doc: entry.doc, kbName: entry.kbName, score: score * 10, excerpt, snippet: excerpt || this.snippetFor(entry.text, qTokens), excerptHtml: this.highlightExcerpt(excerpt, qTokens), articleNum: this.findArticle(entry, qTokens) });
+      const lang = (typeof I18n !== 'undefined' && I18n.lang) || 'ar';
+      const title = entry.doc.title[lang] || entry.doc.title.ar || entry.doc.title.en || '';
+      results.push({ doc: entry.doc, kbName: entry.kbName, score: score * 10, titleHtml: this.highlightExcerpt(title, qTokens), excerpt, snippet: excerpt || this.snippetFor(entry.text, qTokens), excerptHtml: this.highlightExcerpt(excerpt, qTokens), articleNum: this.findArticle(entry, qTokens) });
     }
     results.sort((a, b) => b.score - a.score);
     results.total = results.length;

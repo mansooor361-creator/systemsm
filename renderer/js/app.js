@@ -287,8 +287,6 @@ const App = {
       } else if (e.key === 'Escape') {
         const qs = document.getElementById('quickSwitcher');
         if (qs && !qs.classList.contains('hidden')) this.closeQuickSwitcher();
-        const sr = document.getElementById('searchResults');
-        if (sr && !sr.classList.contains('hidden')) sr.classList.add('hidden');
       }
     });
   },
@@ -643,14 +641,6 @@ const App = {
           menu.classList.add('hidden');
         }
       });
-      /* v1.6.42: click outside the search box/results closes the results dropdown */
-      const sr = document.getElementById('searchResults');
-      if (sr && !sr.classList.contains('hidden')) {
-        const tgt = e.target;
-        const inside = sr.contains(tgt) || tgt === document.getElementById('globalSearch') ||
-          (tgt && tgt.closest && tgt.closest('#globalSearch'));
-        if (!inside) sr.classList.add('hidden');
-      }
     });
     document.getElementById('btnKbPicker').onclick = (e) => {
       e.stopPropagation();
@@ -671,18 +661,25 @@ const App = {
       e.preventDefault();
       window.daaix.openExternal('https://smartk-ai.com/');
     };
-    document.getElementById('globalSearch').addEventListener('input', (e) => {
-      clearTimeout(this._searchTimer);
-      const v = e.target.value;
-      /* v1.6.43: results appear LIVE while typing (no button press needed);
-         Enter just runs the search immediately. */
-      this._searchTimer = setTimeout(() => this.search(v), 160);
+    document.getElementById('globalSearch').addEventListener('input', () => {
+      /* v1.6.44: NO live popup while typing. The only live refresh happens when
+         the current page IS already the results page — then the in-page list
+         refines itself with every character (no history push, no popup). */
+      const t = this.tabs.find(x => x.id === this.activeTab);
+      const tip = t && t.hist && t.hist[t.hIdx];
+      if (t && t.kind === 'search') {
+        const v = document.getElementById('globalSearch').value.trim();
+        if (v.length >= 2) { t.query = v; if (tip && tip.kind === 'search') tip.query = v; this.search(v); }
+      }
     });
     document.getElementById('globalSearch').addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
+        /* v1.6.44: Enter turns the CURRENT window's content into the results
+           page (updates/launcher hidden — history keeps it for the back ‹). */
         e.preventDefault();
-        clearTimeout(this._searchTimer);
-        this.search(document.getElementById('globalSearch').value);
+        const q = document.getElementById('globalSearch').value.trim();
+        if (q.length < 2) return;
+        this.navInTab({ kind: 'search', docId: undefined, toolId: undefined, query: q });
       }
     });
   },
@@ -2000,8 +1997,12 @@ const App = {
     const btn = document.getElementById('btnSearchMode');
     if (btn) btn.innerHTML = LENS_SVG;
     document.getElementById('searchModeMenu').classList.add('hidden');
-    const q = document.getElementById('globalSearch').value;
-    if (q && q.trim().length >= 2) this.search(q);
+    /* v1.6.44: re-render only when the current page IS the results page */
+    const t = this.tabs.find(x => x.id === this.activeTab);
+    if (t && t.kind === 'search') {
+      const q = document.getElementById('globalSearch').value.trim() || t.query;
+      if (q) this.search(q);
+    }
   },
 
   renderSearchModeMenu() {
@@ -2020,21 +2021,16 @@ const App = {
   },
 
   search(q) {
-    /* v1.6.42: search now acts on the CURRENT page — results open in a top-level
-       dropdown instead of forcing a jump back to the home window.
-       v1.6.43: precise literal ranking (title phrase -> title words -> body phrase ->
-       all words -> partial), REAL result count (no fixed cap), and paged rendering. */
+    /* v1.6.44: results are a PAGE in the CURRENT window — no popup, no button.
+       The topbar content (launcher + updates feed) is hidden while this page is
+       active (renderView manages visibility). Back ‹ returns to the updates. */
     const box = document.getElementById('searchResults');
-    const feed = document.getElementById('updatesFeed');
-    const feedHead = document.getElementById('feedHead');
+    if (!box) return;
     const query = (q || '').trim();
     if (query !== this._lastQuery) { this.searchCat = 'all'; this._lastQuery = query; }
-    const active = query.length >= 2;
-    const onHome = this.activeTab === 'home';
-    feed.classList.toggle('hidden', onHome && !!active);
-    if (feedHead) feedHead.classList.toggle('hidden', onHome && !!active);
+    box.classList.remove('hidden');
     box.innerHTML = '';
-    box.classList.toggle('hidden', !active);
+    const active = query.length >= 2;
     if (!active) return;
     const all = this.searchMode === 'semantic' ? KB.searchSemantic(query, 2000) : KB.search(query, 2000);
     this._srTotal = (all && all.total != null) ? all.total : all.length;
@@ -2052,6 +2048,7 @@ const App = {
       ['decision', 'type_decision_pl'], ['agreement', 'type_agreement_pl'],
       ['ruling', 'type_ruling_pl'], ['principle', 'type_principle_pl'], ['circular', 'type_circular_pl']];
     head.innerHTML = `
+      <div class="sr-query">${esc(I18n.t('searchLabel'))}: «${esc(query)}»</div>
       <div class="sr-kbname">\ud83d\udcda ${esc(kbName)}</div>
       <div class="sr-cats">${cats.map(([c, key]) =>
         `<button class="sr-cat ${this.searchCat === c ? 'active' : ''}" data-cat="${c}">${I18n.t(key)}</button>`).join('')}</div>
@@ -2097,13 +2094,14 @@ const App = {
   buildSearchItem(r) {
     const doc = r.doc;
     const title = doc.title[I18n.lang] || doc.title.ar || doc.title.en;
+    const titleHtml = r.titleHtml || esc(title);
     const issueTool = doc.issueTool
       ? (doc.issueTool.tool || doc.issueTool.ar || doc.issueTool)
       : (doc.issuer ? (doc.issuer[I18n.lang] || doc.issuer.ar || doc.issuer.en) : '\u2014');
     const item = document.createElement('div');
     item.className = 'sr-item';
     item.innerHTML = `
-      <div class="sr-top"><div class="t">${esc(title)}</div><span class="chip type t-${doc.type}">${I18n.docTypeName(doc.type)}</span>${r.articleNum ? `<span class="chip art">${esc(I18n.t('articleChip'))} ${esc(r.articleNum)}</span>` : ''}</div>
+      <div class="sr-top"><div class="t">${titleHtml}</div><span class="chip type t-${doc.type}">${I18n.docTypeName(doc.type)}</span>${r.articleNum ? `<span class="chip art">${esc(I18n.t('articleChip'))} ${esc(r.articleNum)}</span>` : ''}</div>
       ${r.excerptHtml ? `<div class="sr-snippet">${r.excerptHtml}</div>` : (r.snippet ? `<div class="sr-snippet">${esc(r.snippet)}</div>` : '')}
       <a class="sr-open" href="#">${I18n.t('viewDetails')} \u2190</a>
       <div class="sr-props">
@@ -2114,11 +2112,10 @@ const App = {
         <div><span>${I18n.t('legislativeStatus')}:</span> ${I18n.t('status_' + (doc.status || 'in_force'))}</div>
       </div>`;
     const open = () => {
-      const box2 = document.getElementById('searchResults');
-      if (box2) box2.classList.add('hidden');
       document.getElementById('globalSearch').value = '';
-      this.search(''); this._lastQuery = '';
-      /* v1.6.42: pick a result -> the CURRENT page becomes the document (back returns) */
+      this._lastQuery = '';
+      /* v1.6.44: pick a result -> the document opens in the SAME page (back ‹
+         returns to the results list, then to what was there before). */
       this.navInTab({ kind: 'doc', docId: doc.id });
       if (r.articleNum) setTimeout(() => this.scrollToArticle(r.articleNum), 80);
     };
@@ -2230,6 +2227,7 @@ const App = {
 
   tabLabel(t) {
     if (t.kind === 'home') return I18n.t('home');
+    if (t.kind === 'search') return `${I18n.t('searchLabel')} — ${t.query || ''}`.slice(0, 28);
     if (t.kind === 'doc') {
       const d = KB.get(t.docId);
       return d ? (d.title[I18n.lang] || d.title.ar || d.title.en) : '\u2014';
@@ -2284,7 +2282,29 @@ const App = {
   },
 
   renderView(t) {
-    if (t.kind === 'home') this.showView('home');
+    if (t.kind === 'home') {
+      this.showView('home');
+      /* v1.6.44: restore the regular home page (launcher + updates feed) */
+      const hl = document.getElementById('homeLauncher');
+      if (hl) hl.classList.remove('hidden');
+      const feed = document.getElementById('updatesFeed');
+      if (feed) feed.classList.remove('hidden');
+      const fh = document.getElementById('feedHead');
+      if (fh) fh.classList.remove('hidden');
+      const box = document.getElementById('searchResults');
+      if (box) box.classList.add('hidden');
+    }
+    else if (t.kind === 'search') {
+      /* v1.6.44: the results page REPLACES the updates feed in this window */
+      this.showView('home');
+      const hl = document.getElementById('homeLauncher');
+      if (hl) hl.classList.add('hidden');
+      const feed = document.getElementById('updatesFeed');
+      if (feed) feed.classList.add('hidden');
+      const fh = document.getElementById('feedHead');
+      if (fh) fh.classList.add('hidden');
+      this.search(t.query);
+    }
     else if (t.kind === 'doc') this.renderDocument(t.docId);
     else if (t.kind === 'agents') { this.showView('agents'); Agents.render(); }
     else if (t.kind === 'tools') { this.showView('tools'); Tools.active = t.toolId; Tools.renderMenu(); Tools.render(t.toolId); }
@@ -2300,19 +2320,19 @@ const App = {
       if (view.kind === 'doc') this.openDocument(view.docId);
       return;
     }
-    const cur = (t.hist && t.hist[t.hIdx]) || { kind: t.kind, docId: t.docId, toolId: t.toolId };
+    const cur = (t.hist && t.hist[t.hIdx]) || { kind: t.kind, docId: t.docId, toolId: t.toolId, query: t.query };
     if (t.hIdx === undefined) t.hIdx = 0;
     if (!t.hist) { t.hist = [cur]; t.hIdx = 0; }
-    if (cur.kind === view.kind && cur.docId === view.docId && cur.toolId === view.toolId) {
+    if (cur.kind === view.kind && cur.docId === view.docId && cur.toolId === view.toolId && cur.query === view.query) {
       this.renderView(t);
       if (view.kind === 'doc' && view.article) this.scrollToArticle(view.article);
       return;
     }
     if (!t.hist.length) { t.hist = [cur]; t.hIdx = 0; }
     t.hist = t.hist.slice(0, t.hIdx + 1);
-    t.hist.push({ kind: view.kind, docId: view.docId, toolId: view.toolId });
+    t.hist.push({ kind: view.kind, docId: view.docId, toolId: view.toolId, query: view.query });
     t.hIdx = t.hist.length - 1;
-    t.kind = view.kind; t.docId = view.docId; t.toolId = view.toolId;
+    t.kind = view.kind; t.docId = view.docId; t.toolId = view.toolId; t.query = view.query;
     this.renderTabBar();
     this.renderView(t);
     if (view.kind === 'doc' && view.article) this.scrollToArticle(view.article);
