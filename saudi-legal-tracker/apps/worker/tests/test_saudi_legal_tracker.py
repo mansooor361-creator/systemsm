@@ -210,6 +210,42 @@ async def _stub_deliver_digest(target: str, title: str, digest: str) -> str:
     return "studio_only"
 
 
+@workflows.activity(name="persist_results")
+async def _stub_persist_results(
+    run_at: str, digest_markdown: str, payload: dict, persist_dir: str
+) -> str:
+    return "persisted_stub"
+
+
+def test_build_run_payload() -> None:
+    classified = [
+        tracker.ClassifiedItem(
+            item=tracker.LegalItem(
+                source_key="uqn",
+                source_name="أم القرى",
+                title="مرسوم ملكي رقم 1",
+                url="https://www.uqn.gov.sa/a/1",
+            ),
+            category="مرسوم ملكي",
+            reference="مرسوم ملكي رقم 1 لسنة 2026",
+            summary_ar="ملخص",
+        )
+    ]
+    payload = tracker.build_run_payload(
+        "2026-11-24T16:24:14+00:00",
+        48,
+        6,
+        3,
+        77,
+        {"boe_laws": "ConnectTimeout"},
+        classified,
+    )
+    assert payload["items_new"] == 1
+    assert payload["source_errors"] == {"boe_laws": "ConnectTimeout"}
+    assert payload["items"][0]["category"] == "مرسوم ملكي"
+    assert payload["items"][0]["item"]["url"] == "https://www.uqn.gov.sa/a/1"
+
+
 async def test_workflow_end_to_end(temporal_env) -> None:  # noqa: ANN001
     async with create_test_worker(
         temporal_env,
@@ -219,6 +255,7 @@ async def test_workflow_end_to_end(temporal_env) -> None:  # noqa: ANN001
             _stub_filter_new_items,
             _stub_classify_items,
             _stub_deliver_digest,
+            _stub_persist_results,
         ],
     ):
         handle = await temporal_env.client.start_workflow(
@@ -238,6 +275,7 @@ async def test_workflow_end_to_end(temporal_env) -> None:  # noqa: ANN001
         assert result["sources_ok"] == len(tracker.SOURCES)
         assert result["items_new"] == len(tracker.SOURCES)
         assert result["delivery_status"] == "studio_only"
+        assert result["persist_status"] == "persisted_stub"
         assert "نشرة" in result["digest_markdown"]
         assert result["items"][0]["category"] == "قرار وزاري"
 
@@ -251,6 +289,7 @@ async def test_workflow_without_classification(temporal_env) -> None:  # noqa: A
             _stub_filter_new_items,
             _stub_classify_items,
             _stub_deliver_digest,
+            _stub_persist_results,
         ],
     ):
         handle = await temporal_env.client.start_workflow(

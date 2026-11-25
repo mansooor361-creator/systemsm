@@ -8,6 +8,7 @@ digest. Delivery to Slack, email or Notion is optional and driven by workspace s
 """
 
 import asyncio
+import base64
 import html
 import json
 import re
@@ -193,6 +194,8 @@ class TrackerInput(BaseModel):
     max_items_per_source: int = 15
     classify: bool = True
     delivery_target: str = "studio"  # studio | slack | email | notion
+    persist: bool = True  # save run results to a folder in the target GitHub repo
+    persist_dir: str = "legal-updates"
 
 
 class TrackerOutput(BaseModel):
@@ -207,6 +210,7 @@ class TrackerOutput(BaseModel):
     items: list[ClassifiedItem]
     source_errors: dict[str, str]
     delivery_status: str
+    persist_status: str = ""
 
 
 _HEADERS = {
@@ -743,6 +747,131 @@ async def deliver_digest(target: str, title: str, digest: str) -> str:
         return f"delivery_failed:{target}:{type(exc).__name__}:{message}"
 
 
+def build_run_payload(
+    run_at: str,
+    lookback_hours: int,
+    sources_ok: int,
+    sources_failed: int,
+    fetched_total: int,
+    source_errors: dict[str, str],
+    classified: list[ClassifiedItem],
+) -> dict:
+    return {
+        "run_at": run_at,
+        "lookback_hours": lookback_hours,
+        "sources_total": sources_ok + sources_failed,
+        "sources_ok": sources_ok,
+        "sources_failed": sources_failed,
+        "items_fetched": fetched_total,
+        "items_new": len(classified),
+        "source_errors": source_errors,
+        "items": [entry.model_dump() for entry in classified],
+    }
+
+
+async def _github_put_file(
+    client, base: str, branch: str, path: str, content: str, message: str
+) -> dict:
+    existing = await client.get(f"{base}/contents/{path}", params={"ref": branch})
+    body = {
+        "message": message,
+        "content": base64.b64encode(content.encode("utf-8")).decode("ascii"),
+        "branch": branch,
+    }
+    if existing.status_code == 200:
+        body["sha"] = existing.json()["sha"]
+    response = await client.put(f"{base}/contents/{path}", json=body)
+    if response.status_code not in (200, 201):
+        raise RuntimeError(
+            f"PUT {path} -> {response.status_code}: {response.text[:200]}"
+        )
+    return response.json()
+
+
+@workflows.activity(
+    name="persist_results",
+    start_to_close_timeout=timedelta(seconds=180),
+    retry_policy_max_attempts=2,
+)
+async def persist_results(
+    run_at: str, digest_markdown: str, payload: dict, persist_dir: str
+) -> str:
+    import os
+
+    import httpx
+
+    token = os.environ.get("GITHUB_PAT", "")
+    repo = os.environ.get("LEGAL_UPDATES_REPO", "mansooor361-creator/systemsm")
+    branch = os.environ.get("LEGAL_UPDATES_BRANCH", "legal-updates-data")
+    if not token:
+        return "persist_skipped: GITHUB_PAT workspace secret not set"
+    owner, _, name = repo.partition("/")
+    if not name:
+        return f"persist_skipped: bad LEGAL_UPDATES_REPO {repo!r}"
+    date = run_at[:10]
+    base = f"https://api.github.com/repos/{owner}/{name}"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=30.0, headers=headers) as client:
+            ref = await client.get(f"{base}/git/ref/heads/{branch}")
+            if ref.status_code == 404:
+                default_ref = await client.get(f"{base}/git/ref/heads/main")
+                if default_ref.status_code != 200:
+                    return f"persist_failed: default branch lookup -> {default_ref.status_code}"
+                created = await client.post(
+                    f"{base}/git/refs",
+                    json={
+                        "ref": f"refs/heads/{branch}",
+                        "sha": default_ref.json()["object"]["sha"],
+                    },
+                )
+                if created.status_code not in (200, 201):
+                    return f"persist_failed: create branch -> {created.status_code}"
+            payload_json = json.dumps(payload, ensure_ascii=False, indent=2)
+            message = f"chore(legal-updates): {date} digest ({payload['items_new']} new items)"
+            files = {
+                f"{persist_dir}/{date}.md": digest_markdown,
+                f"{persist_dir}/{date}.json": payload_json,
+                f"{persist_dir}/latest.md": digest_markdown,
+                f"{persist_dir}/latest.json": payload_json,
+            }
+            written: list[str] = []
+            for path, content in files.items():
+                result = await _github_put_file(
+                    client, base, branch, path, content, message
+                )
+                written.append(result["content"]["html_url"])
+            index_path = f"{persist_dir}/index.md"
+            existing = await client.get(
+                f"{base}/contents/{index_path}", params={"ref": branch}
+            )
+            if existing.status_code == 200:
+                index_text = base64.b64decode(existing.json()["content"]).decode(
+                    "utf-8"
+                )
+            else:
+                index_text = "# سجل آخر التحديثات القانونية\n\n"
+            line = f"- [{date}]({date}.md) — {payload['items_new']} عنصراً جديداً ([JSON]({date}.json))\n"
+            if line.strip() not in index_text:
+                index_text = index_text.rstrip("\n") + "\n" + line
+            await _github_put_file(
+                client,
+                base,
+                branch,
+                index_path,
+                index_text,
+                f"chore(legal-updates): index {date}",
+            )
+            written.append(f"{base}/blob/{branch}/{index_path}")
+            return "persisted:" + ";".join(written)
+    except Exception as exc:
+        return f"persist_failed:{type(exc).__name__}:{str(exc)[:200]}"
+
+
 @workflows.workflow.define(
     name=WORKFLOW_NAME,
     workflow_display_name="متابعة آخر التحديثات القانونية السعودية",
@@ -781,6 +910,20 @@ class SaudiLegalUpdatesWorkflow:
         )
         title = f"نشرة آخر التحديثات القانونية — {run_at}"
         delivery_status = await deliver_digest(input.delivery_target, title, digest)
+        persist_status = "persist_disabled"
+        if input.persist:
+            payload = build_run_payload(
+                run_at,
+                input.lookback_hours,
+                sources_ok,
+                len(results) - sources_ok,
+                new_items_result.fetched_total,
+                {r.source_key: (r.error or "no items") for r in results if not r.ok},
+                classified,
+            )
+            persist_status = await persist_results(
+                run_at, digest, payload, input.persist_dir
+            )
         return TrackerOutput(
             run_at=run_at,
             lookback_hours=input.lookback_hours,
@@ -795,4 +938,5 @@ class SaudiLegalUpdatesWorkflow:
                 r.source_key: (r.error or "no items") for r in results if not r.ok
             },
             delivery_status=delivery_status,
+            persist_status=persist_status,
         )

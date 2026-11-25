@@ -28,6 +28,38 @@ optional (see `.env.example`); by default the digest is the execution result in 
 - Output (`TrackerOutput`): run metadata, per-source counts, the classified items, the
   Markdown digest, and the delivery status.
 
+## Persisting results to a folder (Markdown + JSON)
+
+With `persist: true` (default) each run also writes its results into a folder in a
+GitHub repo via the GitHub REST API, using a workspace secret `GITHUB_PAT` (a PAT
+with `contents:write` on the target repo):
+
+- Branch `legal-updates-data` (created from `main` on first run; override with
+  `LEGAL_UPDATES_BRANCH`), repo `mansooor361-creator/systemsm` (override with
+  `LEGAL_UPDATES_REPO`).
+- Per run, under `legal-updates/` (override with `LEGAL_UPDATES_DIR`):
+  - `<YYYY-MM-DD>.md` — the Arabic Markdown digest
+  - `<YYYY-MM-DD>.json` — structured data (run metadata, source errors, all classified items)
+  - `latest.md` / `latest.json` — always the most recent run
+  - `index.md` — list of all runs
+
+Setup: create a workspace secret named `github_pat` in Studio (never paste the token
+anywhere else), then bind it on the deployment as `GITHUB_PAT`:
+
+```python
+deploy_workflow_deployment(
+    deployment_name="saudi-legal-tracker",
+    github_url="https://github.com/mansooor361-creator/systemsm.git",
+    revision="<pushed-sha>",
+    build_directory="saudi-legal-tracker",
+    dockerfile_path="deploy/docker/Dockerfile.worker",
+    secrets=[{"secret_name": "github_pat", "env_var_name": "GITHUB_PAT"}],
+)
+```
+
+Without the secret, runs still succeed and `persist_status` in the output reports
+`persist_skipped: GITHUB_PAT workspace secret not set`.
+
 ## Develop
 
 ```bash
