@@ -264,6 +264,18 @@ def test_hijri_date_conversion() -> None:
     assert tracker._parse_date_to_epoch("15/5/1448") == epoch
     assert tracker._parse_date_to_epoch("1448/05/15") == epoch
     assert tracker._parse_date_to_epoch("15/5/1448هـ") == epoch
+    assert tracker._normalize_date_str("15/5/1448هـ") == "15/5/1448"
+    assert tracker._normalize_date_str("15 / 5 / 1448 هـ") == "15/5/1448"
+    assert not any(
+        "\u0621" <= ch <= "\u064a" for ch in tracker._normalize_date_str("16/10/1447هـ")
+    )
+    assert tracker._parse_date_to_epoch("15 / 5 / 1448 هـ") == epoch
+    rfc822 = "Mon, 06 Apr 2026 10:00:00 GMT"
+    assert tracker._normalize_date_str(rfc822) == rfc822
+    assert tracker._parse_date_to_epoch(rfc822) is not None
+    iso = "2026-04-05T09:00:00Z"
+    assert tracker._normalize_date_str(iso) == iso
+    assert tracker._parse_date_to_epoch(iso) is not None
 
 
 def test_select_new_items_since_date_filters_old_hijri() -> None:

@@ -334,11 +334,12 @@ def parse_feed(
         link = _feed_link(elem)
         if not title or not link:
             continue
-        published = (
+        published_raw = (
             _child_text(elem, "pubdate")
             or _child_text(elem, "published")
             or _child_text(elem, "updated")
         )
+        published = _normalize_date_str(published_raw) if published_raw else None
         snippet = _clean_text(
             _child_text(elem, "description") or _child_text(elem, "summary")
         )[:500]
@@ -385,7 +386,7 @@ def extract_html_links(
         after = text[match.end() : min(next_start, match.end() + 300)]
         before = text[max(prev_end, match.start() - 300) : match.start()]
         date_match = _DATE_RE.search(after) or _DATE_RE.search(before)
-        published = date_match.group(0) if date_match else None
+        published = _normalize_date_str(date_match.group(0)) if date_match else None
         snippet = _clean_text(after or before)[:300]
         items.append(
             LegalItem(
@@ -442,8 +443,15 @@ def _hijri_to_epoch(year: int, month: int, day: int) -> float | None:
         return None
 
 
+def _normalize_date_str(raw: str) -> str:
+    """Strip Arabic letters (e.g. the 'هـ' Hijri suffix) while keeping Latin letters and
+    colons so RFC 822 and ISO 8601 dates still parse."""
+    cleaned = re.sub(r"[\u0621-\u064a\u0640]", "", raw)
+    return re.sub(r"\s*([/\-.])\s*", r"\1", cleaned).strip()
+
+
 def _parse_date_to_epoch(raw: str) -> float | None:
-    raw = re.sub(r"[\u0621-\u064a]", "", raw).strip()
+    raw = _normalize_date_str(raw)
     for fmt in ("%Y-%m-%d", "%Y/%m/%d"):
         try:
             dt = datetime.strptime(raw, fmt).replace(tzinfo=timezone.utc)
@@ -468,6 +476,13 @@ def _parse_date_to_epoch(raw: str) -> float | None:
         return _hijri_to_epoch(
             int(match.group(1)), int(match.group(2)), int(match.group(3))
         )
+    try:
+        iso_dt = datetime.fromisoformat(raw)
+        if iso_dt.tzinfo is None:
+            iso_dt = iso_dt.replace(tzinfo=timezone.utc)
+        return iso_dt.timestamp()
+    except ValueError:
+        pass
     try:
         return parsedate_to_datetime(raw).timestamp()
     except (TypeError, ValueError):
