@@ -94,7 +94,7 @@ def test_parse_date_to_epoch() -> None:
     assert tracker._parse_date_to_epoch("2026-04-05") is not None
     assert tracker._parse_date_to_epoch("05/04/2026") is not None
     assert tracker._parse_date_to_epoch("Mon, 06 Apr 2026 10:00:00 GMT") is not None
-    assert tracker._parse_date_to_epoch("16/10/1447هـ") is None
+    assert tracker._parse_date_to_epoch("16/10/1447هـ") is not None  # Hijri now converts
     assert tracker._parse_date_to_epoch("") is None
 
 
@@ -187,7 +187,9 @@ async def _stub_fetch_source(
 
 @workflows.activity(name="filter_new_items")
 async def _stub_filter_new_items(
-    results: list[tracker.SourceFetchResult], lookback_hours: int
+    results: list[tracker.SourceFetchResult],
+    lookback_hours: int,
+    since_date: str | None,
 ) -> tracker.NewItemsResult:
     items = [item for result in results for item in result.items]
     return tracker.NewItemsResult(items=items, fetched_total=len(items))
@@ -212,7 +214,11 @@ async def _stub_deliver_digest(target: str, title: str, digest: str) -> str:
 
 @workflows.activity(name="persist_results")
 async def _stub_persist_results(
-    run_at: str, digest_markdown: str, payload: dict, persist_dir: str
+    run_at: str,
+    digest_markdown: str,
+    dashboard_markdown: str,
+    payload: dict,
+    persist_dir: str,
 ) -> str:
     return "persisted_stub"
 
@@ -246,6 +252,74 @@ def test_build_run_payload() -> None:
     assert payload["items"][0]["item"]["url"] == "https://www.uqn.gov.sa/a/1"
 
 
+def test_hijri_date_conversion() -> None:
+    epoch = tracker._hijri_to_epoch(1448, 5, 15)
+    assert epoch is not None
+    from datetime import datetime, timezone
+
+    dt = datetime.fromtimestamp(epoch, timezone.utc)
+    assert dt.year == 2026 and dt.month == 10
+    assert tracker._parse_date_to_epoch("15/5/1448") == epoch
+    assert tracker._parse_date_to_epoch("1448/05/15") == epoch
+    assert tracker._parse_date_to_epoch("15/5/1448هـ") == epoch
+
+
+def test_select_new_items_since_date_filters_old_hijri() -> None:
+    item_old = tracker.LegalItem(
+        source_key="uqn_rules",
+        source_name="لوائح وأنظمة — جريدة أم القرى",
+        title="نظام قديم",
+        url="https://www.uqn.gov.sa/a/old",
+        published_at="10/5/1448",
+    )
+    item_new = tracker.LegalItem(
+        source_key="uqn_rules",
+        source_name="لوائح وأنظمة — جريدة أم القرى",
+        title="نظام جديد",
+        url="https://www.uqn.gov.sa/a/new",
+        published_at="20/5/1448",
+    )
+    results = [
+        tracker.SourceFetchResult(
+            source_key="uqn_rules",
+            source_name="لوائح",
+            ok=True,
+            items=[item_old, item_new],
+        )
+    ]
+    seen: dict[str, float] = {}
+    since = tracker._parse_date_to_epoch("15/5/1448")
+    out = tracker.select_new_items(
+        results,
+        lookback_hours=24 * 365,
+        now=1_800_000_000.0,
+        seen_urls=seen,
+        since_epoch=since,
+    )
+    assert [i.url for i in out.items] == ["https://www.uqn.gov.sa/a/new"]
+
+
+def test_build_dashboard_markdown_counts_and_links() -> None:
+    entry = tracker.ClassifiedItem(
+        item=tracker.LegalItem(
+            source_key="uqn_royal_orders",
+            source_name="أوامر ملكية — جريدة أم القرى",
+            title="أمر ملكي رقم 99",
+            url="https://www.uqn.gov.sa/decisions/royal-orders/99",
+            published_at="20/5/1448",
+        ),
+        category="أمر ملكي",
+    )
+    dash = tracker.build_dashboard_markdown(
+        [entry], "2026-11-25T06:00:00+00:00", {"uqn_royal_orders": 1}, "15/5/1448"
+    )
+    assert "لوحة متابعة" in dash
+    assert "أمر ملكي (1)" in dash
+    assert "[أمر ملكي رقم 99](https://www.uqn.gov.sa/decisions/royal-orders/99)" in dash
+    assert "أوامر ملكية — جريدة أم القرى: **1**" in dash
+    assert "15/5/1448" in dash
+
+
 async def test_workflow_end_to_end(temporal_env) -> None:  # noqa: ANN001
     async with create_test_worker(
         temporal_env,
@@ -277,7 +351,11 @@ async def test_workflow_end_to_end(temporal_env) -> None:  # noqa: ANN001
         assert result["delivery_status"] == "studio_only"
         assert result["persist_status"] == "persisted_stub"
         assert "نشرة" in result["digest_markdown"]
-        assert result["items"][0]["category"] == "قرار وزاري"
+        assert result["items"][0]["category"] == "قرار مجلس الوزراء"
+        assert result["items"][0]["item"]["source_key"] == tracker.SOURCES[0].key
+        assert result["source_counts"] == {sp.key: 1 for sp in tracker.SOURCES}
+        assert "لوحة متابعة" in result["dashboard_markdown"]
+        assert tracker.SOURCES[0].name_ar in result["dashboard_markdown"]
 
 
 async def test_workflow_without_classification(temporal_env) -> None:  # noqa: ANN001
@@ -306,4 +384,4 @@ async def test_workflow_without_classification(temporal_env) -> None:  # noqa: A
         )
         result = await asyncio.wait_for(handle.result(), timeout=30)
         assert result["items_new"] == len(tracker.SOURCES)
-        assert result["items"][0]["category"] == "أخرى"
+        assert result["items"][0]["category"] == tracker.SOURCES[0].default_category

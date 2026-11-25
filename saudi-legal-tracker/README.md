@@ -28,6 +28,22 @@ optional (see `.env.example`); by default the digest is the execution result in 
 - Output (`TrackerOutput`): run metadata, per-source counts, the classified items, the
   Markdown digest, and the delivery status.
 
+## Sources (named Umm Al-Qura sections + ministries)
+
+Umm Al-Qura sections are tracked individually with fixed categories and their own
+URLs (`uqn.gov.sa/decisions/...`): council-of-ministers-decisions, royal-orders,
+royal-decrees, rules-and-regulations, ministerial-decisions,
+memorandums-of-understanding, agreements, authorities — plus BOE, MOJ, MOF, HRSD.
+
+## Weekly dashboard, counts, and since-date filtering
+
+- Every run output includes `source_counts` (new items per source) and
+  `dashboard_markdown`: a weekly tracking dashboard grouped by category with counts
+  and a link to each new decision. It is also persisted as `legal-updates/dashboard.md`.
+- Input `since_date` accepts Hijri (`"15/5/1448"`) or Gregorian (`"2026-10-27"`)
+  dates; dated items older than it are dropped (Hijri dates on the portals are
+  converted with the tabular Islamic calendar).
+
 ## Persisting results to a folder (Markdown + JSON)
 
 With `persist: true` (default) each run also writes its results into a folder in a

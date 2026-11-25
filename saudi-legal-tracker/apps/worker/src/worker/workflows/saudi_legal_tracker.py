@@ -72,22 +72,73 @@ class SourceSpec(BaseModel):
     kind: str  # "feed" (RSS/Atom) or "page" (HTML listing)
     urls: list[str]
     hint: str
+    default_category: str | None = None  # fixed category for items from this source
 
 
 SOURCES: list[SourceSpec] = [
     SourceSpec(
-        key="uqn",
-        name_ar="جريدة أم القرى — آخر القرارات والأنظمة",
+        key="uqn_council",
+        name_ar="قرارات مجلس الوزراء — جريدة أم القرى",
         kind="page",
-        urls=["https://www.uqn.gov.sa/"],
-        hint="الجريدة الرسمية: أوامر ملكية، مراسيم، قرارات مجلس الوزراء، لوائح وأنظمة، قرارات وزارية",
+        urls=["https://www.uqn.gov.sa/decisions/council-of-ministers-decisions"],
+        hint="قرارات مجلس الوزراء المنشورة في الجريدة الرسمية",
+        default_category="قرار مجلس الوزراء",
     ),
     SourceSpec(
-        key="uqn_archive",
-        name_ar="بوابة أرشيف أم القرى",
+        key="uqn_royal_orders",
+        name_ar="أوامر ملكية — جريدة أم القرى",
         kind="page",
-        urls=["https://portal.uqn.gov.sa/archive"],
-        hint="أرشيف أعداد جريدة أم القرى الرسمية",
+        urls=["https://www.uqn.gov.sa/decisions/royal-orders"],
+        hint="الأوامر الملكية المنشورة في الجريدة الرسمية",
+        default_category="أمر ملكي",
+    ),
+    SourceSpec(
+        key="uqn_royal_decrees",
+        name_ar="مراسيم ملكية — جريدة أم القرى",
+        kind="page",
+        urls=["https://www.uqn.gov.sa/decisions/royal-decrees"],
+        hint="المراسيم الملكية المنشورة في الجريدة الرسمية",
+        default_category="مرسوم ملكي",
+    ),
+    SourceSpec(
+        key="uqn_rules",
+        name_ar="لوائح وأنظمة — جريدة أم القرى",
+        kind="page",
+        urls=["https://www.uqn.gov.sa/decisions/rules-and-regulations"],
+        hint="اللوائح والأنظمة المنشورة في الجريدة الرسمية",
+        default_category="لائحة",
+    ),
+    SourceSpec(
+        key="uqn_ministerial",
+        name_ar="قرارات وزارية — جريدة أم القرى",
+        kind="page",
+        urls=["https://www.uqn.gov.sa/decisions/ministerial-decisions"],
+        hint="القرارات الوزارية المنشورة في الجريدة الرسمية",
+        default_category="قرار وزاري",
+    ),
+    SourceSpec(
+        key="uqn_mou",
+        name_ar="مذكرات تفاهم — جريدة أم القرى",
+        kind="page",
+        urls=["https://www.uqn.gov.sa/decisions/memorandums-of-understanding"],
+        hint="مذكرات التفاهم المنشورة في الجريدة الرسمية",
+        default_category="أخرى",
+    ),
+    SourceSpec(
+        key="uqn_agreements",
+        name_ar="اتفاقيات — جريدة أم القرى",
+        kind="page",
+        urls=["https://www.uqn.gov.sa/decisions/agreements"],
+        hint="الاتفاقيات المنشورة في الجريدة الرسمية",
+        default_category="أخرى",
+    ),
+    SourceSpec(
+        key="uqn_authorities",
+        name_ar="هيئات — جريدة أم القرى",
+        kind="page",
+        urls=["https://www.uqn.gov.sa/decisions/authorities"],
+        hint="قرارات الهيئات المنشورة في الجريدة الرسمية",
+        default_category="قرار هيئة",
     ),
     SourceSpec(
         key="boe_laws",
@@ -196,6 +247,9 @@ class TrackerInput(BaseModel):
     delivery_target: str = "studio"  # studio | slack | email | notion
     persist: bool = True  # save run results to a folder in the target GitHub repo
     persist_dir: str = "legal-updates"
+    since_date: str | None = (
+        None  # e.g. "15/5/1448" (Hijri) or "2026-10-27"; drops dated items older than it
+    )
 
 
 class TrackerOutput(BaseModel):
@@ -211,6 +265,8 @@ class TrackerOutput(BaseModel):
     source_errors: dict[str, str]
     delivery_status: str
     persist_status: str = ""
+    source_counts: dict[str, int] = {}
+    dashboard_markdown: str = ""
 
 
 _HEADERS = {
@@ -358,13 +414,43 @@ def extract_html_links(
     return items
 
 
+def _hijri_to_epoch(year: int, month: int, day: int) -> float | None:
+    """Tabular (Kuwaiti) Islamic calendar -> Unix epoch (UTC midnight)."""
+    try:
+        a = year - 1
+        jdn = (
+            1948440
+            + 354 * a
+            + (3 + 11 * a) // 30
+            + 29 * (month - 1)
+            + month // 2
+            + day
+            - 1
+        )
+        ll = jdn + 68569
+        n = (4 * ll) // 146097
+        ll = ll - (146097 * n + 3) // 4
+        i = (4000 * (ll + 1)) // 1461001
+        ll = ll - (1461 * i) // 4 + 31
+        j = (80 * ll) // 2447
+        d = ll - (2447 * j) // 80
+        ll = j // 11
+        m = j + 2 - 12 * ll
+        y = 100 * (n - 49) + i + ll
+        return datetime(y, m, d, tzinfo=timezone.utc).timestamp()
+    except (ValueError, OverflowError):
+        return None
+
+
 def _parse_date_to_epoch(raw: str) -> float | None:
-    raw = raw.strip()
+    raw = re.sub(r"[\u0621-\u064a]", "", raw).strip()
     for fmt in ("%Y-%m-%d", "%Y/%m/%d"):
         try:
             dt = datetime.strptime(raw, fmt).replace(tzinfo=timezone.utc)
             if 1990 <= dt.year <= 2100:
                 return dt.timestamp()
+            if 1400 <= dt.year <= 1500:
+                return _hijri_to_epoch(dt.year, dt.month, dt.day)
         except ValueError:
             continue
     match = re.fullmatch(r"(\d{1,2})/(\d{1,2})/(\d{4})", raw)
@@ -375,6 +461,13 @@ def _parse_date_to_epoch(raw: str) -> float | None:
                 return datetime(year, month, day, tzinfo=timezone.utc).timestamp()
             except ValueError:
                 return None
+        if 1400 <= year <= 1500:
+            return _hijri_to_epoch(year, month, day)
+    match = re.fullmatch(r"(\d{4})/(\d{1,2})/(\d{1,2})", raw)
+    if match and 1400 <= int(match.group(1)) <= 1500:
+        return _hijri_to_epoch(
+            int(match.group(1)), int(match.group(2)), int(match.group(3))
+        )
     try:
         return parsedate_to_datetime(raw).timestamp()
     except (TypeError, ValueError):
@@ -449,8 +542,11 @@ def select_new_items(
     lookback_hours: int,
     now: float,
     seen_urls: dict[str, float],
+    since_epoch: float | None = None,
 ) -> NewItemsResult:
     cutoff = now - lookback_hours * 3600
+    if since_epoch is not None:
+        cutoff = max(cutoff, since_epoch)
     for url, ts in list(seen_urls.items()):
         if now - ts > _SEEN_MAX_AGE_SECONDS:
             del seen_urls[url]
@@ -477,11 +573,14 @@ def select_new_items(
     retry_policy_max_attempts=2,
 )
 async def filter_new_items(
-    results: list[SourceFetchResult], lookback_hours: int
+    results: list[SourceFetchResult], lookback_hours: int, since_date: str | None
 ) -> NewItemsResult:
     import time
 
-    return select_new_items(results, lookback_hours, time.time(), _SEEN_URLS)
+    since_epoch = _parse_date_to_epoch(since_date) if since_date else None
+    return select_new_items(
+        results, lookback_hours, time.time(), _SEEN_URLS, since_epoch
+    )
 
 
 @workflows.activity(
@@ -567,6 +666,52 @@ def _digest_entry(entry: ClassifiedItem) -> list[str]:
         lines += ["", entry.summary_ar]
     lines += ["", f"- الرابط: {item.url}", ""]
     return lines
+
+
+def build_dashboard_markdown(
+    classified: list[ClassifiedItem],
+    run_at: str,
+    source_counts: dict[str, int],
+    since_date: str | None,
+) -> str:
+    """Weekly smart-tracking dashboard: items grouped by category, with per-source counts and links."""
+    try:
+        week_start = (
+            (datetime.fromisoformat(run_at) - timedelta(days=7)).date().isoformat()
+        )
+    except ValueError:
+        week_start = "—"
+    lines = [
+        f"# 📊 لوحة متابعة التحديثات القانونية — {run_at[:10]}",
+        "",
+        f"- عرض أسبوعي من {week_start} إلى {run_at[:10]}"
+        + (f" | منذ {since_date}" if since_date else ""),
+        f"- إجمالي العناصر الجديدة في هذا التشغيل: {len(classified)}",
+        "",
+        "## الأعداد حسب المصدر",
+        "",
+    ]
+    for source_key, count in sorted(source_counts.items(), key=lambda kv: -kv[1]):
+        spec = next((sp for sp in SOURCES if sp.key == source_key), None)
+        lines.append(f"- {spec.name_ar if spec else source_key}: **{count}**")
+    lines.append("")
+    if not classified:
+        lines.append("لا توجد قرارات جديدة في هذه الفترة.")
+        return "\n".join(lines)
+    for category in CATEGORY_ORDER:
+        group = [entry for entry in classified if entry.category == category]
+        if not group:
+            continue
+        lines += [f"## {category} ({len(group)})", ""]
+        for entry in group:
+            item = entry.item
+            date_part = f" — {item.published_at}" if item.published_at else ""
+            ref_part = f" | {entry.reference}" if entry.reference else ""
+            lines.append(
+                f"- [{item.title}]({item.url}) — {item.source_name}{date_part}{ref_part}"
+            )
+        lines.append("")
+    return "\n".join(lines).strip() + "\n"
 
 
 def build_digest_markdown(
@@ -794,7 +939,11 @@ async def _github_put_file(
     retry_policy_max_attempts=2,
 )
 async def persist_results(
-    run_at: str, digest_markdown: str, payload: dict, persist_dir: str
+    run_at: str,
+    digest_markdown: str,
+    dashboard_markdown: str,
+    payload: dict,
+    persist_dir: str,
 ) -> str:
     import os
 
@@ -838,6 +987,7 @@ async def persist_results(
                 f"{persist_dir}/{date}.json": payload_json,
                 f"{persist_dir}/latest.md": digest_markdown,
                 f"{persist_dir}/latest.json": payload_json,
+                f"{persist_dir}/dashboard.md": dashboard_markdown,
             }
             written: list[str] = []
             for path, content in files.items():
@@ -890,7 +1040,9 @@ class SaudiLegalUpdatesWorkflow:
                 *[fetch_source(spec, input.max_items_per_source) for spec in SOURCES]
             )
         )
-        new_items_result = await filter_new_items(results, input.lookback_hours)
+        new_items_result = await filter_new_items(
+            results, input.lookback_hours, input.since_date
+        )
         new_items = new_items_result.items[:MAX_TOTAL_NEW_ITEMS]
         if input.classify and new_items:
             classified = await classify_items(new_items)
@@ -899,6 +1051,13 @@ class SaudiLegalUpdatesWorkflow:
                 ClassifiedItem(item=item, category="أخرى", summary_ar=item.title)
                 for item in new_items
             ]
+        source_category = {
+            spec.key: spec.default_category for spec in SOURCES if spec.default_category
+        }
+        for entry in classified:
+            fixed = source_category.get(entry.item.source_key)
+            if fixed and fixed != "أخرى":
+                entry.category = fixed
         sources_ok = sum(1 for result in results if result.ok)
         digest = build_digest_markdown(
             classified,
@@ -907,6 +1066,14 @@ class SaudiLegalUpdatesWorkflow:
             sources_ok,
             len(results) - sources_ok,
             new_items_result.fetched_total,
+        )
+        source_counts: dict[str, int] = {}
+        for entry in classified:
+            source_counts[entry.item.source_key] = (
+                source_counts.get(entry.item.source_key, 0) + 1
+            )
+        dashboard = build_dashboard_markdown(
+            classified, run_at, source_counts, input.since_date
         )
         title = f"نشرة آخر التحديثات القانونية — {run_at}"
         delivery_status = await deliver_digest(input.delivery_target, title, digest)
@@ -922,7 +1089,7 @@ class SaudiLegalUpdatesWorkflow:
                 classified,
             )
             persist_status = await persist_results(
-                run_at, digest, payload, input.persist_dir
+                run_at, digest, dashboard, payload, input.persist_dir
             )
         return TrackerOutput(
             run_at=run_at,
@@ -939,4 +1106,6 @@ class SaudiLegalUpdatesWorkflow:
             },
             delivery_status=delivery_status,
             persist_status=persist_status,
+            source_counts=source_counts,
+            dashboard_markdown=dashboard,
         )
