@@ -94,7 +94,9 @@ def test_parse_date_to_epoch() -> None:
     assert tracker._parse_date_to_epoch("2026-04-05") is not None
     assert tracker._parse_date_to_epoch("05/04/2026") is not None
     assert tracker._parse_date_to_epoch("Mon, 06 Apr 2026 10:00:00 GMT") is not None
-    assert tracker._parse_date_to_epoch("16/10/1447هـ") is not None  # Hijri now converts
+    assert (
+        tracker._parse_date_to_epoch("16/10/1447هـ") is not None
+    )  # Hijri now converts
     assert tracker._parse_date_to_epoch("") is None
 
 
